@@ -21,14 +21,14 @@ pnpm dev
 
 ## Scripts
 
-| Script | What it does |
-| --- | --- |
-| `pnpm dev` | Dev server |
-| `pnpm build` | Regenerates Sanity types, then builds |
-| `pnpm typegen` | `sanity schema extract` + `sanity typegen generate` |
-| `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm lint` | ESLint |
-| `pnpm format` / `pnpm format:check` | Prettier |
+| Script                              | What it does                                        |
+| ----------------------------------- | --------------------------------------------------- |
+| `pnpm dev`                          | Dev server                                          |
+| `pnpm build`                        | Regenerates Sanity types, then builds               |
+| `pnpm typegen`                      | `sanity schema extract` + `sanity typegen generate` |
+| `pnpm typecheck`                    | `tsc --noEmit`                                      |
+| `pnpm lint`                         | ESLint                                              |
+| `pnpm format` / `pnpm format:check` | Prettier                                            |
 
 `sanity.types.ts` and `schema.json` are generated and committed. Never edit them by hand — change
 the schema or the query and re-run `pnpm typegen`.

@@ -1,4 +1,3 @@
-import {LinkIcon} from '@sanity/icons'
 import {defineField, defineType, type ValidationContext} from 'sanity'
 
 /**
@@ -25,7 +24,7 @@ export const socialLink = defineType({
   name: 'socialLink',
   title: 'Social link',
   type: 'document',
-  icon: LinkIcon,
+
   fields: [
     defineField({
       name: 'platform',

@@ -1,11 +1,10 @@
-import {RocketIcon} from '@sanity/icons'
 import {defineArrayMember, defineField, defineType} from 'sanity'
 
 export const project = defineType({
   name: 'project',
   title: 'Project',
   type: 'document',
-  icon: RocketIcon,
+
   groups: [
     {name: 'main', title: 'Main', default: true},
     {name: 'details', title: 'Details'},

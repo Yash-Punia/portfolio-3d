@@ -1,11 +1,10 @@
-import {CalendarIcon} from '@sanity/icons'
 import {defineArrayMember, defineField, defineType} from 'sanity'
 
 export const timelineEntry = defineType({
   name: 'timelineEntry',
   title: 'Timeline entry',
   type: 'document',
-  icon: CalendarIcon,
+
   fields: [
     defineField({
       name: 'kind',

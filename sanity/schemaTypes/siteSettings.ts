@@ -1,11 +1,10 @@
-import {CogIcon} from '@sanity/icons'
 import {defineField, defineType} from 'sanity'
 
 export const siteSettings = defineType({
   name: 'siteSettings',
   title: 'Site settings',
   type: 'document',
-  icon: CogIcon,
+
   groups: [
     {name: 'identity', title: 'Identity', default: true},
     {name: 'about', title: 'About tile'},
