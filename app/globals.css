@@ -1,26 +1,31 @@
 @import 'tailwindcss';
 
+/*
+  The stage the console sits on. SPEC §9's two themes are the *screen's*, not
+  the page's — the chassis and its surroundings never change with the toggle.
+  The shell is #141416, so a flat black page would swallow it; this is a soft
+  lift behind the object, dark enough to stay quiet and light enough for the
+  contact shadow to bite into.
+*/
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --stage: #0d0d10;
+  --stage-glow: #212429;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(58% 46% at 50% 50%, var(--stage-glow) 0%, var(--stage) 74%), var(--stage);
+}
+
+/* The page does not scroll, so the canvas owns every touch gesture (SPEC §5). */
+canvas {
+  display: block;
+  touch-action: none;
 }
