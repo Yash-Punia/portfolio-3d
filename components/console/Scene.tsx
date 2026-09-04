@@ -1,22 +1,64 @@
 'use client'
 
 import {Environment, Lightformer, OrthographicCamera} from '@react-three/drei'
-import {Canvas} from '@react-three/fiber'
+import {Canvas, useFrame} from '@react-three/fiber'
+import {useRef, useState} from 'react'
+import {MathUtils, type OrthographicCamera as OrthographicCameraImpl} from 'three'
 
 import {Console} from '@/components/console/Console'
-import {CONSOLE} from '@/components/console/dimensions'
+import {useConsole} from '@/components/console/store'
 import {useConsoleZoom} from '@/components/console/useConsoleZoom'
+import {useReducedMotion} from '@/components/console/useReducedMotion'
 
 /** Camera lives in its own component so it can read the canvas size. */
 function Camera() {
-  const zoom = useConsoleZoom(CONSOLE.width, CONSOLE.height)
+  const isOpen = useConsole((state) => state.isOpen)
+  const reducedMotion = useReducedMotion()
+  const zoom = useConsoleZoom(isOpen)
+  const camera = useRef<OrthographicCameraImpl>(null)
+  // Opening widens the framing (SPEC §6). The prop would snap it, so it is
+  // only rendered as the starting value and the damp below owns it after that.
+  const [initialZoom] = useState(zoom)
 
-  return <OrthographicCamera makeDefault position={[0, 0, 10]} near={0.1} far={100} zoom={zoom} />
+  useFrame((_, delta) => {
+    const target = camera.current
+    if (!target || reducedMotion) return
+
+    const next = MathUtils.damp(target.zoom, zoom, 4, delta)
+    if (Math.abs(next - target.zoom) < 0.001) return
+    target.zoom = next
+    target.updateProjectionMatrix()
+  })
+
+  return (
+    <OrthographicCamera
+      ref={camera}
+      makeDefault
+      position={[0, 0, 10]}
+      near={0.1}
+      far={100}
+      zoom={reducedMotion ? zoom : initialZoom}
+    />
+  )
 }
 
 export default function Scene() {
+  const reducedMotion = useReducedMotion()
+
   return (
-    <Canvas orthographic dpr={[1, 2]} frameloop="demand" gl={{antialias: true}}>
+    /*
+      SPEC §12 allows frameloop="demand" only while the idle animation is off,
+      and §5's drift runs the whole time the console is closed — so "always" is
+      the normal case and reduced motion, which has nothing to animate, is the
+      one that renders on demand. R3F invalidates on commit, so open/close still
+      repaints there without a manual invalidate().
+    */
+    <Canvas
+      orthographic
+      dpr={[1, 2]}
+      frameloop={reducedMotion ? 'demand' : 'always'}
+      gl={{antialias: true}}
+    >
       <Camera />
 
       <ambientLight intensity={0.3} color="#9aa6b4" />

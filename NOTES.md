@@ -229,3 +229,101 @@ No `@react-spring/three`, `zustand` or `motion` yet — Phases 2/3/4 each pull i
 - Bundle sizes not measured — SPEC §12's budget and `@next/bundle-analyzer` are Phase 8.
 - Everything still open from Phase 0 stays open: the §3.1 content values are not entered, and the
   logged-in Studio verification is still Yash's to do.
+
+## Phase 2 — Open/close and flaps
+
+Flap hinges and springs, open on click, physical close button, `Escape`, a boot-free powered screen,
+idle drift and the seam glow, and reduced-motion handling. No physical controls yet, no
+drag-to-rotate, nothing on the screen.
+
+### Versions installed
+
+| Package             | Version |
+| ------------------- | ------- |
+| @react-spring/three | 10.1.2  |
+| zustand             | 5.0.15  |
+
+R3F 9.7 and React 19.2.8 both sit inside `@react-spring/three` 10's peer ranges. Current docs for
+both packages were pulled through Context7 before any code was written (SPEC §2).
+
+### Decisions
+
+- **The flaps open to 172°, not SPEC §4's ±105°.** Agreed with Yash before building. The camera is
+  locked front-on and never orbits, so a door stopped at 105° stands ~15° off edge-on: its inner
+  face — which §4's own layout diagram covers with the info monitor, joystick, ABXY cluster and
+  close button — would be a sliver, and Phase 3's controls would be unusable. 172° lays the doors
+  flat beside the body, square to the camera as that diagram shows, keeping the last few degrees so
+  they still read as hinged doors and catch a gradient. `FLAP_OPEN_ANGLE` in `dimensions.ts`.
+- **The camera widens on open at ≥640px only.** Open, the console is roughly twice as wide
+  (`CONSOLE_OPEN` is derived from the angle, ~8.8 units against 4.6 closed), so §6's "whole console
+  visible, flaps in frame" needs a wider framing. Below 640px the zoom is unchanged and the flaps
+  clip out of frame, which is §6's stated mobile behaviour; its other half — the camera springing in
+  on the screen — is Phase 6.
+- **The camera zoom is damped in `useFrame`, not sprung through a prop.** A `zoom` prop that tracks
+  the target snaps on the state change, so the prop carries only the first computed value (held in
+  `useState`, not a ref — the `react-hooks/refs` lint rule rejects reading `ref.current` during
+  render) and `MathUtils.damp` owns it after that. Reduced motion goes back to the plain prop.
+- **The screen's glass lights up; there is no lit plane behind it.** §4's glass transmits ~0.1, so a
+  panel behind it would be invisible. The glass's `emissive` lerps black → §9's `#0A0F12` on open.
+  That colour is near-black and tone mapping eats most of what is left, so `emissiveIntensity` is
+  2.6 — a look call, not a spec value, and the first thing to retune when Phase 4 puts content on
+  the screen. This is the "boot-free black screen plane" of §13: powered, no CRT sequence, no
+  content.
+- **Three small `useFrame`s rather than one.** The plan had the root group animating everything, but
+  that meant threading refs from `Console` into every flap's seam material and into the screen. Each
+  part owns the frame work for its own material instead: `Console` the yaw drift, `Flap` its seam
+  glow, `Body` the screen power.
+- **Idle drift damps its amplitude, not its angle.** Opening eases the drift out over ~0.5s instead
+  of snapping the object straight while the flaps are still swinging.
+- **`frameloop` is `"always"` unless motion is reduced.** §12 permits `"demand"` only while the idle
+  animation is off, and §5's drift runs the whole time the console is closed. Reduced motion has
+  nothing to animate, so it gets `"demand"` — and R3F invalidates on commit, so open/close still
+  repaints without a manual `invalidate()`. Measured: 117 rAF callbacks in 600ms normally, 0 while
+  idle under reduced motion, and 2 for the whole of an open.
+- **Cursor ownership.** A closed flap sets `pointer`; an open one does not touch the cursor at all,
+  because its events bubble past the close button's and would clear what the button just set.
+  Neither R3F nor the browser fires a pointerout when the thing under a stationary pointer moves
+  away, so `Flap` and `CloseButton` each drop the cursor in an effect when the console's state
+  changes under them.
+- **The keyboard listener lives in `ConsoleStage`,** on the DOM side, so it works before the
+  three.js chunk lands. `Escape` closes; `Enter`/`Space` open when closed and nothing else has focus
+  — a canvas that only opens by pointer is a dead end for keyboard visitors (§11.4). §8's "Escape
+  closes the detail view first" arrives in Phase 4 with a detail view to close.
+- **The store holds `isOpen` and nothing else.** §8's other fields are added by the phase that first
+  reads them rather than stubbed now.
+
+### Verified
+
+- `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm build` — all clean. Three routes, all
+  prerendered static.
+- Chrome DevTools MCP against `pnpm start` (production build), 1440×900 and 390×844:
+  closed, mid-open and fully open at both widths. Mid-open frames are read off the WebGL canvas
+  inside a `requestAnimationFrame` (the MCP screenshot round-trip is ~5s, far longer than the
+  ~700ms spring) and composited over the stage gradient. The right flap visibly trails the left in
+  both mid-open frames — the 60ms delay reads.
+- Click a closed flap → opens, and the cursor is `pointer` over it beforehand and cleared after.
+  Clicking an open flap changes the frame by 1/255 at most, against 18/255 for the same window with
+  no input at all — nothing re-animates, so opening is idempotent.
+- The close button closes it; `Escape` closes it; reopening returns to the same pose.
+- Closed and idle, 2% of sampled pixels change over 1.2s (max 127/255 on the seam's red channel):
+  the yaw drift and the glow pulse are both alive and both subtle.
+- Reduced motion (`matchMedia` overridden before load): flaps open with no animation, no drift, no
+  pulse, no zoom move, and the screen is lit the moment it is open.
+- `list_console_messages` — one message, the known upstream `THREE.Clock` deprecation from R3F. No
+  errors.
+
+### Known issues / open risks
+
+- **On mobile, an open console has no close affordance.** The close button rides the right flap,
+  which clips off-screen at <640px by design (§6). `Escape` still closes it, which a phone does not
+  have. §6's DOM control overlay — close button included — is Phase 6, and this gap closes with it.
+- The screen's powered look (`emissiveIntensity` 2.6 on a near-black `#0A0F12`) is a look call
+  against a black stage. Revisit in Phase 4 when real content sits on it, and in Phase 7 with the
+  light theme.
+- The flap interiors are bare — the info monitor, joystick, ABXY and CV button are Phase 3. The
+  close button has no glyph yet for the same reason.
+- Bevelled corners on the flaps mean the seam band stops short of the top and bottom corners; closed,
+  the join reads as one line, but the band is `FLAP.radius` short at each end. Left as is.
+- `THREE.Clock` deprecation warning, drag-to-rotate, bundle budget: all still open from Phase 1.
+- Everything still open from Phase 0 stays open: the §3.1 content values are not entered, and the
+  logged-in Studio verification is still Yash's to do.

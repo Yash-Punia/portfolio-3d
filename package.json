@@ -13,6 +13,7 @@
     "typegen": "sanity schema extract --force && sanity typegen generate"
   },
   "dependencies": {
+    "@react-spring/three": "^10.1.2",
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",
     "@sanity/client": "^8.4.0",
@@ -22,7 +23,8 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "sanity": "^6.12.0",
-    "three": "^0.185.1"
+    "three": "^0.185.1",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

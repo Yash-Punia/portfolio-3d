@@ -84,3 +84,36 @@ export const CONSOLE = {
   width: BODY.width,
   height: BODY.height,
 } as const
+
+/**
+ * How far the flaps swing (SPEC §5's "opening"), in radians.
+ *
+ * SPEC §4 says "roughly −105°", but the camera is locked front-on and never
+ * orbits, so a door stopped at 105° stands ~15° off edge-on: its inner face —
+ * which §4's own layout diagram puts the info monitor, joystick, ABXY cluster
+ * and close button on — would be a sliver. 172° lays the doors flat beside the
+ * body, square to the camera as that diagram shows, keeping the last few
+ * degrees so they still read as hinged doors and catch a gradient.
+ */
+export const FLAP_OPEN_ANGLE = (172 * Math.PI) / 180
+
+/**
+ * Open footprint, used to derive the camera zoom. Derived from the angle rather
+ * than measured, so retuning `FLAP_OPEN_ANGLE` retunes the camera with it.
+ */
+export const CONSOLE_OPEN = {
+  width: 2 * (HINGE_X + FLAP.width * Math.abs(Math.cos(FLAP_OPEN_ANGLE))),
+  height: BODY.height,
+} as const
+
+/** Close button, on the inner face of the right flap (SPEC §4, §5). */
+export const CLOSE_BUTTON = {
+  capRadius: 0.13,
+  capHeight: 0.055,
+  housingRadius: 0.185,
+  housingDepth: 0.024,
+  /** Y from the flap's own centre — the bottom of the flap, per §4's diagram. */
+  y: -FLAP.height / 2 + 0.34,
+  /** How far the cap sinks when pressed. */
+  travel: 0.022,
+} as const

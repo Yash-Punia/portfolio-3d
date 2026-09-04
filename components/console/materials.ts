@@ -43,4 +43,16 @@ export const SCREEN_GLASS = {
   thickness: 0.02,
   clearcoat: 1,
   clearcoatRoughness: 0.18,
+  // The screen's "powered" colour is SPEC §9's screen background, which is a
+  // near-black; tone mapping then eats what little of it survives. The emissive
+  // is scaled up so an empty, powered screen reads as lit rather than as one
+  // more black face. Phase 4 puts content on it.
+  emissiveIntensity: 2.6,
+} as const
+
+/** Button caps — off-white, not pure white (SPEC §4). */
+export const BUTTON = {
+  color: '#f2f2f0',
+  roughness: 0.5,
+  metalness: 0.02,
 } as const
