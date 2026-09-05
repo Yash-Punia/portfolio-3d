@@ -15,7 +15,18 @@ interface NumberControl {
   step: number
 }
 
-const GROUPS: {title: string; controls: NumberControl[]}[] = [
+interface Group {
+  title: string
+  controls: NumberControl[]
+}
+
+/**
+ * The panel has two tabs because the console and the firmware on its screen are
+ * tuned in different units and at different moments: world units against the
+ * object, CSS pixels against the UI drawn on it. They share one store, one
+ * "save as default" and one `Tuning` record — only the list of controls splits.
+ */
+const CONSOLE_GROUPS: Group[] = [
   {
     title: 'Size and shape',
     controls: [
@@ -92,6 +103,59 @@ const GROUPS: {title: string; controls: NumberControl[]}[] = [
   },
 ]
 
+/**
+ * The firmware UI (SPEC §7, §8). These are CSS pixels in the panel's own
+ * authored space, so they stay put relative to the screen whatever the console's
+ * proportions are — and "panel width" is the whole UI's zoom: lower it and
+ * everything on the screen gets bigger.
+ */
+const FIRMWARE_GROUPS: Group[] = [
+  {
+    title: 'Panel',
+    controls: [
+      {key: 'fwPanelWidth', label: 'Panel width (UI zoom)', min: 400, max: 1600, step: 10},
+      {key: 'fwRailX', label: 'Side margin', min: 0, max: 240, step: 2},
+    ],
+  },
+  {
+    title: 'Status bar',
+    controls: [
+      {key: 'fwStatusHeight', label: 'Height', min: 20, max: 140, step: 1},
+      {key: 'fwStatusFont', label: 'Font size', min: 8, max: 40, step: 1},
+    ],
+  },
+  {
+    title: 'Rail',
+    controls: [
+      {key: 'fwRailTop', label: 'Space above tiles', min: 0, max: 200, step: 2},
+      {key: 'fwTileWidth', label: 'Tile width', min: 80, max: 600, step: 5},
+      {key: 'fwTileHeight', label: 'Tile height', min: 50, max: 400, step: 5},
+      {key: 'fwTileGap', label: 'Gap between tiles', min: 0, max: 120, step: 2},
+      {key: 'fwSelectedScale', label: 'Selected scale', min: 1, max: 1.6, step: 0.01},
+      {key: 'fwUnselectedOpacity', label: 'Unselected opacity', min: 0.1, max: 1, step: 0.01},
+    ],
+  },
+  {
+    title: 'Text block',
+    controls: [
+      {key: 'fwBlockGap', label: 'Space below rail', min: 0, max: 160, step: 2},
+      {key: 'fwTextGap', label: 'Space between lines', min: 0, max: 80, step: 1},
+      {key: 'fwTitleFont', label: 'Title size', min: 16, max: 110, step: 1},
+      {key: 'fwMetaFont', label: 'Meta size', min: 8, max: 40, step: 1},
+      {key: 'fwBodyFont', label: 'Body size', min: 10, max: 48, step: 1},
+    ],
+  },
+  {
+    title: 'Detail view',
+    controls: [{key: 'fwDetailCoverHeight', label: 'Cover height', min: 60, max: 520, step: 5}],
+  },
+]
+
+const TABS: {id: string; label: string; groups: Group[]; colours: boolean}[] = [
+  {id: 'console', label: 'console', groups: CONSOLE_GROUPS, colours: true},
+  {id: 'firmware', label: 'firmware', groups: FIRMWARE_GROUPS, colours: false},
+]
+
 const COLOURS: {key: ColorKey; label: string}[] = [
   {key: 'shellColor', label: 'Shell'},
   {key: 'bezelColor', label: 'Bezel and seams'},
@@ -119,6 +183,7 @@ export function TuningPanel() {
   const set = useTuning((state) => state.set)
   const reset = useTuning((state) => state.reset)
   const [collapsed, setCollapsed] = useState(false)
+  const [tab, setTab] = useState(TABS[0]!)
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -176,7 +241,7 @@ export function TuningPanel() {
     <aside className="fixed top-3 right-3 bottom-3 z-10 flex w-[19rem] max-w-[calc(100vw-1.5rem)] flex-col rounded-lg border border-white/10 bg-black/85 font-mono text-[11px] text-neutral-200 shadow-xl backdrop-blur">
       <header className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
         <span className="tracking-wide text-neutral-400">
-          console tuning{changed > 0 ? ` — ${changed} changed` : ''}
+          tuning{changed > 0 ? ` — ${changed} changed` : ''}
         </span>
         <button
           className="rounded border border-white/15 px-2 py-0.5 hover:bg-white/10"
@@ -189,8 +254,25 @@ export function TuningPanel() {
 
       {collapsed ? null : (
         <>
+          <div className="flex gap-1 border-b border-white/10 px-3 py-1.5">
+            {TABS.map((entry) => (
+              <button
+                key={entry.id}
+                className={`rounded px-2 py-0.5 ${
+                  entry.id === tab.id
+                    ? 'bg-white/15 text-neutral-100'
+                    : 'text-neutral-400 hover:bg-white/5'
+                }`}
+                onClick={() => setTab(entry)}
+                type="button"
+              >
+                {entry.label}
+              </button>
+            ))}
+          </div>
+
           <div className="flex-1 overflow-y-auto px-3 py-2">
-            {GROUPS.map((group) => (
+            {tab.groups.map((group) => (
               <section key={group.title} className="mb-3">
                 <h2 className="mb-1 text-neutral-500">{group.title}</h2>
                 {group.controls.map((control) => (
@@ -229,7 +311,12 @@ export function TuningPanel() {
               </section>
             ))}
 
-            <section className="mb-2">
+            {/*
+              The colours sit on the console tab: the screen's palette is
+              SPEC §9's, and its accent is the chassis accent, so there is
+              nothing here that belongs only to the firmware.
+            */}
+            <section className="mb-2" hidden={!tab.colours}>
               <h2 className="mb-1 text-neutral-500">Colours</h2>
               {COLOURS.map((colour) => (
                 <div key={colour.key} className="mb-1.5 flex items-center justify-between gap-2">

@@ -4,8 +4,10 @@ import {Html} from '@react-three/drei'
 import {useState} from 'react'
 
 import {isLocalHref, RESUME_FILENAME, type ConsoleContent} from '@/components/console/content'
+import {htmlScale} from '@/components/console/htmlScale'
 import {useSpec} from '@/components/console/spec'
-import {useConsole, useTheme} from '@/components/console/store'
+import {useConsole} from '@/components/console/store'
+import {useScreenTheme} from '@/components/firmware/theme'
 
 /**
  * The DOM is authored at this width in CSS pixels and then scaled to the
@@ -13,19 +15,6 @@ import {useConsole, useTheme} from '@/components/console/store'
  * panel rather than something to re-guess whenever the flap is retuned.
  */
 const PANEL_PX = 420
-
-/**
- * drei's transform mode lays the element out at `400 / distanceFactor` CSS
- * pixels per world unit, and defaults `distanceFactor` to 10 — so one world unit
- * is 40px there, and the scale that fits PANEL_PX into the panel has to undo it.
- */
-const PX_PER_UNIT = 40
-
-/** SPEC §9's two palettes, for the one surface that shows text this phase. */
-const PALETTE = {
-  dark: {foreground: '#e9f0f1', muted: '#7c8b90'},
-  light: {foreground: '#141819', muted: '#6b6f70'},
-} as const
 
 /**
  * The small secondary display at the top of the left flap (SPEC §4). Self-lit,
@@ -54,8 +43,7 @@ export function InfoMonitor({
 }) {
   const {dimensions: d, materials: m} = useSpec()
   const isOpen = useConsole((state) => state.isOpen)
-  const theme = useTheme()
-  const palette = PALETTE[theme]
+  const {palette} = useScreenTheme()
   const [hovered, setHovered] = useState(false)
 
   const name = settings?.fullName
@@ -93,7 +81,7 @@ export function InfoMonitor({
       {/* SPEC §4: the info monitor is meshBasicMaterial — unlit, always on. */}
       <mesh position={[0, 0, d.monitor.depth + 0.001]}>
         <planeGeometry args={[d.monitor.width, d.monitor.height]} />
-        <meshBasicMaterial color={m.screenOn[theme]} toneMapped={false} />
+        <meshBasicMaterial color={palette.bg} toneMapped={false} />
       </mesh>
 
       {/*
@@ -106,7 +94,7 @@ export function InfoMonitor({
           center
           pointerEvents="none"
           position={[0, 0, d.monitor.depth + 0.002]}
-          scale={(d.monitor.width / PANEL_PX) * PX_PER_UNIT}
+          scale={htmlScale(d.monitor.width, PANEL_PX)}
           transform
         >
           <div
@@ -114,7 +102,7 @@ export function InfoMonitor({
               width: `${PANEL_PX}px`,
               padding: '34px 38px',
               boxSizing: 'border-box',
-              color: palette.foreground,
+              color: palette.fg,
               fontFamily: 'var(--font-archivo), system-ui, sans-serif',
               lineHeight: 1.15,
               userSelect: 'none',
@@ -161,7 +149,7 @@ export function InfoMonitor({
                   onPointerOut={() => setHovered(false)}
                   onPointerOver={() => setHovered(true)}
                   style={{
-                    color: hovered ? m.accent.color : palette.foreground,
+                    color: hovered ? palette.accent : palette.fg,
                     cursor: 'pointer',
                     pointerEvents: 'auto',
                     textUnderlineOffset: '4px',

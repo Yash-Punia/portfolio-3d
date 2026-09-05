@@ -29,3 +29,50 @@ canvas {
   display: block;
   touch-action: none;
 }
+
+/*
+  The firmware's animations (SPEC §7). They live here rather than inline because
+  keyframes cannot be expressed in a style attribute; the components that use
+  them are otherwise self-contained. Reduced motion is handled in the components
+  themselves — these never run when it is set.
+*/
+@keyframes firmware-scanline {
+  from {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  to {
+    transform: scaleY(180);
+    opacity: 0.12;
+  }
+}
+
+@keyframes firmware-header {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  60% {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@keyframes firmware-boot-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes firmware-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

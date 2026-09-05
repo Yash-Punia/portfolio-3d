@@ -23,3 +23,23 @@ export const socialLinksQuery = defineQuery(`*[_type == "socialLink"] | order(bu
   buttonSlot,
   label
 }`)
+
+export const projectsQuery = defineQuery(`*[_type == "project"] | order(order asc){
+  _id,
+  title,
+  "slug": slug.current,
+  order,
+  blurb,
+  description,
+  role,
+  year,
+  engine,
+  tech,
+  platforms,
+  cover,
+  gallery,
+  videoUrl,
+  links[]{label, url},
+  teamSize,
+  featured
+}`)

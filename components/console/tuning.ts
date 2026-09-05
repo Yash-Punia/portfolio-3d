@@ -2,7 +2,8 @@ import {create} from 'zustand'
 import {persist} from 'zustand/middleware'
 
 /**
- * Every value the console's form is built from, in one flat, editable record.
+ * Every value the console's form and its firmware UI are built from, in one
+ * flat, editable record.
  *
  * SPEC §4 forbids authoring the console as a GLTF precisely so the form stays
  * tweakable in code. This takes that one step further: the values are state, so
@@ -61,6 +62,36 @@ export interface Tuning {
   /** Screen background in the light theme — SPEC §9's warm paper-white. */
   screenLightColor: string
   screenEmissiveIntensity: number
+
+  /*
+    The firmware UI on the screen (SPEC §7, §8). These are CSS pixels in the
+    panel's own authored space, not world units: the panel is laid out at
+    `fwPanelWidth` pixels wide and then scaled onto the glass, so every size
+    below is a fixed ratio of the screen however the console is proportioned.
+    Lowering `fwPanelWidth` alone magnifies the whole UI.
+  */
+  fwPanelWidth: number
+  /** Status bar: its height and the size of the mono chrome in it. */
+  fwStatusHeight: number
+  fwStatusFont: number
+  /** Rail: its inset from the left edge and the space above the tiles. */
+  fwRailX: number
+  fwRailTop: number
+  fwTileWidth: number
+  fwTileHeight: number
+  fwTileGap: number
+  /** SPEC §8: the selected tile scales up, the rest go quiet. */
+  fwSelectedScale: number
+  fwUnselectedOpacity: number
+  /** Space between the rail and the title block under it. */
+  fwBlockGap: number
+  /** Space between the title, the meta line and the blurb. */
+  fwTextGap: number
+  fwTitleFont: number
+  fwMetaFont: number
+  fwBodyFont: number
+  /** Height of the cover image at the top of the detail view. */
+  fwDetailCoverHeight: number
 }
 
 export const DEFAULT_TUNING: Tuning = {
@@ -99,6 +130,22 @@ export const DEFAULT_TUNING: Tuning = {
   screenColor: '#0a0f12',
   screenLightColor: '#edeae2',
   screenEmissiveIntensity: 2.6,
+  fwPanelWidth: 900,
+  fwStatusHeight: 60,
+  fwStatusFont: 16,
+  fwRailX: 52,
+  fwRailTop: 80,
+  fwTileWidth: 250,
+  fwTileHeight: 140,
+  fwTileGap: 54,
+  fwSelectedScale: 1,
+  fwUnselectedOpacity: 0.5,
+  fwBlockGap: 60,
+  fwTextGap: 17,
+  fwTitleFont: 50,
+  fwMetaFont: 12,
+  fwBodyFont: 16,
+  fwDetailCoverHeight: 270,
 }
 
 interface TuningState {

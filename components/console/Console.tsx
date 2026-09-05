@@ -119,7 +119,7 @@ export function Console({content}: {content: ConsoleContent}) {
       }}
     >
       <group ref={drift}>
-        <Body />
+        <Body content={content} />
         <Hinge side="left" />
         <Hinge side="right" />
         <Flap side="left" content={content} />

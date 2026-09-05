@@ -3,9 +3,13 @@
 import dynamic from 'next/dynamic'
 import {useEffect, useSyncExternalStore} from 'react'
 
-import {linkForSlot, type ButtonSlot, type ConsoleContent} from '@/components/console/content'
+import {
+  linkForSlot,
+  openLink,
+  type ButtonSlot,
+  type ConsoleContent,
+} from '@/components/console/content'
 import {useInput, type Direction} from '@/components/console/input'
-import {openSocial} from '@/components/console/parts/FaceButtons'
 import {Skeleton} from '@/components/console/Skeleton'
 import {useConsole} from '@/components/console/store'
 
@@ -66,10 +70,15 @@ function useConsoleKeys(content: ConsoleContent) {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
       if (isTyping()) return
 
-      const {isOpen, open, close} = useConsole.getState()
+      const {isOpen, open, close, isDetailOpen, openDetail, closeDetail, libraryIndex} =
+        useConsole.getState()
 
+      // SPEC §8: Escape closes the detail view; with none open, it closes the
+      // console.
       if (event.key === 'Escape') {
-        if (isOpen) close()
+        if (!isOpen) return
+        if (isDetailOpen) closeDetail()
+        else close()
         return
       }
 
@@ -81,19 +90,27 @@ function useConsoleKeys(content: ConsoleContent) {
           return
         }
 
+        // Enter opens the selected project; the About tile has nothing to drill
+        // into, so it stays a no-op there rather than opening an empty panel.
+        if (event.key === 'Enter' || event.key === ' ') {
+          if (document.activeElement !== document.body) return
+          event.preventDefault()
+          if (!isDetailOpen && libraryIndex > 0) openDetail()
+          return
+        }
+
         const slot = SLOT_KEYS[event.key.toLowerCase()]
         if (slot) {
           const link = linkForSlot(content.socialLinks, slot)
           if (!link?.url) return
           event.preventDefault()
           useInput.getState().pressSlot(slot)
-          openSocial(link.url)
+          openLink(link.url)
         }
         return
       }
 
-      // Only while closed, and only when nothing else owns the keystroke — the
-      // firmware's own Enter/Space bindings arrive with it in Phase 4.
+      // Only while closed, and only when nothing else owns the keystroke.
       if (event.key === 'Enter' || event.key === ' ') {
         if (document.activeElement !== document.body) return
         event.preventDefault()
@@ -152,6 +169,71 @@ function useSocialFocus() {
   }, [])
 }
 
+/**
+ * The rail's consumer of the directional stream Phase 3 built.
+ *
+ * `input.tick` advances once when a direction is taken and every 180ms it is
+ * held after, from either the joystick or the arrow keys — so subscribing here
+ * is what makes both of them move the selection, at one tile per notch rather
+ * than one per frame (SPEC §5, §8).
+ */
+function useRailInput(count: number) {
+  useEffect(
+    () =>
+      useInput.subscribe((state, previous) => {
+        if (state.tick === previous.tick) return
+        const direction = state.held
+        if (direction !== 'left' && direction !== 'right') return
+
+        const {isOpen, isDetailOpen, moveLibrary} = useConsole.getState()
+        // Up and down have nowhere to go until Phase 5's timeline, and a detail
+        // view is not a rail.
+        if (!isOpen || isDetailOpen) return
+        moveLibrary(direction === 'left' ? -1 : 1, count)
+      }),
+    [count],
+  )
+}
+
+/** SPEC §8: accumulate, fire on a threshold, then lock so a flick cannot skip. */
+const WHEEL_THRESHOLD = 40
+const WHEEL_LOCK_MS = 120
+
+/**
+ * Vertical scroll moves the selection horizontally — the "scroll down to move
+ * across" behaviour of SPEC §8 — and a trackpad's horizontal axis does the same.
+ * Delta accumulates to a threshold, fires one move, then the stream is locked
+ * for 120ms and whatever inertia arrives during it is discarded, which is what
+ * keeps an inertial flick from skipping eight projects.
+ */
+function useWheelRail(count: number) {
+  useEffect(() => {
+    let accumulated = 0
+    let lockedUntil = 0
+
+    function onWheel(event: WheelEvent) {
+      const {isOpen, isDetailOpen, moveLibrary} = useConsole.getState()
+      if (!isOpen || isDetailOpen) return
+
+      const now = performance.now()
+      if (now < lockedUntil) {
+        accumulated = 0
+        return
+      }
+
+      accumulated += Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
+      if (Math.abs(accumulated) < WHEEL_THRESHOLD) return
+
+      moveLibrary(accumulated > 0 ? 1 : -1, count)
+      accumulated = 0
+      lockedUntil = now + WHEEL_LOCK_MS
+    }
+
+    window.addEventListener('wheel', onWheel, {passive: true})
+    return () => window.removeEventListener('wheel', onWheel)
+  }, [count])
+}
+
 /** The URL is an external source the server render cannot see. */
 const subscribeToNothing = () => () => {}
 
@@ -163,14 +245,46 @@ function useTuningFlag() {
   )
 }
 
+/**
+ * What the rail has selected, in words (SPEC §11.6).
+ *
+ * The firmware itself is `aria-hidden` — the page's `.sr-only` landmark is the
+ * accessible copy of its content — so the one thing a screen reader cannot
+ * otherwise learn is that moving the joystick changed the selection. This
+ * announces exactly that, and nothing that is already in the landmark.
+ */
+function useAnnouncement(content: ConsoleContent): string {
+  const isOpen = useConsole((state) => state.isOpen)
+  const index = useConsole((state) => state.libraryIndex)
+  const isDetailOpen = useConsole((state) => state.isDetailOpen)
+
+  if (!isOpen) return ''
+
+  const name =
+    index === 0
+      ? (content.settings?.aboutHeadline ?? 'About')
+      : (content.projects[index - 1]?.title ?? '')
+
+  return isDetailOpen ? `${name}, details` : `Library, ${name}`
+}
+
 export function ConsoleStage({content}: {content: ConsoleContent}) {
+  // The About tile plus one per project (SPEC §8).
+  const railCount = content.projects.length + 1
+
   useConsoleKeys(content)
   useSocialFocus()
+  useRailInput(railCount)
+  useWheelRail(railCount)
   const tuning = useTuningFlag()
+  const announcement = useAnnouncement(content)
 
   return (
     <div className="fixed inset-0">
       <Scene content={content} />
+      <p aria-live="polite" className="sr-only">
+        {announcement}
+      </p>
       {tuning ? <TuningPanel /> : null}
     </div>
   )

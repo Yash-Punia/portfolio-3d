@@ -348,11 +348,68 @@ export type SocialLinksQueryResult = Array<{
   label: string | null
 }>
 
+// Source: sanity/lib/queries.ts
+// Variable: projectsQuery
+// Query: *[_type == "project"] | order(order asc){  _id,  title,  "slug": slug.current,  order,  blurb,  description,  role,  year,  engine,  tech,  platforms,  cover,  gallery,  videoUrl,  links[]{label, url},  teamSize,  featured}
+export type ProjectsQueryResult = Array<{
+  _id: string
+  title: string | null
+  slug: string | null
+  order: number | null
+  blurb: string | null
+  description: Array<{
+    children?: Array<{
+      marks?: Array<string>
+      text?: string
+      _type: 'span'
+      _key: string
+    }>
+    style?: 'blockquote' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'normal'
+    listItem?: 'bullet' | 'number'
+    markDefs?: Array<{
+      href?: string
+      _type: 'link'
+      _key: string
+    }>
+    level?: number
+    _type: 'block'
+    _key: string
+  }> | null
+  role: string | null
+  year: string | null
+  engine: 'Custom' | 'Godot' | 'Other' | 'Unity' | 'Unreal' | null
+  tech: Array<string> | null
+  platforms: Array<string> | null
+  cover: {
+    asset?: SanityImageAssetReference
+    media?: unknown
+    hotspot?: SanityImageHotspot
+    crop?: SanityImageCrop
+    _type: 'image'
+  } | null
+  gallery: Array<{
+    asset?: SanityImageAssetReference
+    media?: unknown
+    hotspot?: SanityImageHotspot
+    crop?: SanityImageCrop
+    _type: 'image'
+    _key: string
+  }> | null
+  videoUrl: string | null
+  links: Array<{
+    label: string | null
+    url: string | null
+  }> | null
+  teamSize: number | null
+  featured: boolean | null
+}>
+
 // Query TypeMap
 import '@sanity/client'
 declare module '@sanity/client' {
   interface SanityQueries {
     '*[_type == "siteSettings"][0]{\n  fullName,\n  title,\n  statusLine,\n  aboutHeadline,\n  aboutBody,\n  resumeLabel,\n  "resumeUrl": resumeFile.asset->url,\n  seo\n}': SiteSettingsQueryResult
     '*[_type == "socialLink"] | order(buttonSlot asc){\n  _id,\n  platform,\n  url,\n  buttonSlot,\n  label\n}': SocialLinksQueryResult
+    '*[_type == "project"] | order(order asc){\n  _id,\n  title,\n  "slug": slug.current,\n  order,\n  blurb,\n  description,\n  role,\n  year,\n  engine,\n  tech,\n  platforms,\n  cover,\n  gallery,\n  videoUrl,\n  links[]{label, url},\n  teamSize,\n  featured\n}': ProjectsQueryResult
   }
 }

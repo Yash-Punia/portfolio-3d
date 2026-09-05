@@ -556,3 +556,181 @@ which turns the accent colour on hover.
 - Verified in the production build: the span renders `#e9f0f1` at rest and `#4be12d` (the tuned
   accent) on `pointerover`, and clicking it resolves the same Sanity href with
   `?dl=Yash-Punia-Gameplay-Programmer.pdf` the cap used to.
+
+## Phase 4 — Firmware: Library
+
+The screen has a UI on it. `<Firmware />` is a self-contained DOM tree — a status bar, a boot
+sequence, the Library rail and an expanded detail view — mounted through drei's `<Html transform>`
+onto the screen plane. The timeline rail is Phase 5; the mobile mount and the DOM control overlay
+are Phase 6.
+
+### Versions installed
+
+None. Everything here is built from what Phases 0–3 already pulled in. `@react-spring/web` is
+**not** installed — only `@react-spring/three` is, and it does not carry the web entry point — so
+the rail's motion is CSS transitions rather than springs. At 280ms on one transform that is the
+whole of what a spring would have bought, and it is one fewer package in the bundle (SPEC §12).
+
+### SPEC §16, answered
+
+All four open items were confirmed before this phase, three of them at the SPEC's own default:
+
+1. **Rail order** — About is index 0 of the same rail as the projects.
+2. **Detail view** — `Enter` opens an expanded in-place panel.
+3. **Firmware version string** — `YP-OS 1.0`.
+4. **Sound** — not built. SPEC §13 puts audio in Phase 7 and there is nothing here for a hook to
+   attach to yet; no muted stubs were left behind.
+
+A fifth question the SPEC could not have asked: the chassis accent is a tuning value and has been
+dialled to something other than §9's red, so **the screen's selection colour follows
+`accentColor`** rather than hard-coding a red. The screen and the object it is set into agree, and
+one knob retunes both.
+
+### Decisions
+
+- **The firmware knows nothing about 3D.** `components/firmware/` imports the store, the content
+  types and the reduced-motion hook, and not one thing from three.js. That is what makes Phase 6's
+  fullscreen mobile mount a second `<Firmware />` call rather than a second implementation
+  (SPEC §7).
+- **Authored at 900×875 CSS px and scaled to the panel.** The same trick the info monitor already
+  used, now shared: `htmlScale()` holds drei's `400 / distanceFactor` arithmetic and the comment
+  explaining it, and both surfaces call it. The authored size matches the screen's own 3.6 × 3.5
+  ratio, so scaling by width lands it on the glass — retuning the screen's proportions means
+  retuning `SCREEN_PX` with them.
+- **The screen is nearly square, and the SPEC §8 sketch is not.** That diagram implies a widescreen
+  rail with four tiles across. At 1.03:1 only two and a bit fit, so the rail carries fewer tiles and
+  the description block below them does the work.
+- **No `occlude="blending"`.** drei's occlusion writes the panel into the depth buffer through a
+  hidden mesh. Under this scene's orthographic, dead-on camera nothing ever passes in front of the
+  screen, so it buys nothing while costing a draw — and with the flaps swinging through 172° it
+  gives the doors something to fight.
+- **One palette module, two surfaces.** `firmware/theme.ts` owns SPEC §9's two palettes as CSS
+  custom properties, and the info monitor's hard-coded copy is gone. The monitor's lit plane colour
+  now comes from `palette.bg` rather than the tuning's `screenColor` — the same value, one source.
+- **The accent is contrast-corrected, in the right direction.** `readableAccent()` steps the tuned
+  accent away from the screen background until it clears 4.5:1 — _lightening_ on the dark theme,
+  _darkening_ on the light one. The first cut only darkened, which made a red on a near-black
+  background worse, and "ENTER — DETAILS" was very nearly invisible on screen. SPEC §9's own two
+  accents (a brighter red for dark, a deeper one for light) encode the same rule.
+- **The About tile carries the name, not the headline.** The headline is already the heading
+  directly below the rail when About is selected; a tile repeating the sentence under it reads as a
+  bug rather than a design.
+- **Enter on About is a no-op.** There is no expanded view of the About tile to open, so it does not
+  open an empty one.
+- **`input.tick` finally has a consumer.** The 180ms repeat stream Phase 3 built asserted its
+  cadence by construction because nothing subscribed to it; the rail subscribes now, and the
+  joystick and the arrow keys move the selection through the same path. `up`/`down` are still
+  no-ops — Phase 5 gives them somewhere to go.
+- **Wheel input discards inertia rather than queueing it.** Delta accumulates to 40, fires one move,
+  then locks for 120ms — and anything arriving _during_ the lock is thrown away instead of banked.
+  Banking it would just replay the flick one tile at a time after the lock expired, which is the
+  skipping SPEC §8 forbids by another route.
+- **The clock is `useSyncExternalStore`, polled twice a minute.** Its snapshot is `HH:MM`, so React
+  re-renders only when the minute actually turns — and every re-render of this tree repaints the
+  canvas it is drawn into. A `useEffect` + `setState` clock is also what
+  `react-hooks/set-state-in-effect` rejects.
+- **The firmware is `aria-hidden`, and the live region is not in it.** The page's `.sr-only`
+  landmark is the accessible copy of every string on the screen (SPEC §11.1) and now carries the
+  projects too — heading, blurb and each link as a real anchor. What a screen reader cannot learn
+  from it is that the joystick moved the selection, so `ConsoleStage` renders one `aria-live` line
+  saying what is selected, in the page's own DOM. Links inside the panel stay `<span>`s for the
+  reason the resume link already is one: a focusable element inside an `aria-hidden` subtree is a
+  trap.
+- **Portable Text is rendered by twelve lines, not a package.** `description` is empty on every
+  published project, and the schema's editor produces blocks of spans. If it ever grows lists or
+  marks that matter, swap in `@portabletext/react` rather than growing this.
+- **Covers are plain `<img>` with Sanity CDN transforms.** The element lives inside an `<Html>`
+  subtree in the canvas, and Sanity already does the resizing and format negotiation `next/image`
+  would add. The `@next/next/no-img-element` rule is disabled on those two lines, with the reason.
+
+### Verified
+
+Chrome DevTools MCP against `pnpm dev`, then again against `pnpm build && pnpm start` (SPEC §0
+rule 2). No console errors in either; the only warnings are Phase 1's `THREE.Clock` deprecation and
+the HLSL precision notices.
+
+- Opening plays the boot once and hands over at **981ms**; closing and reopening ends at **322ms**
+  — the full and short forms of SPEC §7 (900 / 250 plus a render frame). The Library is mounted and
+  interactive underneath the overlay throughout.
+- `←`/`→` and the joystick move one tile per press through `input.tick`; holding repeats at 180ms.
+- A twenty-event inertial flick (600px of `deltaY` in one burst) moves **one** tile. Two notches
+  300ms apart move two. Reversing moves back.
+- At the end of the rail, another notch does nothing: clamped, no wrap, no bounce (SPEC §3.2).
+- `Enter` opens the detail panel — cover, meta grid, blurb, links; `Escape` closes it and a second
+  `Escape` closes the console (SPEC §8).
+- **Contrast, measured rather than assumed (SPEC §9).** Dark: foreground 16.7:1, muted 5.46:1,
+  accent 4.97:1. Light: foreground 14.87:1, muted **4.23:1 — a fail**, so the light muted was
+  darkened from SPEC §9's `#6b6f70` to `#656a6b` (4.56:1), hue unchanged. All body text now clears
+  AA on both themes.
+- Empty states, forced by stubbing the query result in `app/page.tsx`:
+  - **Zero projects** — the rail holds the About tile alone, no scroll affordance, no placeholder
+    cards, and `Enter` opens nothing.
+  - **One item** — left and right are no-ops.
+  - **No cover** — an accent-tinted tile with the title in Archivo Expanded, in both the rail and
+    the detail view. No broken-image icon, no `<img>` in the DOM at all.
+- `prefers-reduced-motion: reduce` (injected `matchMedia`): the boot is skipped entirely — no
+  animated element in the tree 250ms after opening — and the Library is present immediately.
+- Light theme via `prefers-color-scheme`: screen, info monitor and accent all flip together.
+- `Tab` still reaches the `.sr-only` anchors and still lights the matching ABXY focus ring in 3D;
+  the landmark's headings now read About, then each project.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build` all clean.
+
+### Known issues / open risks
+
+- **The rail's lower half is empty space.** On a square screen the tiles sit at the top and the
+  description under them ends around two-thirds down. Phase 5's timeline indicator belongs in that
+  gap, so it is left alone rather than padded out now.
+- **Touch swipe on the screen is not wired.** SPEC §8 lists swipe left/right and up/down; those are
+  mobile input and land with Phase 6's fullscreen mount, alongside the DOM control overlay.
+- **`ENTER — DETAILS` and `ESC — BACK` are hard-coded strings**, as is `YP-OS 1.0`. SPEC §15 wants
+  every string on screen to originate from Sanity. These are console chrome rather than content —
+  the same argument the info monitor's `Download Resume` label is still open on — and both should be
+  settled together, either by adding fields or by amending §15 to exempt diegetic chrome.
+- **`libraryIndex` resets to 0 on every open.** SPEC §7 ends the boot with the About tile focused,
+  so reopening deliberately does not restore where you were.
+- **The detail panel scrolls with no visible affordance** when a project has a long description.
+  Nothing published is long enough to scroll yet; revisit when one is.
+- **Two `<Html transform>` mounts now sit in the scene** (the monitor and the screen), each its own
+  DOM layer over the canvas. No frame-rate impact measured on this machine; the bundle and
+  performance budget are still Phase 8.
+- `THREE.Clock` deprecation warning and the bundle budget: still open from Phases 1–3.
+- Everything still open from Phase 0 stays open: the logged-in Studio verification is Yash's to do,
+  and `socialLink` still has three documents for four ABXY slots — the unbound cap renders without a
+  glyph, as designed.
+
+### Phase 4a — Firmware tuning
+
+The `?tune` panel now has two tabs, **console** and **firmware**, and the firmware UI's sizes and
+spacing are tuning values rather than constants in the components.
+
+- **One store, one record, one save.** The firmware keys live in the same `Tuning` interface as the
+  geometry, so persistence, "copy", "reset" and the `/api/tuning` save-as-default route all carry
+  them with no change — the route iterates `DEFAULT_TUNING`'s keys and validates against their
+  types, so it picked up sixteen new numbers on its own. Only the panel's list of controls splits
+  in two, which is what the tabs are.
+- **`firmware/layout.ts` is the firmware's `spec.ts`.** `useFirmwareLayout()` derives the layout
+  from the tuning values the same way `useSpec()` derives the geometry, and every firmware
+  component reads it. Nothing in `components/firmware/` holds a hard-coded pixel size any more.
+- **The panel's height is not a knob.** It follows the screen's own aspect
+  (`fwPanelWidth * screenHeight / screenWidth`), because a panel of any other shape would not land
+  on the glass. `SCREEN_PX` is gone with it.
+- **`fwPanelWidth` is the whole UI's zoom.** Everything else is authored in that space, so lowering
+  it magnifies the entire screen UI at once and raising it shrinks it — one knob for "the firmware
+  is too big", before touching any individual size.
+- **Sizes that should not drift apart are derived, not knobbed.** The tile title follows the tile
+  width, the `ENTER — DETAILS` line follows the meta size, the detail title follows the rail title.
+  Sixteen knobs already ask a lot of a tuning session; thirty would be a worse tool.
+- **Colours stay on the console tab.** The screen's palette is SPEC §9's and its accent is the
+  chassis accent, so there is no colour that belongs only to the firmware.
+
+Verified in the browser: the firmware tab renders all five groups; dragging `fwPanelWidth` from 900
+to 620 magnifies the UI live and the panel still fills the glass exactly; `save as default` round
+-tripped two changed firmware values into `tuning.ts` and back out again; the console tab, the rail
+and the detail view are unchanged at the default values. `pnpm typecheck`, `pnpm lint` and
+`pnpm build` are clean.
+
+One sharp edge, unchanged from before: `save as default` answers **500 "Could not find
+DEFAULT_TUNING in tuning.ts"** when the posted values are identical to what is already in the file
+— the route reports "the file did not change" as a failure to find the block. Harmless, and only
+reachable by posting to the route directly, since the button disables itself when nothing has
+changed.

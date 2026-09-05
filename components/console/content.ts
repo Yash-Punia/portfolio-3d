@@ -1,4 +1,8 @@
-import type {SiteSettingsQueryResult, SocialLinksQueryResult} from '@/sanity.types'
+import type {
+  ProjectsQueryResult,
+  SiteSettingsQueryResult,
+  SocialLinksQueryResult,
+} from '@/sanity.types'
 
 /**
  * Everything the console renders that came from Sanity, passed down the tree as
@@ -10,10 +14,12 @@ import type {SiteSettingsQueryResult, SocialLinksQueryResult} from '@/sanity.typ
 export interface ConsoleContent {
   settings: SiteSettingsQueryResult
   socialLinks: SocialLinksQueryResult
+  projects: ProjectsQueryResult
 }
 
 export type ButtonSlot = 'A' | 'B' | 'X' | 'Y'
 export type SocialLink = SocialLinksQueryResult[number]
+export type Project = ProjectsQueryResult[number]
 
 /** SPEC §14: the CV downloads under a name a recruiter can file. */
 export const RESUME_FILENAME = 'Yash-Punia-Gameplay-Programmer.pdf'
@@ -46,4 +52,13 @@ export function isLocalHref(href: string): boolean {
 
 export function linkForSlot(links: SocialLinksQueryResult, slot: ButtonSlot): SocialLink | null {
   return links.find((link) => link.buttonSlot === slot && link.url) ?? null
+}
+
+/**
+ * Opening an outbound link. Lives here rather than in a 3D part because both
+ * the face buttons and the firmware's own link lists fire it, and the firmware
+ * knows nothing about three.js (SPEC §7).
+ */
+export function openLink(url: string) {
+  window.open(url, '_blank', 'noopener,noreferrer')
 }

@@ -4,7 +4,12 @@ import {animated, useSpring} from '@react-spring/three'
 import {useEffect} from 'react'
 import {DoubleSide} from 'three'
 
-import {linkForSlot, type ButtonSlot, type ConsoleContent} from '@/components/console/content'
+import {
+  linkForSlot,
+  openLink,
+  type ButtonSlot,
+  type ConsoleContent,
+} from '@/components/console/content'
 import {useGlyphGeometry, type GlyphName} from '@/components/console/glyphs'
 import {useInput} from '@/components/console/input'
 import {useSpec} from '@/components/console/spec'
@@ -33,10 +38,6 @@ const GLYPH_FOR: Record<string, GlyphName> = {
   itch: 'itch',
   linkedin: 'linkedin',
   twitter: 'twitter',
-}
-
-export function openSocial(url: string) {
-  window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 function FaceButton({
@@ -104,7 +105,7 @@ function FaceButton({
             event.stopPropagation()
             if (!isOpen || !url) return
             pressSlot(slot)
-            openSocial(url)
+            openLink(url)
           }}
           onPointerDown={(event) => {
             event.stopPropagation()

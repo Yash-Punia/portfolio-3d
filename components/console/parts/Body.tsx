@@ -4,10 +4,12 @@ import {useFrame} from '@react-three/fiber'
 import {useMemo, useRef} from 'react'
 import {Color, type MeshPhysicalMaterial} from 'three'
 
+import type {ConsoleContent} from '@/components/console/content'
 import {usePanelGeometry, type PanelSpec} from '@/components/console/geometry'
 import {useSpec} from '@/components/console/spec'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
 import {PowerSlider} from '@/components/console/parts/PowerSlider'
+import {Screen} from '@/components/console/parts/Screen'
 import {useConsole, useTheme} from '@/components/console/store'
 
 /** Bezel floor sits a hair proud of the core's front face to avoid z-fighting. */
@@ -17,7 +19,7 @@ const BEZEL_FLOOR_DEPTH = 0.02
  * The base slab, and the screen it carries. Closed, none of this is visible —
  * the flaps cover the whole front face.
  */
-export function Body() {
+export function Body({content}: {content: ConsoleContent}) {
   const {dimensions: d, materials: m} = useSpec()
 
   const core = useMemo<PanelSpec>(
@@ -100,6 +102,8 @@ export function Body() {
           emissive={reducedMotion && isOpen ? m.screenOn[theme] : m.screenOff}
         />
       </mesh>
+
+      <Screen content={content} />
 
       <PowerSlider />
     </group>

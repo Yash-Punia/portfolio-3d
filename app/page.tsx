@@ -1,7 +1,7 @@
 import {ConsoleStage} from '@/components/console/ConsoleStage'
 import {isLocalHref, RESUME_FILENAME, resumeHref} from '@/components/console/content'
 import {client} from '@/sanity/lib/client'
-import {siteSettingsQuery, socialLinksQuery} from '@/sanity/lib/queries'
+import {projectsQuery, siteSettingsQuery, socialLinksQuery} from '@/sanity/lib/queries'
 
 /** SPEC §3's own default for `resumeLabel`, used when the field is empty. */
 const RESUME_LABEL = 'Download CV'
@@ -20,16 +20,17 @@ const RESUME_LABEL = 'Download CV'
  * It renders nothing it was not given.
  */
 export default async function Home() {
-  const [settings, socialLinks] = await Promise.all([
+  const [settings, socialLinks, projects] = await Promise.all([
     client.fetch(siteSettingsQuery, {}, {cache: 'force-cache', next: {tags: ['siteSettings']}}),
     client.fetch(socialLinksQuery, {}, {cache: 'force-cache', next: {tags: ['socialLink']}}),
+    client.fetch(projectsQuery, {}, {cache: 'force-cache', next: {tags: ['project']}}),
   ])
 
   const resume = resumeHref(settings)
 
   return (
     <>
-      <ConsoleStage content={{settings, socialLinks}} />
+      <ConsoleStage content={{settings, socialLinks, projects}} />
 
       <main className="sr-only">
         {settings?.fullName ? <h1>{settings.fullName}</h1> : null}
@@ -42,6 +43,31 @@ export default async function Home() {
             {settings?.resumeLabel ?? RESUME_LABEL}
           </a>
         ) : null}
+        {/*
+          The projects the Library rail draws, in rail order. This is the copy a
+          crawler and a screen reader get (SPEC §11.1) — the rail itself is
+          `aria-hidden` DOM floating in 3D space, so this is the only place the
+          project links are reachable by keyboard.
+        */}
+        {projects.map((project) => (
+          <article key={project._id}>
+            {project.title ? <h3>{project.title}</h3> : null}
+            {project.blurb ? <p>{project.blurb}</p> : null}
+            {project.links?.length ? (
+              <ul>
+                {project.links.map((link) =>
+                  link.url ? (
+                    <li key={link.url}>
+                      <a href={link.url} rel="noopener noreferrer" target="_blank">
+                        {link.label ?? link.url}
+                      </a>
+                    </li>
+                  ) : null,
+                )}
+              </ul>
+            ) : null}
+          </article>
+        ))}
         {socialLinks.length > 0 ? (
           <ul>
             {socialLinks.map((link) => (
