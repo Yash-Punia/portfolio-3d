@@ -47,8 +47,6 @@ export interface Dimensions {
   }
   /** Info monitor panel on the left flap's inner face. */
   monitor: {width: number; height: number; y: number; depth: number; bezel: number}
-  /** CV download button, a pill cap below the monitor. */
-  cvButton: {width: number; height: number; y: number; depth: number; travel: number}
   joystick: {
     y: number
     capRadius: number
@@ -158,13 +156,6 @@ export function deriveDimensions(t: Tuning): Dimensions {
       y: t.monitorY,
       depth: MONITOR_DEPTH,
       bezel: MONITOR_BEZEL,
-    },
-    cvButton: {
-      width: t.cvButtonWidth,
-      height: t.cvButtonWidth * 0.32,
-      y: t.cvButtonY,
-      depth: BUTTON_CAP_HEIGHT,
-      travel: BUTTON_TRAVEL,
     },
     joystick: {
       y: t.joystickY,

@@ -55,12 +55,10 @@ const GROUPS: {title: string; controls: NumberControl[]}[] = [
     ],
   },
   {
-    title: 'Left flap — monitor and CV',
+    title: 'Info monitor',
     controls: [
       {key: 'monitorY', label: 'Monitor height', min: -2, max: 2, step: 0.01},
       {key: 'monitorHeight', label: 'Monitor size', min: 0.2, max: 2.5, step: 0.01},
-      {key: 'cvButtonY', label: 'CV button height', min: -2, max: 2, step: 0.01},
-      {key: 'cvButtonWidth', label: 'CV button width', min: 0.2, max: 2, step: 0.01},
     ],
   },
   {

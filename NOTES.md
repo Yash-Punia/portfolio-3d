@@ -535,3 +535,24 @@ synthesise `onClick`.
 - Everything still open from Phase 0 stays open: the logged-in Studio verification is Yash's to do.
   `siteSettings` and the four `socialLink` documents are populated and published now, so this phase
   exercised the real content path rather than the empty one.
+
+### Amendment — the resume link moved into the monitor
+
+The physical CV cap is gone. The resume is now a "Download Resume" line inside the info monitor,
+which turns the accent colour on hover.
+
+- The cap could only ever carry an arrow — 0.63 world units is too small for a word at any
+  breakpoint — while the monitor is the one lit surface on that flap and already renders type. So
+  the words went where they can be read, and `CvButton.tsx`, the `download` glyph, and the
+  `cvButtonY` / `cvButtonWidth` knobs were deleted rather than left unused.
+- It is a `<span>`, not a `<button>` or `<a>`: the `<Html>` wrapper is `aria-hidden`, and a
+  focusable element inside an `aria-hidden` subtree is a focus trap. Keyboard and screen-reader
+  visitors download from the `.sr-only` anchor in the landmark, which was already there. The
+  wrapper keeps `pointer-events: none` and the span alone re-enables it, so the rest of the panel
+  stays click-through to the meshes behind it.
+- **The label is hard-coded**, which SPEC §15 ("every string on screen originates from Sanity")
+  does not allow. `siteSettings.resumeLabel` exists and currently reads "Resume"; switching to it
+  is a one-line change once the field says what should appear on the monitor.
+- Verified in the production build: the span renders `#e9f0f1` at rest and `#4be12d` (the tuned
+  accent) on `pointerover`, and clicking it resolves the same Sanity href with
+  `?dl=Yash-Punia-Gameplay-Programmer.pdf` the cap used to.

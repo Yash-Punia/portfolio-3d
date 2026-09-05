@@ -1,8 +1,9 @@
 'use client'
 
 import {Html} from '@react-three/drei'
+import {useState} from 'react'
 
-import type {ConsoleContent} from '@/components/console/content'
+import {isLocalHref, RESUME_FILENAME, type ConsoleContent} from '@/components/console/content'
 import {useSpec} from '@/components/console/spec'
 import {useConsole, useTheme} from '@/components/console/store'
 
@@ -31,20 +32,45 @@ const PALETTE = {
  * so it reads as a powered instrument rather than a printed panel, and it shows
  * the name, title and status line whenever Sanity has them.
  *
+ * It also carries the resume link, which used to be a physical cap below the
+ * panel. The monitor is the one lit surface on this flap, so the words sit
+ * where they can be read; the cap could only ever carry an arrow.
+ *
  * The text is real DOM through drei's `<Html transform>` — the same mount SPEC
  * §7 locks for the firmware screen in Phase 4 — and is `aria-hidden`, because
  * the accessible copy of these strings is the server-rendered `.sr-only`
- * landmark on the page. Reading them twice is worse than reading them once.
+ * landmark on the page. Reading them twice is worse than reading them once, and
+ * that landmark's anchor is also where keyboard visitors download from — which
+ * is why the link below is a plain span rather than a focusable element buried
+ * in a hidden subtree.
  */
-export function InfoMonitor({settings}: {settings: ConsoleContent['settings']}) {
+export function InfoMonitor({
+  href,
+  settings,
+}: {
+  /** Where the resume lives, or null when there is nothing to download. */
+  href: string | null
+  settings: ConsoleContent['settings']
+}) {
   const {dimensions: d, materials: m} = useSpec()
   const isOpen = useConsole((state) => state.isOpen)
   const theme = useTheme()
   const palette = PALETTE[theme]
+  const [hovered, setHovered] = useState(false)
 
   const name = settings?.fullName
   const title = settings?.title
   const status = settings?.statusLine
+
+  const download = () => {
+    if (!href) return
+    const anchor = document.createElement('a')
+    anchor.href = href
+    anchor.rel = 'noopener noreferrer'
+    // Cross-origin (Sanity) hrefs ignore `download`; those carry `?dl=` instead.
+    if (isLocalHref(href)) anchor.download = RESUME_FILENAME
+    anchor.click()
+  }
 
   /**
    * Flap-local space is mirrored once the door swings through ~172°, so the
@@ -74,7 +100,7 @@ export function InfoMonitor({settings}: {settings: ConsoleContent['settings']}) 
         Mounted only while the console is open: closed, this panel faces into
         the body, and DOM in 3D space has no depth test to hide it there.
       */}
-      {isOpen && (name || title || status) ? (
+      {isOpen && (name || title || status || href) ? (
         <Html
           aria-hidden
           center
@@ -120,6 +146,31 @@ export function InfoMonitor({settings}: {settings: ConsoleContent['settings']}) 
                 }}
               >
                 {status}
+              </p>
+            ) : null}
+            {href ? (
+              <p style={{margin: '26px 0 0', fontSize: '24px'}}>
+                {/*
+                  A span, not a button: the wrapper is aria-hidden, and a
+                  focusable element inside that is a trap. `pointerEvents` is
+                  re-enabled here alone, so the rest of the panel stays
+                  click-through to the meshes behind it.
+                */}
+                <span
+                  onClick={download}
+                  onPointerOut={() => setHovered(false)}
+                  onPointerOver={() => setHovered(true)}
+                  style={{
+                    color: hovered ? m.accent.color : palette.foreground,
+                    cursor: 'pointer',
+                    pointerEvents: 'auto',
+                    textUnderlineOffset: '4px',
+                    textDecoration: 'underline',
+                    transition: 'color 120ms ease',
+                  }}
+                >
+                  Download Resume
+                </span>
               </p>
             ) : null}
           </div>

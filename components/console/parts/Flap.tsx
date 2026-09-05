@@ -7,7 +7,6 @@ import {MathUtils, type MeshStandardMaterial} from 'three'
 
 import {resumeHref, type ConsoleContent} from '@/components/console/content'
 import {usePanelGeometry, type PanelSpec} from '@/components/console/geometry'
-import {CvButton} from '@/components/console/parts/CvButton'
 import {FaceButtons} from '@/components/console/parts/FaceButtons'
 import {InfoMonitor} from '@/components/console/parts/InfoMonitor'
 import {Joystick} from '@/components/console/parts/Joystick'
@@ -136,7 +135,7 @@ export function Flap({side, content}: {side: FlapSide; content: ConsoleContent})
   const bandHeight = d.flap.height - d.flap.radius * 2
   const bandZ = d.flap.depth / 2 + d.panel.depth + d.seam.bandDepth / 2 - 0.003
 
-  // Nothing to point at means no button, rather than a link to a 404 (§3.2).
+  // Nothing to point at means no link at all, rather than a link to a 404 (§3.2).
   const href = resumeHref(content.settings)
 
   return (
@@ -189,8 +188,7 @@ export function Flap({side, content}: {side: FlapSide; content: ConsoleContent})
 
         {side === 'left' ? (
           <>
-            <InfoMonitor settings={content.settings} />
-            {href ? <CvButton href={href} /> : null}
+            <InfoMonitor href={href} settings={content.settings} />
             <Joystick />
           </>
         ) : (

@@ -39,9 +39,6 @@ export interface Tuning {
   /** Info monitor on the left flap: its height, and its centre in flap space. */
   monitorY: number
   monitorHeight: number
-  /** CV download button, below the monitor. */
-  cvButtonY: number
-  cvButtonWidth: number
   /** Joystick, in the lower half of the left flap. */
   joystickY: number
   joystickRadius: number
@@ -86,8 +83,6 @@ export const DEFAULT_TUNING: Tuning = {
   closeButtonY: 0.34,
   monitorY: 1.04,
   monitorHeight: 1.15,
-  cvButtonY: 0.04,
-  cvButtonWidth: 0.63,
   joystickY: -0.95,
   joystickRadius: 0.25,
   abxyY: 0,
