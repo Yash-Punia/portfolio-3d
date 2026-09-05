@@ -3,15 +3,9 @@
 import {animated, useSpring} from '@react-spring/three'
 import {useEffect, useState} from 'react'
 
-import {CLOSE_BUTTON, FLAP} from '@/components/console/dimensions'
-import {BEZEL, BUTTON} from '@/components/console/materials'
+import {useSpec} from '@/components/console/spec'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
-
-/** Inner surface of the flap; the button sits on it, facing the viewer. */
-const SURFACE_Z = -FLAP.depth / 2
-const HOUSING_Z = SURFACE_Z - CLOSE_BUTTON.housingDepth / 2
-const CAP_Z = SURFACE_Z - CLOSE_BUTTON.housingDepth - CLOSE_BUTTON.capHeight / 2
 
 /** Cylinders are built around Y; the button's axis is Z. */
 const FACING: [number, number, number] = [Math.PI / 2, 0, 0]
@@ -22,13 +16,19 @@ const FACING: [number, number, number] = [Math.PI / 2, 0, 0]
  * the glyph arrives with them.
  */
 export function CloseButton() {
+  const {dimensions: d, materials: m} = useSpec()
   const close = useConsole((state) => state.close)
   const isOpen = useConsole((state) => state.isOpen)
   const reducedMotion = useReducedMotion()
   const [pressed, setPressed] = useState(false)
 
+  /** Inner surface of the flap; the button sits on it, facing the viewer. */
+  const surfaceZ = -d.flap.depth / 2
+  const housingZ = surfaceZ - d.closeButton.housingDepth / 2
+  const capZ = surfaceZ - d.closeButton.housingDepth - d.closeButton.capHeight / 2
+
   const {z} = useSpring({
-    z: pressed ? CAP_Z + CLOSE_BUTTON.travel : CAP_Z,
+    z: pressed ? capZ + d.closeButton.travel : capZ,
     config: {tension: 700, friction: 26},
     immediate: reducedMotion,
   })
@@ -45,17 +45,17 @@ export function CloseButton() {
   }, [isOpen])
 
   return (
-    <group position={[0, CLOSE_BUTTON.y, 0]}>
-      <mesh position={[0, 0, HOUSING_Z]} rotation={FACING}>
+    <group position={[0, d.closeButton.y, 0]}>
+      <mesh position={[0, 0, housingZ]} rotation={FACING}>
         <cylinderGeometry
           args={[
-            CLOSE_BUTTON.housingRadius,
-            CLOSE_BUTTON.housingRadius,
-            CLOSE_BUTTON.housingDepth,
+            d.closeButton.housingRadius,
+            d.closeButton.housingRadius,
+            d.closeButton.housingDepth,
             32,
           ]}
         />
-        <meshStandardMaterial {...BEZEL} />
+        <meshStandardMaterial {...m.bezel} />
       </mesh>
 
       <animated.mesh
@@ -72,18 +72,16 @@ export function CloseButton() {
           setPressed(true)
         }}
         onPointerUp={() => setPressed(false)}
-        onPointerOver={() => {
-          hover(true)
-        }}
+        onPointerOver={() => hover(true)}
         onPointerOut={() => {
           setPressed(false)
           hover(false)
         }}
       >
         <cylinderGeometry
-          args={[CLOSE_BUTTON.capRadius, CLOSE_BUTTON.capRadius, CLOSE_BUTTON.capHeight, 32]}
+          args={[d.closeButton.capRadius, d.closeButton.capRadius, d.closeButton.capHeight, 32]}
         />
-        <meshStandardMaterial {...BUTTON} />
+        <meshStandardMaterial {...m.button} />
       </animated.mesh>
     </group>
   )

@@ -2,83 +2,16 @@
 
 import {animated, useSpring} from '@react-spring/three'
 import {useFrame} from '@react-three/fiber'
-import {useEffect, useRef} from 'react'
+import {useEffect, useMemo, useRef} from 'react'
 import {MathUtils, type MeshStandardMaterial} from 'three'
 
-import {
-  FLAP,
-  FLAP_CLOSED_Z,
-  FLAP_OPEN_ANGLE,
-  HINGE_X,
-  PANEL,
-  SEAM,
-} from '@/components/console/dimensions'
 import {usePanelGeometry, type PanelSpec} from '@/components/console/geometry'
-import {ACCENT, SHELL} from '@/components/console/materials'
 import {CloseButton} from '@/components/console/parts/CloseButton'
+import {useSpec} from '@/components/console/spec'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
 
 export type FlapSide = 'left' | 'right'
-
-/**
- * Outer corners are rounded; the inner corners — the ones that meet at the
- * centre seam — stay square, so the closed seam is a true hairline.
- */
-const OUTER: Record<FlapSide, PanelSpec> = {
-  left: {
-    width: FLAP.width,
-    height: FLAP.height,
-    depth: FLAP.depth,
-    radius: {tl: FLAP.radius, bl: FLAP.radius, tr: 0, br: 0},
-    bevel: 0.018,
-  },
-  right: {
-    width: FLAP.width,
-    height: FLAP.height,
-    depth: FLAP.depth,
-    radius: {tr: FLAP.radius, br: FLAP.radius, tl: 0, bl: 0},
-    bevel: 0.018,
-  },
-}
-
-/**
- * A raised border laid over the flap face, which reads as a shallow moulded
- * panel recessed into it. Its four inner edges are the only thing on an
- * otherwise coplanar face for the key light and the rim lightformer to catch.
- */
-const MOULDING: Record<FlapSide, PanelSpec> = {
-  left: {
-    width: FLAP.width,
-    height: FLAP.height,
-    depth: PANEL.depth,
-    radius: {tl: FLAP.radius, bl: FLAP.radius, tr: 0, br: 0},
-    aperture: {
-      width: FLAP.width - PANEL.margin * 2,
-      height: FLAP.height - PANEL.margin * 2,
-      radius: PANEL.radius,
-    },
-    bevel: 0.007,
-  },
-  right: {
-    width: FLAP.width,
-    height: FLAP.height,
-    depth: PANEL.depth,
-    radius: {tr: FLAP.radius, br: FLAP.radius, tl: 0, bl: 0},
-    aperture: {
-      width: FLAP.width - PANEL.margin * 2,
-      height: FLAP.height - PANEL.margin * 2,
-      radius: PANEL.radius,
-    },
-    bevel: 0.007,
-  },
-}
-
-/** Distance from the flap's own centre to its inner (seam) edge. */
-const HALF_WIDTH = FLAP.width / 2
-const BAND_X = HALF_WIDTH - SEAM.bandWidth / 2
-const BAND_HEIGHT = FLAP.height - FLAP.radius * 2
-const BAND_Z = FLAP.depth / 2 + PANEL.depth + SEAM.bandDepth / 2 - 0.003
 
 /** Resting glow on the seam, and how far the idle pulse lifts it (SPEC §5). */
 const GLOW_BASE = 0.16
@@ -92,9 +25,53 @@ const GLOW_SWING = 0.2
  * opens negative, right positive, which is why `sign` flips the rotation.
  */
 export function Flap({side}: {side: FlapSide}) {
-  const outer = usePanelGeometry(OUTER[side])
-  const moulding = usePanelGeometry(MOULDING[side])
+  const {dimensions: d, materials: m} = useSpec()
   const sign = side === 'left' ? 1 : -1
+
+  /**
+   * Outer corners are rounded; the inner corners — the ones that meet at the
+   * centre seam — stay square, so the closed seam is a true hairline.
+   */
+  const outerSpec = useMemo<PanelSpec>(
+    () => ({
+      width: d.flap.width,
+      height: d.flap.height,
+      depth: d.flap.depth,
+      radius:
+        side === 'left'
+          ? {tl: d.flap.radius, bl: d.flap.radius, tr: 0, br: 0}
+          : {tr: d.flap.radius, br: d.flap.radius, tl: 0, bl: 0},
+      bevel: 0.018,
+    }),
+    [d, side],
+  )
+
+  /**
+   * A raised border laid over the flap face, which reads as a shallow moulded
+   * panel recessed into it. Its four inner edges are the only thing on an
+   * otherwise coplanar face for the key light and the rim lightformer to catch.
+   */
+  const mouldingSpec = useMemo<PanelSpec>(
+    () => ({
+      width: d.flap.width,
+      height: d.flap.height,
+      depth: d.panel.depth,
+      radius:
+        side === 'left'
+          ? {tl: d.flap.radius, bl: d.flap.radius, tr: 0, br: 0}
+          : {tr: d.flap.radius, br: d.flap.radius, tl: 0, bl: 0},
+      aperture: {
+        width: d.flap.width - d.panel.margin * 2,
+        height: d.flap.height - d.panel.margin * 2,
+        radius: d.panel.radius,
+      },
+      bevel: 0.007,
+    }),
+    [d, side],
+  )
+
+  const outer = usePanelGeometry(outerSpec)
+  const moulding = usePanelGeometry(mouldingSpec)
 
   const isOpen = useConsole((state) => state.isOpen)
   const open = useConsole((state) => state.open)
@@ -102,7 +79,7 @@ export function Flap({side}: {side: FlapSide}) {
   const band = useRef<MeshStandardMaterial>(null)
 
   const {rotation} = useSpring({
-    rotation: isOpen ? -sign * FLAP_OPEN_ANGLE : 0,
+    rotation: isOpen ? -sign * d.openAngle : 0,
     // SPEC §5, with the right flap trailing so the pair does not read as one
     // mechanism. Reduced motion opens it instantly instead (SPEC §11.5).
     config: {tension: 170, friction: 22},
@@ -144,8 +121,14 @@ export function Flap({side}: {side: FlapSide}) {
     document.body.style.cursor = ''
   }, [isOpen])
 
+  /** Distance from the flap's own centre to its inner (seam) edge. */
+  const halfWidth = d.flap.width / 2
+  const bandX = halfWidth - d.seam.bandWidth / 2
+  const bandHeight = d.flap.height - d.flap.radius * 2
+  const bandZ = d.flap.depth / 2 + d.panel.depth + d.seam.bandDepth / 2 - 0.003
+
   return (
-    <animated.group position={[sign * -HINGE_X, 0, FLAP_CLOSED_Z]} rotation-y={rotation}>
+    <animated.group position={[sign * -d.hingeX, 0, d.z.flapClosed]} rotation-y={rotation}>
       {/*
         The handlers sit on the group, not on one mesh: the moulding covers most
         of the face, and R3F bubbles a child's pointer events up to its parent,
@@ -153,7 +136,7 @@ export function Flap({side}: {side: FlapSide}) {
         around the moulding.
       */}
       <group
-        position={[sign * HALF_WIDTH, 0, 0]}
+        position={[sign * halfWidth, 0, 0]}
         onClick={(event) => {
           if (isOpen) return
           event.stopPropagation()
@@ -163,20 +146,20 @@ export function Flap({side}: {side: FlapSide}) {
         onPointerOut={() => hover(false)}
       >
         <mesh geometry={outer}>
-          <meshStandardMaterial {...SHELL} />
+          <meshStandardMaterial {...m.shell} />
         </mesh>
 
-        <mesh geometry={moulding} position={[0, 0, (FLAP.depth + PANEL.depth) / 2]}>
-          <meshStandardMaterial {...SHELL} />
+        <mesh geometry={moulding} position={[0, 0, (d.flap.depth + d.panel.depth) / 2]}>
+          <meshStandardMaterial {...m.shell} />
         </mesh>
 
         {/* Painted red edge along the seam (SPEC §4). */}
-        <mesh position={[sign * BAND_X, 0, BAND_Z]}>
-          <boxGeometry args={[SEAM.bandWidth, BAND_HEIGHT, SEAM.bandDepth]} />
+        <mesh position={[sign * bandX, 0, bandZ]}>
+          <boxGeometry args={[d.seam.bandWidth, bandHeight, d.seam.bandDepth]} />
           <meshStandardMaterial
             ref={band}
-            {...ACCENT}
-            emissive={ACCENT.color}
+            {...m.accent}
+            emissive={m.accent.color}
             emissiveIntensity={isOpen ? 0 : GLOW_BASE}
           />
         </mesh>

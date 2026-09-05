@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import {useEffect} from 'react'
+import {useEffect, useSyncExternalStore} from 'react'
 
 import {Skeleton} from '@/components/console/Skeleton'
 import {useConsole} from '@/components/console/store'
@@ -18,6 +18,16 @@ const Scene = dynamic(() => import('@/components/console/Scene'), {
   ssr: false,
   loading: () => <Skeleton />,
 })
+
+/**
+ * The tuning panel is a development tool and ships in its own chunk, pulled in
+ * only when `?tune` asks for it — no visitor pays for it and none of its markup
+ * reaches the page (SPEC §1).
+ */
+const TuningPanel = dynamic(
+  () => import('@/components/console/TuningPanel').then((module) => module.TuningPanel),
+  {ssr: false},
+)
 
 /**
  * Keyboard control of the console, on the DOM side so it works before the
@@ -52,12 +62,25 @@ function useConsoleKeys() {
   }, [])
 }
 
+/** The URL is an external source the server render cannot see. */
+const subscribeToNothing = () => () => {}
+
+function useTuningFlag() {
+  return useSyncExternalStore(
+    subscribeToNothing,
+    () => new URLSearchParams(window.location.search).has('tune'),
+    () => false,
+  )
+}
+
 export function ConsoleStage() {
   useConsoleKeys()
+  const tuning = useTuningFlag()
 
   return (
     <div className="fixed inset-0">
       <Scene />
+      {tuning ? <TuningPanel /> : null}
     </div>
   )
 }

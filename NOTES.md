@@ -327,3 +327,80 @@ both packages were pulled through Context7 before any code was written (SPEC §2
 - `THREE.Clock` deprecation warning, drag-to-rotate, bundle budget: all still open from Phase 1.
 - Everything still open from Phase 0 stays open: the §3.1 content values are not entered, and the
   logged-in Studio verification is still Yash's to do.
+
+### Phase 2a — Proportions and the tuning panel
+
+Yash asked for a taller console covering more of the screen, thinner screen bezels, and a squarer
+overall shape with a 4:3 screen — plus browser controls to fine-tune all of it before the numbers
+are baked in. Not committed yet; the defaults below are a starting point to dial in.
+
+**The form is now state, not constants.** `dimensions.ts` and `materials.ts` became pure
+`derive*(tuning)` functions, `tuning.ts` holds the values in a persisted zustand store, and
+`useSpec()` gives every part the derived geometry and materials. Nothing else reads the tuning
+store. SPEC §4 forbids a GLTF so the form stays tweakable in code; this keeps that property while
+making the tweaking live.
+
+**New defaults.**
+
+| Value       | Was               | Now             |
+| ----------- | ----------------- | --------------- |
+| Body        | 4.6 × 3.0 (23:15) | 4.2 × 3.6 (7:6) |
+| Screen      | 3.0 × 1.7 (16:9)  | 3.6 × 2.7 (4:3) |
+| Side bezel  | 0.80              | 0.30            |
+| Top bezel   | 0.65              | 0.45            |
+| Flap        | 2.20 × 2.82       | 2.00 × 3.42     |
+| Closed fill | 58% w / 66% h     | 62% w / 82% h   |
+
+The screen aperture is now derived (`screen + bezelPadding` per edge) rather than being an
+independent number, so thinning the bezel is one control instead of three that have to agree. Height
+is the binding constraint on a square-ish object at desktop aspect ratios, so the vertical fills do
+the work: at 1440×900 the closed console is ~861 × 738 CSS px against ~836 × 545 before.
+
+The vertical bezel stays deliberately deeper than the horizontal one — SPEC §4 puts the power slider
+on the lower bezel below the screen, and Phase 3 needs somewhere to put it. If that ends up looking
+top-heavy, split the padding per edge rather than shrinking it everywhere.
+
+**The tuning panel** (`TuningPanel.tsx`) renders only behind the `?tune` query flag and is
+`next/dynamic` in its own chunk, so no visitor pays for it and no text reaches the page for anyone
+who does not ask (SPEC §1). It covers every dimension, the open angle, two camera-zoom multipliers,
+and the five material colours. Edits persist in `localStorage` (a key added to `Tuning` later falls
+back to its default rather than arriving `undefined` from an older record); "copy defaults" puts a
+`DEFAULT_TUNING` body on the clipboard to paste into `tuning.ts`; "reset" returns to what the source
+says today.
+
+Verified: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm build` clean. Against
+`pnpm start`, editing body height, screen height and the accent colour through the panel's own
+inputs rebuilds the geometry and reframes the camera live, the values survive in `localStorage`, and
+reset restores every one of them. `/` without `?tune` renders no panel. One console message, the
+known upstream `THREE.Clock` warning.
+
+Open risks: `Skeleton.tsx` tracks `DEFAULT_TUNING`'s 7:6 by hand — it is plain CSS that renders
+before any 3D code loads, so a tuned body ratio will not match the placeholder until the numbers are
+baked in. The panel is unstyled beyond the minimum and is not part of the product.
+
+**Saving the tuned values as the defaults.** "save as default" in the panel POSTs the current values
+to `app/api/tuning/route.ts`, which rewrites the `DEFAULT_TUNING` block in `tuning.ts` in place. The
+panel then clears its `localStorage` override and reloads, so what renders afterwards is the new
+default rather than a saved copy sitting on top of a stale one. "copy" still puts the same block on
+the clipboard, which is the route out when the endpoint is not there.
+
+The endpoint edits a source file, so it is fenced in rather than trusted:
+
+- it 404s unless `NODE_ENV` is development, so a deployed build has no file-writing route — verified
+  against `pnpm start`, where the POST 404s and `tuning.ts` is untouched. It is still listed in the
+  build output as `ƒ /api/tuning`; the guard is what makes it inert, not its absence;
+- the path it writes is a constant here and never comes from the request;
+- it only ever replaces the `DEFAULT_TUNING` block, and fails with a 500 if that block is not found;
+- the body must carry exactly the keys `DEFAULT_TUNING` has, each with its default's type: numbers
+  finite and within ±1000, colours a six-digit hex. Anything else is a 400 with nothing written.
+  Verified: an empty object, a named colour, a string where a number belongs, an extra key, and
+  `1e9` are each rejected, and a valid body writes exactly the one changed line and leaves the file
+  Prettier-clean;
+- the values written are re-rendered from the validated primitives, so nothing from the request
+  reaches the file verbatim. Numbers go through `toFixed(4)` because slider arithmetic produces
+  things like `0.30000000000000004`.
+
+Verified end to end against `next dev`: changing the corner radius in the panel and pressing "save
+as default" wrote `bodyRadius: 0.22` into `tuning.ts`, cleared the stored override, reloaded, and
+left the panel reading no changes — the tuned value had become the default. The test values were
+restored afterwards; the defaults in the table above are what is in the file.

@@ -1,18 +1,18 @@
 import {useThree} from '@react-three/fiber'
 
-import {CONSOLE, CONSOLE_OPEN} from '@/components/console/dimensions'
+import {useSpec} from '@/components/console/spec'
+import {useTuning} from '@/components/console/tuning'
 
 /**
- * How much of the viewport the console should occupy, per SPEC §6. Closed,
- * mobile has the widest fill: the whole object must read on a phone, and that
- * is the first thing most visitors see. Open, the object is roughly twice as
- * wide, so the fill widens to keep it from shrinking into the middle of a
- * desktop viewport.
+ * How much of the viewport the console should occupy, per SPEC §6. The console
+ * is a square-ish object, so height is usually the binding constraint and the
+ * vertical fills are set high — closed, it should own the middle of the screen.
+ * Open it is roughly twice as wide, so the widths open up to match.
  */
 function fillFor(width: number, isOpen: boolean) {
-  if (width < 640) return {w: 0.88, h: 0.55}
-  if (width < 1024) return isOpen ? {w: 0.94, h: 0.62} : {w: 0.72, h: 0.62}
-  return isOpen ? {w: 0.86, h: 0.66} : {w: 0.58, h: 0.66}
+  if (width < 640) return {w: 0.88, h: 0.62}
+  if (width < 1024) return isOpen ? {w: 0.94, h: 0.74} : {w: 0.8, h: 0.78}
+  return isOpen ? {w: 0.86, h: 0.78} : {w: 0.62, h: 0.82}
 }
 
 /**
@@ -28,11 +28,16 @@ function fillFor(width: number, isOpen: boolean) {
  * world unit is one CSS pixel — the zoom is therefore just pixels-per-unit.
  */
 export function useConsoleZoom(isOpen: boolean): number {
+  const {dimensions} = useSpec()
+  const scaleClosed = useTuning((state) => state.values.zoomScaleClosed)
+  const scaleOpen = useTuning((state) => state.values.zoomScaleOpen)
   const width = useThree((state) => state.size.width)
   const height = useThree((state) => state.size.height)
 
-  const framed = isOpen && width >= 640 ? CONSOLE_OPEN : CONSOLE
+  const wide = width >= 640
+  const framed = isOpen && wide ? dimensions.open : dimensions.closed
   const fill = fillFor(width, isOpen)
+  const scale = isOpen && wide ? scaleOpen : scaleClosed
 
-  return Math.min((width * fill.w) / framed.width, (height * fill.h) / framed.height)
+  return Math.min((width * fill.w) / framed.width, (height * fill.h) / framed.height) * scale
 }

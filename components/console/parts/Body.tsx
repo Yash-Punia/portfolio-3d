@@ -1,58 +1,57 @@
 'use client'
 
 import {useFrame} from '@react-three/fiber'
-import {useRef} from 'react'
+import {useMemo, useRef} from 'react'
 import {Color, type MeshPhysicalMaterial} from 'three'
 
-import {BODY, BODY_FRONT_Z, FACE, SCREEN} from '@/components/console/dimensions'
 import {usePanelGeometry, type PanelSpec} from '@/components/console/geometry'
-import {BEZEL, SCREEN_GLASS, SHELL} from '@/components/console/materials'
-import {useConsole} from '@/components/console/store'
+import {useSpec} from '@/components/console/spec'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
-
-const CORE: PanelSpec = {
-  width: BODY.width,
-  height: BODY.height,
-  depth: BODY.depth,
-  radius: BODY.radius,
-}
-
-/** The front frame, with the screen aperture cut out of it. */
-const FRAME: PanelSpec = {
-  width: BODY.width,
-  height: BODY.height,
-  depth: FACE.depth,
-  radius: BODY.radius,
-  aperture: {
-    width: FACE.apertureWidth,
-    height: FACE.apertureHeight,
-    radius: FACE.apertureRadius,
-  },
-}
+import {useConsole} from '@/components/console/store'
 
 /** Bezel floor sits a hair proud of the core's front face to avoid z-fighting. */
 const BEZEL_FLOOR_DEPTH = 0.02
-const BEZEL_FLOOR_Z = BODY_FRONT_Z + 0.005 - BEZEL_FLOOR_DEPTH / 2
-const SCREEN_Z = BODY_FRONT_Z + 0.007
-
-/** Powered off, and SPEC §9's dark screen background powered on. */
-const SCREEN_OFF = '#000000'
-const SCREEN_ON = '#0a0f12'
-const OFF = new Color(SCREEN_OFF)
-const ON = new Color(SCREEN_ON)
 
 /**
  * The base slab, and the screen it carries. Closed, none of this is visible —
- * the flaps cover the whole front face; it gets its first look in Phase 2 when
- * they open.
+ * the flaps cover the whole front face.
  */
 export function Body() {
-  const core = usePanelGeometry(CORE)
-  const frame = usePanelGeometry(FRAME)
+  const {dimensions: d, materials: m} = useSpec()
+
+  const core = useMemo<PanelSpec>(
+    () => ({
+      width: d.body.width,
+      height: d.body.height,
+      depth: d.body.depth,
+      radius: d.body.radius,
+    }),
+    [d],
+  )
+  /** The front frame, with the screen aperture cut out of it. */
+  const frameSpec = useMemo<PanelSpec>(
+    () => ({
+      width: d.body.width,
+      height: d.body.height,
+      depth: d.face.depth,
+      radius: d.body.radius,
+      aperture: {
+        width: d.face.apertureWidth,
+        height: d.face.apertureHeight,
+        radius: d.face.apertureRadius,
+      },
+    }),
+    [d],
+  )
+
+  const coreGeometry = usePanelGeometry(core)
+  const frameGeometry = usePanelGeometry(frameSpec)
 
   const isOpen = useConsole((state) => state.isOpen)
   const reducedMotion = useReducedMotion()
   const glass = useRef<MeshPhysicalMaterial>(null)
+  const on = useMemo(() => new Color(m.screenOn), [m.screenOn])
+  const off = useMemo(() => new Color(m.screenOff), [m.screenOff])
 
   /**
    * The screen powers up with the flaps and down when they close. This is the
@@ -65,34 +64,37 @@ export function Body() {
   useFrame((_, delta) => {
     const material = glass.current
     if (!material || reducedMotion) return
-    material.emissive.lerp(isOpen ? ON : OFF, 1 - Math.exp(-7 * delta))
+    material.emissive.lerp(isOpen ? on : off, 1 - Math.exp(-7 * delta))
   })
+
+  const bezelFloorZ = d.z.bodyFront + 0.005 - BEZEL_FLOOR_DEPTH / 2
+  const screenZ = d.z.bodyFront + 0.007
 
   return (
     <group>
-      <mesh geometry={core}>
-        <meshStandardMaterial {...SHELL} />
+      <mesh geometry={coreGeometry}>
+        <meshStandardMaterial {...m.shell} />
       </mesh>
 
-      <mesh geometry={frame} position={[0, 0, BODY_FRONT_Z + FACE.depth / 2]}>
-        <meshStandardMaterial {...SHELL} />
+      <mesh geometry={frameGeometry} position={[0, 0, d.z.bodyFront + d.face.depth / 2]}>
+        <meshStandardMaterial {...m.shell} />
       </mesh>
 
-      <mesh position={[0, 0, BEZEL_FLOOR_Z]}>
-        <boxGeometry args={[FACE.apertureWidth, FACE.apertureHeight, BEZEL_FLOOR_DEPTH]} />
-        <meshStandardMaterial {...BEZEL} />
+      <mesh position={[0, 0, bezelFloorZ]}>
+        <boxGeometry args={[d.face.apertureWidth, d.face.apertureHeight, BEZEL_FLOOR_DEPTH]} />
+        <meshStandardMaterial {...m.bezel} />
       </mesh>
 
       {/*
         The screen. Its emissive prop is constant unless motion is reduced, so a
         re-render never snaps the lerp above back to its starting value.
       */}
-      <mesh position={[0, 0, SCREEN_Z]}>
-        <planeGeometry args={[SCREEN.width, SCREEN.height]} />
+      <mesh position={[0, 0, screenZ]}>
+        <planeGeometry args={[d.screen.width, d.screen.height]} />
         <meshPhysicalMaterial
           ref={glass}
-          {...SCREEN_GLASS}
-          emissive={reducedMotion && isOpen ? SCREEN_ON : SCREEN_OFF}
+          {...m.screenGlass}
+          emissive={reducedMotion && isOpen ? m.screenOn : m.screenOff}
         />
       </mesh>
     </group>
