@@ -6,6 +6,7 @@ import {useRef, useState} from 'react'
 import {MathUtils, type OrthographicCamera as OrthographicCameraImpl} from 'three'
 
 import {Console} from '@/components/console/Console'
+import type {ConsoleContent} from '@/components/console/content'
 import {useConsole} from '@/components/console/store'
 import {useConsoleZoom} from '@/components/console/useConsoleZoom'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
@@ -42,7 +43,7 @@ function Camera() {
   )
 }
 
-export default function Scene() {
+export default function Scene({content}: {content: ConsoleContent}) {
   const reducedMotion = useReducedMotion()
 
   return (
@@ -109,7 +110,7 @@ export default function Scene() {
         near-black stage removes the separation the stage gradient provides.
         The object is grounded by the pool of light behind it instead.
       */}
-      <Console />
+      <Console content={content} />
     </Canvas>
   )
 }

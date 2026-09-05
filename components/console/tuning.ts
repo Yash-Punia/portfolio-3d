@@ -36,6 +36,22 @@ export interface Tuning {
   closeButtonRadius: number
   /** Close button's height above the bottom edge of its flap. */
   closeButtonY: number
+  /** Info monitor on the left flap: its height, and its centre in flap space. */
+  monitorY: number
+  monitorHeight: number
+  /** CV download button, below the monitor. */
+  cvButtonY: number
+  cvButtonWidth: number
+  /** Joystick, in the lower half of the left flap. */
+  joystickY: number
+  joystickRadius: number
+  /** ABXY diamond: centre of the cluster, cap distance from it, cap size. */
+  abxyY: number
+  abxySpacing: number
+  abxyRadius: number
+  /** Power slider, on the body's lower bezel. */
+  sliderY: number
+  sliderWidth: number
   /** Multipliers on the computed camera zoom, for nudging the framing. */
   zoomScaleClosed: number
   zoomScaleOpen: number
@@ -45,6 +61,8 @@ export interface Tuning {
   buttonColor: string
   /** Screen background when powered — SPEC §9's dark theme background. */
   screenColor: string
+  /** Screen background in the light theme — SPEC §9's warm paper-white. */
+  screenLightColor: string
   screenEmissiveIntensity: number
 }
 
@@ -66,6 +84,17 @@ export const DEFAULT_TUNING: Tuning = {
   openAngleDeg: 172,
   closeButtonRadius: 0.13,
   closeButtonY: 0.34,
+  monitorY: 1.05,
+  monitorHeight: 0.9,
+  cvButtonY: 0.28,
+  cvButtonWidth: 0.9,
+  joystickY: -0.95,
+  joystickRadius: 0.42,
+  abxyY: 0.55,
+  abxySpacing: 0.42,
+  abxyRadius: 0.19,
+  sliderY: -1.84,
+  sliderWidth: 0.5,
   zoomScaleClosed: 0.8,
   zoomScaleOpen: 1,
   shellColor: '#2e2e2e',
@@ -73,6 +102,7 @@ export const DEFAULT_TUNING: Tuning = {
   accentColor: '#4be12d',
   buttonColor: '#f2f2f0',
   screenColor: '#0a0f12',
+  screenLightColor: '#edeae2',
   screenEmissiveIntensity: 2.6,
 }
 

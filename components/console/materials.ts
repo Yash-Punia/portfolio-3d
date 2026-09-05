@@ -24,8 +24,8 @@ export interface Materials {
     clearcoatRoughness: number
     emissiveIntensity: number
   }
-  /** The screen's powered and unpowered emissive colours. */
-  screenOn: string
+  /** The screen's powered emissive colour per theme, and its unpowered one. */
+  screenOn: {dark: string; light: string}
   screenOff: string
 }
 
@@ -62,7 +62,7 @@ export function deriveMaterials(t: Tuning): Materials {
       // tone mapping then eats, so the emissive is scaled up to read as lit.
       emissiveIntensity: t.screenEmissiveIntensity,
     },
-    screenOn: t.screenColor,
+    screenOn: {dark: t.screenColor, light: t.screenLightColor},
     screenOff: '#000000',
   }
 }

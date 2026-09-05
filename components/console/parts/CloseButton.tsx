@@ -2,7 +2,9 @@
 
 import {animated, useSpring} from '@react-spring/three'
 import {useEffect, useState} from 'react'
+import {DoubleSide} from 'three'
 
+import {useGlyphGeometry} from '@/components/console/glyphs'
 import {useSpec} from '@/components/console/spec'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
@@ -11,9 +13,11 @@ import {useReducedMotion} from '@/components/console/useReducedMotion'
 const FACING: [number, number, number] = [Math.PI / 2, 0, 0]
 
 /**
- * The close button on the lower right flap (SPEC §4, §5). It is the only
- * physical control in Phase 2 — the rest of the flap furniture is Phase 3, and
- * the glyph arrives with them.
+ * The close button on the lower right flap (SPEC §4, §5).
+ *
+ * It sits on the flap's inner face, where "out of the surface" is -Z, so the
+ * cap travels toward +Z when pressed and the glyph is turned through π to undo
+ * the mirroring the open door applies to everything on that face.
  */
 export function CloseButton() {
   const {dimensions: d, materials: m} = useSpec()
@@ -21,6 +25,7 @@ export function CloseButton() {
   const isOpen = useConsole((state) => state.isOpen)
   const reducedMotion = useReducedMotion()
   const [pressed, setPressed] = useState(false)
+  const glyph = useGlyphGeometry('close', d.closeButton.capRadius * 0.9)
 
   /** Inner surface of the flap; the button sits on it, facing the viewer. */
   const surfaceZ = -d.flap.depth / 2
@@ -58,31 +63,39 @@ export function CloseButton() {
         <meshStandardMaterial {...m.bezel} />
       </mesh>
 
-      <animated.mesh
-        position-x={0}
-        position-y={0}
-        position-z={z}
-        rotation={FACING}
-        onClick={(event) => {
-          event.stopPropagation()
-          if (isOpen) close()
-        }}
-        onPointerDown={(event) => {
-          event.stopPropagation()
-          setPressed(true)
-        }}
-        onPointerUp={() => setPressed(false)}
-        onPointerOver={() => hover(true)}
-        onPointerOut={() => {
-          setPressed(false)
-          hover(false)
-        }}
-      >
-        <cylinderGeometry
-          args={[d.closeButton.capRadius, d.closeButton.capRadius, d.closeButton.capHeight, 32]}
-        />
-        <meshStandardMaterial {...m.button} />
-      </animated.mesh>
+      <animated.group position-x={0} position-y={0} position-z={z}>
+        <mesh
+          rotation={FACING}
+          onClick={(event) => {
+            event.stopPropagation()
+            if (isOpen) close()
+          }}
+          onPointerDown={(event) => {
+            event.stopPropagation()
+            setPressed(true)
+          }}
+          onPointerUp={() => setPressed(false)}
+          onPointerOver={() => hover(true)}
+          onPointerOut={() => {
+            setPressed(false)
+            hover(false)
+          }}
+        >
+          <cylinderGeometry
+            args={[d.closeButton.capRadius, d.closeButton.capRadius, d.closeButton.capHeight, 32]}
+          />
+          <meshStandardMaterial {...m.button} />
+        </mesh>
+
+        <mesh
+          geometry={glyph}
+          position={[0, 0, -d.closeButton.capHeight / 2 - 0.002]}
+          rotation={[0, Math.PI, 0]}
+          raycast={() => null}
+        >
+          <meshStandardMaterial {...m.bezel} side={DoubleSide} />
+        </mesh>
+      </animated.group>
     </group>
   )
 }

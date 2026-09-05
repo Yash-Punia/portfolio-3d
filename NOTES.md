@@ -404,3 +404,134 @@ Verified end to end against `next dev`: changing the corner radius in the panel 
 as default" wrote `bodyRadius: 0.22` into `tuning.ts`, cleared the stored override, reloaded, and
 left the panel reading no changes — the tuned value had become the default. The test values were
 restored afterwards; the defaults in the table above are what is in the file.
+
+## Phase 3 — Physical controls
+
+Joystick with two-way arrow-key mirroring, ABXY bound to the `socialLink` documents, the power
+slider, the CV button, the info monitor, and drag-to-rotate with clamping and snap-back. Nothing is
+drawn on the main screen — that is Phase 4.
+
+### Versions installed
+
+None. Everything here is built from what Phases 0–2 already pulled in; the only new imports are
+three's own `SVGLoader` (bundled with three) and `next/font/google`. Current drei (`<Html>`) and
+`@react-spring/three` docs were pulled through Context7 before writing against them (SPEC §2).
+
+### Decisions
+
+- **Sanity content reaches the canvas as props, not context.** `app/page.tsx` already fetched
+  `siteSettings` and the four `socialLink`s; they now travel `ConsoleStage → Scene → Console → Flap`
+  as a `ConsoleContent` object (`content.ts`). React context does not cross R3F's separate
+  reconciler without drei's `useContextBridge`, and the tree is four hops deep — props are smaller
+  and have no such caveat.
+- **`theme` is `'dark' | 'light' | null` in the store, and `null` means "not chosen".** `useTheme()`
+  resolves it against `prefers-color-scheme`, so the slider is the source of truth only once it has
+  been touched (SPEC §9). The store gained `persist` with `partialize` to `{theme}` — whether the
+  console was open is a property of a visit, not of the visitor. `rotation` stays out of the store
+  entirely: SPEC §8 sketches it, but one component reads it and a spring inside that component is
+  the whole implementation.
+- **Direction input lives in its own module (`input.ts`), not the console store.** It is transient
+  hardware state. `hold(direction)` owns the 180ms key repeat, and both the arrow keys and a
+  joystick drag call it — which is what makes the mirroring one input rather than two that agree.
+  `tick` (the repeat stream) has no consumer until Phase 4's rails; the joystick renders its lean
+  from `held`.
+- **Flap-interior parts wrap their content in a group turned through π.** A door that swings 172°
+  mirrors everything on its inner face. One `rotation-y={Math.PI}` group per part cancels that, so
+  the furniture is authored as if facing the camera (+x right, +y up, +z out of the surface) and
+  glyphs read the right way round. `dimensions.faceZ` is that plane.
+- **The joystick cap is a dome, not a disc.** Built flat first, it was invisible: under a locked
+  front-on camera a flat cap shades exactly like the flat flap behind it. This is Phase 1's lesson
+  again — curvature is what carries a gradient. Verified by tinting the shell red to prove the mesh
+  was there before changing its shape.
+- **Brand marks are inline SVG path data** (`glyphs.ts`), parsed with three's `SVGLoader` and laid
+  on the caps as flat `ShapeGeometry` (SPEC §4's "flat extruded SVG"; §2 forbids an icon package).
+  The marks are the owners' own, used to link to Yash's profiles. `ShapePath.toShapes()` rather than
+  `SVGLoader.createShapes()`, which three r185 deprecated and which warned six times per load.
+  SVG's y axis points down, so the geometry is flipped on y — which reverses winding, hence
+  `side: DoubleSide` on the glyph meshes (wanted anyway: the doors rotate through 172°).
+- **An unbound ABXY slot keeps its cap and loses its mark.** A physical console does not lose a
+  button because a document has not been published (SPEC §3.2).
+- **The CV button carries the arrow and no words.** The label lives in the `.sr-only` landmark
+  (and, from Phase 4, in the firmware); a printed label on a 0.9-unit cap would be unreadable at
+  every breakpoint. A Sanity asset is cross-origin, where `download` is ignored, so those hrefs get
+  Sanity's `?dl=` parameter; the committed `/resume.pdf` fallback gets a real `download` attribute.
+- **Tab focus reuses the anchors already on the page.** The `.sr-only` list is four real,
+  server-rendered links carrying the accessible names, so each now also carries `data-social-slot`
+  and `ConsoleStage` mirrors their focus onto the matching 3D focus ring (SPEC §11.4). A second,
+  hidden set of controls would have made a screen reader read every link twice.
+- **The info monitor's text is drei `<Html transform>`,** the same mount SPEC §7 locks for the
+  firmware screen, mounted only while the console is open (closed, it faces into the body, and DOM
+  in 3D space has no depth test) and `aria-hidden` (the landmark is the accessible copy). drei lays
+  transform-mode content out at `400 / distanceFactor` px per world unit — 40px by default — which
+  the panel's scale has to undo; without that the whole monitor rendered 6px wide.
+- **Archivo and Martian Mono load now, one phase earlier than planned,** because the info monitor is
+  the first surface with text on it (SPEC §10 permits exactly these two).
+- **A closed flap takes part in a drag.** SPEC §5 says drags starting on interactive meshes must not
+  rotate the model, but it also wants a shaky tap on a door to still open it — so the flap records
+  its pointerdown, lets it bubble to the drag handler, and opens only if the release landed within
+  6px. Buttons, the joystick, the slider and the screen all stop their pointerdown, so a drag from
+  any of them rotates nothing.
+- **`sliderY` defaults to −1.84, not −1.9.** At −1.9 the nub poked below the closed flaps and read
+  as a stray white chip on an otherwise clean closed silhouette.
+- **New tuning knobs are positions and sizes only** (eleven of them, plus `screenLightColor`).
+  Internal proportions — collar thickness, cap heights, glyph size, LED radius, nub travel — are
+  derived constants in `dimensions.ts` next to the ones that were already there.
+
+### Verified
+
+All against `pnpm build` + `pnpm start` (production) at 1440×900, driven by the Chrome DevTools MCP.
+Synthetic pointer events need `offsetX`/`offsetY` defined explicitly — R3F raycasts from those, and
+a `PointerEvent` constructed in the page has them at 0 — plus a following `click` for R3F to
+synthesise `onClick`.
+
+- `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm build` — all clean, no `any`, no
+  `@ts-ignore`. `/` still prerendered static.
+- **Info monitor** — renders "Yash Punia" / "Game Programmer" from `siteSettings`. `statusLine` is
+  empty in the dataset and correctly renders nothing. The empty-dataset case was seen for real
+  (a build that raced a running server prerendered no data): the panel renders lit and blank, with
+  no placeholder copy and no error.
+- **Joystick** — holding `ArrowLeft` leans the dome left in the screenshot; keyup re-centres it.
+  Hovering the cap sets `grab`, and a pointer drag from it emits the same held direction. The 180ms
+  repeat has no consumer to observe until Phase 4, so its cadence is asserted by construction.
+- **ABXY** — with `window.open` stubbed: clicking each cap opens exactly its own URL with
+  `noopener,noreferrer` (X→x.com, A→itch.io, B→github, Y→linkedin — §3.1's table, unchanged), and
+  pressing `a`/`b`/`x`/`y` opens the same four. Focusing the hidden `B` anchor lights the ring
+  around the GitHub cap and nothing else.
+- **CV button** — with `HTMLAnchorElement.prototype.click` stubbed, the press resolves to
+  `https://cdn.sanity.io/…/….pdf?dl=Yash-Punia-Gameplay-Programmer.pdf` (Sanity has a `resumeFile`
+  uploaded). The fallback branch was seen in the same empty-data build: `/resume.pdf` with
+  `download="Yash-Punia-Gameplay-Programmer.pdf"`.
+- **Power slider** — a click travels the nub, dims the LED, and swaps both the screen glass and the
+  info monitor between `#0a0f12` and `#edeae2`; the chassis is unchanged in both. `localStorage`
+  holds `{"theme":"light"}` after the first click and `dark` after the second.
+- **Drag-to-rotate** — a 900×400px drag from the flap shell holds at the clamp (~22° yaw, ~14°
+  pitch) instead of spinning; release springs back to square. A drag that starts on the screen
+  rotates nothing.
+- **Tap versus drag** — `Escape` closes; hovering a closed flap sets `pointer`; a 96px drag across a
+  closed flap does not open it; a 4px shaky tap does.
+- **Reduced motion** (`matchMedia` overridden before load) — the console opens with no animation and
+  30ms after releasing a drag it is already square: no snap-back animation, no spring on any press.
+- **Tuning panel** — `?tune` shows the four new groups and all eleven new number inputs; editing
+  `abxySpacing` rebuilds the cluster live and persists. `/` without `?tune` renders no panel.
+- `list_console_messages` — one message, the known upstream `THREE.Clock` deprecation from R3F. The
+  `SVGLoader.createShapes` warning this phase introduced was fixed rather than accepted.
+
+### Known issues / open risks
+
+- **The light theme's screen is blown out.** `screenEmissiveIntensity` (2.6) was dialled in against
+  a near-black dark screen; the same value on `#edeae2` renders as flat white rather than a backlit
+  LCD. It wants to be per-theme, which is a Phase 7 job alongside the contrast audit.
+- **The 180ms key repeat is unobservable until Phase 4** — nothing subscribes to `input.tick` yet.
+  Verify the cadence when the rails consume it.
+- **`next build` while `next start` is running prerenders a page with no CMS data.** It cost an hour
+  of chasing a phantom regression here. Stop the server before building.
+- The Chrome window will not resize below ~501px wide on this machine, so this phase's small-screen
+  check was made at 501×844 (closed console, clean). The mobile-open framing and the DOM control
+  overlay are Phase 6, and Phase 2's "no close affordance on mobile" gap stays open with them.
+- The info monitor is themed by the power slider along with the screen. SPEC §5 only exempts the
+  chassis, and a second display that ignored the toggle would read as a bug — but it is a call, not
+  a spec line.
+- `THREE.Clock` deprecation warning and the bundle budget: still open from Phases 1–2.
+- Everything still open from Phase 0 stays open: the logged-in Studio verification is Yash's to do.
+  `siteSettings` and the four `socialLink` documents are populated and published now, so this phase
+  exercised the real content path rather than the empty one.

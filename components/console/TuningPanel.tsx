@@ -55,6 +55,37 @@ const GROUPS: {title: string; controls: NumberControl[]}[] = [
     ],
   },
   {
+    title: 'Left flap — monitor and CV',
+    controls: [
+      {key: 'monitorY', label: 'Monitor height', min: -2, max: 2, step: 0.01},
+      {key: 'monitorHeight', label: 'Monitor size', min: 0.2, max: 2.5, step: 0.01},
+      {key: 'cvButtonY', label: 'CV button height', min: -2, max: 2, step: 0.01},
+      {key: 'cvButtonWidth', label: 'CV button width', min: 0.2, max: 2, step: 0.01},
+    ],
+  },
+  {
+    title: 'Joystick',
+    controls: [
+      {key: 'joystickY', label: 'Height', min: -2, max: 2, step: 0.01},
+      {key: 'joystickRadius', label: 'Cap radius', min: 0.1, max: 0.9, step: 0.01},
+    ],
+  },
+  {
+    title: 'ABXY',
+    controls: [
+      {key: 'abxyY', label: 'Cluster height', min: -2, max: 2, step: 0.01},
+      {key: 'abxySpacing', label: 'Spacing', min: 0.15, max: 1.2, step: 0.01},
+      {key: 'abxyRadius', label: 'Cap radius', min: 0.06, max: 0.5, step: 0.005},
+    ],
+  },
+  {
+    title: 'Power slider',
+    controls: [
+      {key: 'sliderY', label: 'Height', min: -2.5, max: 2.5, step: 0.01},
+      {key: 'sliderWidth', label: 'Width', min: 0.15, max: 1.5, step: 0.01},
+    ],
+  },
+  {
     title: 'Framing',
     controls: [
       {key: 'zoomScaleClosed', label: 'Zoom, closed', min: 0.5, max: 1.6, step: 0.01},
@@ -68,7 +99,8 @@ const COLOURS: {key: ColorKey; label: string}[] = [
   {key: 'bezelColor', label: 'Bezel and seams'},
   {key: 'accentColor', label: 'Red accent'},
   {key: 'buttonColor', label: 'Button caps'},
-  {key: 'screenColor', label: 'Screen, powered'},
+  {key: 'screenColor', label: 'Screen, dark theme'},
+  {key: 'screenLightColor', label: 'Screen, light theme'},
 ]
 
 const KEYS = Object.keys(DEFAULT_TUNING) as (keyof Tuning)[]

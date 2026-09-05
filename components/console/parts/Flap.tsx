@@ -5,7 +5,12 @@ import {useFrame} from '@react-three/fiber'
 import {useEffect, useMemo, useRef} from 'react'
 import {MathUtils, type MeshStandardMaterial} from 'three'
 
+import {resumeHref, type ConsoleContent} from '@/components/console/content'
 import {usePanelGeometry, type PanelSpec} from '@/components/console/geometry'
+import {CvButton} from '@/components/console/parts/CvButton'
+import {FaceButtons} from '@/components/console/parts/FaceButtons'
+import {InfoMonitor} from '@/components/console/parts/InfoMonitor'
+import {Joystick} from '@/components/console/parts/Joystick'
 import {CloseButton} from '@/components/console/parts/CloseButton'
 import {useSpec} from '@/components/console/spec'
 import {useConsole} from '@/components/console/store'
@@ -14,6 +19,9 @@ import {useReducedMotion} from '@/components/console/useReducedMotion'
 export type FlapSide = 'left' | 'right'
 
 /** Resting glow on the seam, and how far the idle pulse lifts it (SPEC §5). */
+/** Pointer travel that still counts as a tap rather than a drag (SPEC §5). */
+const TAP_PX = 6
+
 const GLOW_BASE = 0.16
 const GLOW_SWING = 0.2
 
@@ -24,7 +32,7 @@ const GLOW_SWING = 0.2
  * Phase 1 built it at rotation 0 so this phase only has to spring it. Left
  * opens negative, right positive, which is why `sign` flips the rotation.
  */
-export function Flap({side}: {side: FlapSide}) {
+export function Flap({side, content}: {side: FlapSide; content: ConsoleContent}) {
   const {dimensions: d, materials: m} = useSpec()
   const sign = side === 'left' ? 1 : -1
 
@@ -77,6 +85,7 @@ export function Flap({side}: {side: FlapSide}) {
   const open = useConsole((state) => state.open)
   const reducedMotion = useReducedMotion()
   const band = useRef<MeshStandardMaterial>(null)
+  const pressedAt = useRef<{x: number; y: number} | null>(null)
 
   const {rotation} = useSpring({
     rotation: isOpen ? -sign * d.openAngle : 0,
@@ -127,6 +136,9 @@ export function Flap({side}: {side: FlapSide}) {
   const bandHeight = d.flap.height - d.flap.radius * 2
   const bandZ = d.flap.depth / 2 + d.panel.depth + d.seam.bandDepth / 2 - 0.003
 
+  // Nothing to point at means no button, rather than a link to a 404 (§3.2).
+  const href = resumeHref(content.settings)
+
   return (
     <animated.group position={[sign * -d.hingeX, 0, d.z.flapClosed]} rotation-y={rotation}>
       {/*
@@ -137,8 +149,19 @@ export function Flap({side}: {side: FlapSide}) {
       */}
       <group
         position={[sign * halfWidth, 0, 0]}
+        /*
+          The pointerdown is recorded but not stopped: it bubbles on to the
+          root group so a drag that starts on a door still rotates the console.
+          What the threshold below decides is only whether the release was a
+          tap — a shaky one still opens the console (SPEC §5).
+        */
+        onPointerDown={(event) => {
+          pressedAt.current = {x: event.clientX, y: event.clientY}
+        }}
         onClick={(event) => {
           if (isOpen) return
+          const start = pressedAt.current
+          if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > TAP_PX) return
           event.stopPropagation()
           open()
         }}
@@ -164,7 +187,18 @@ export function Flap({side}: {side: FlapSide}) {
           />
         </mesh>
 
-        {side === 'right' ? <CloseButton /> : null}
+        {side === 'left' ? (
+          <>
+            <InfoMonitor settings={content.settings} />
+            {href ? <CvButton href={href} /> : null}
+            <Joystick />
+          </>
+        ) : (
+          <>
+            <FaceButtons socialLinks={content.socialLinks} />
+            <CloseButton />
+          </>
+        )}
       </group>
     </animated.group>
   )

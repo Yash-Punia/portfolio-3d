@@ -17,6 +17,17 @@ const HINGE_RING_HEIGHT = 0.055
 const CLOSE_CAP_HEIGHT = 0.055
 const CLOSE_TRAVEL = 0.022
 const APERTURE_RADIUS = 0.06
+const MONITOR_BEZEL = 0.05
+const MONITOR_DEPTH = 0.022
+const BUTTON_CAP_HEIGHT = 0.05
+const BUTTON_HOUSING_DEPTH = 0.022
+const BUTTON_TRAVEL = 0.018
+/** SPEC §5: the joystick tilts to ~18°, with a deadzone of 25% of its radius. */
+const JOYSTICK_MAX_TILT = (18 * Math.PI) / 180
+const JOYSTICK_DEADZONE = 0.25
+const SLIDER_DEPTH = 0.02
+/** SPEC §5: the nub travels ~60% of its housing width, so ±30% from centre. */
+const SLIDER_TRAVEL_FRACTION = 0.3
 
 export interface Dimensions {
   body: {width: number; height: number; depth: number; radius: number}
@@ -34,6 +45,51 @@ export interface Dimensions {
     y: number
     travel: number
   }
+  /** Info monitor panel on the left flap's inner face. */
+  monitor: {width: number; height: number; y: number; depth: number; bezel: number}
+  /** CV download button, a pill cap below the monitor. */
+  cvButton: {width: number; height: number; y: number; depth: number; travel: number}
+  joystick: {
+    y: number
+    capRadius: number
+    capHeight: number
+    wellRadius: number
+    wellDepth: number
+    collarRadius: number
+    collarHeight: number
+    stemRadius: number
+    stemHeight: number
+    maxTilt: number
+    deadzone: number
+  }
+  /** ABXY diamond on the right flap: X top, A right, B bottom, Y left. */
+  abxy: {
+    y: number
+    spacing: number
+    capRadius: number
+    capHeight: number
+    housingRadius: number
+    housingDepth: number
+    travel: number
+    glyphSize: number
+    ringRadius: number
+    ringTube: number
+  }
+  /** Power slider on the body's lower bezel, with its LED. */
+  slider: {
+    y: number
+    width: number
+    height: number
+    depth: number
+    nubWidth: number
+    nubHeight: number
+    nubDepth: number
+    travel: number
+    ledRadius: number
+    ledOffset: number
+  }
+  /** Inner face of a flap, in flap-local space — where the controls sit. */
+  faceZ: number
   /** Front face of the body core, the front of the face frame, and the closed flap. */
   z: {bodyFront: number; faceFront: number; flapClosed: number; flapFront: number}
   /** X of the hinge axis (the flap's outer edge) and of the visible hinge post. */
@@ -96,6 +152,58 @@ export function deriveDimensions(t: Tuning): Dimensions {
       y: -flapHeight / 2 + t.closeButtonY,
       travel: CLOSE_TRAVEL,
     },
+    monitor: {
+      width: flapWidth - t.panelMargin * 2,
+      height: t.monitorHeight,
+      y: t.monitorY,
+      depth: MONITOR_DEPTH,
+      bezel: MONITOR_BEZEL,
+    },
+    cvButton: {
+      width: t.cvButtonWidth,
+      height: t.cvButtonWidth * 0.32,
+      y: t.cvButtonY,
+      depth: BUTTON_CAP_HEIGHT,
+      travel: BUTTON_TRAVEL,
+    },
+    joystick: {
+      y: t.joystickY,
+      capRadius: t.joystickRadius,
+      capHeight: t.joystickRadius * 0.34,
+      wellRadius: t.joystickRadius * 1.62,
+      wellDepth: 0.03,
+      collarRadius: t.joystickRadius * 1.34,
+      collarHeight: 0.026,
+      stemRadius: t.joystickRadius * 0.46,
+      stemHeight: t.joystickRadius * 0.6,
+      maxTilt: JOYSTICK_MAX_TILT,
+      deadzone: JOYSTICK_DEADZONE,
+    },
+    abxy: {
+      y: t.abxyY,
+      spacing: t.abxySpacing,
+      capRadius: t.abxyRadius,
+      capHeight: BUTTON_CAP_HEIGHT,
+      housingRadius: t.abxyRadius * 1.45,
+      housingDepth: BUTTON_HOUSING_DEPTH,
+      travel: BUTTON_TRAVEL,
+      glyphSize: t.abxyRadius * 1.15,
+      ringRadius: t.abxyRadius * 1.72,
+      ringTube: 0.013,
+    },
+    slider: {
+      y: t.sliderY,
+      width: t.sliderWidth,
+      height: t.sliderWidth * 0.3,
+      depth: SLIDER_DEPTH,
+      nubWidth: t.sliderWidth * 0.3,
+      nubHeight: t.sliderWidth * 0.24,
+      nubDepth: 0.03,
+      travel: t.sliderWidth * SLIDER_TRAVEL_FRACTION,
+      ledRadius: t.sliderWidth * 0.05,
+      ledOffset: t.sliderWidth * 0.74,
+    },
+    faceZ: -t.flapDepth / 2,
     z: {
       bodyFront,
       faceFront,

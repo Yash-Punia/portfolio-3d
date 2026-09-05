@@ -7,7 +7,8 @@ import {Color, type MeshPhysicalMaterial} from 'three'
 import {usePanelGeometry, type PanelSpec} from '@/components/console/geometry'
 import {useSpec} from '@/components/console/spec'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
-import {useConsole} from '@/components/console/store'
+import {PowerSlider} from '@/components/console/parts/PowerSlider'
+import {useConsole, useTheme} from '@/components/console/store'
 
 /** Bezel floor sits a hair proud of the core's front face to avoid z-fighting. */
 const BEZEL_FLOOR_DEPTH = 0.02
@@ -49,8 +50,10 @@ export function Body() {
 
   const isOpen = useConsole((state) => state.isOpen)
   const reducedMotion = useReducedMotion()
+  const theme = useTheme()
   const glass = useRef<MeshPhysicalMaterial>(null)
-  const on = useMemo(() => new Color(m.screenOn), [m.screenOn])
+  // The power slider flips this, and nothing else on the chassis (SPEC §5).
+  const on = useMemo(() => new Color(m.screenOn[theme]), [m.screenOn, theme])
   const off = useMemo(() => new Color(m.screenOff), [m.screenOff])
 
   /**
@@ -89,14 +92,16 @@ export function Body() {
         The screen. Its emissive prop is constant unless motion is reduced, so a
         re-render never snaps the lerp above back to its starting value.
       */}
-      <mesh position={[0, 0, screenZ]}>
+      <mesh position={[0, 0, screenZ]} onPointerDown={(event) => event.stopPropagation()}>
         <planeGeometry args={[d.screen.width, d.screen.height]} />
         <meshPhysicalMaterial
           ref={glass}
           {...m.screenGlass}
-          emissive={reducedMotion && isOpen ? m.screenOn : m.screenOff}
+          emissive={reducedMotion && isOpen ? m.screenOn[theme] : m.screenOff}
         />
       </mesh>
+
+      <PowerSlider />
     </group>
   )
 }
