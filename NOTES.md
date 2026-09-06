@@ -980,3 +980,181 @@ rather than switch. `pnpm typecheck`, `pnpm lint`, `pnpm build` and `prettier --
   `data-stage`, so a returning visitor who chose light sees one dark frame first. The usual fix is a
   blocking inline script in `<head>` that reads `localStorage` before first paint; it is worth doing
   when the theme's first paint is looked at properly in Phase 7, not before.
+
+## Phase 6 — Mobile
+
+Below 640px the open console kept the closed framing, so the flaps swung out of frame and the
+screen stayed a ~230px rectangle nobody could read — and every control was on those off-screen
+flaps, so once it was open on a phone there was no way to navigate it and no way to close it. SPEC
+§6 calls this "the important divergence"; this phase builds it.
+
+### The camera frames the screen, not the object
+
+Orthographic zoom is pixels-per-world-unit, so SPEC §6's "the screen fills roughly 92% of the
+viewport width" is one division: `width * 0.92 / dimensions.screen.width`. At 390px that is 99.7
+against the closed framing's 65.4 — a 1.52× jump, which reads as the camera springing in. The glass
+lands at 359 × 349, about 10px of bezel shows each side, the body's top and bottom edges stay in
+frame and the flaps clip away.
+
+- **`zoomScaleOpen` is deliberately not applied to it.** The DOM layer over the glass is sized from
+  the same `SCREEN_FILL`, so a tuning multiplier on one and not the other would slide the panel off
+  the screen. The two constants live in `components/console/mobile.ts` precisely so both sides of
+  the canvas boundary read one definition.
+- **No camera offset was needed.** `Body.tsx` puts the core, the aperture, the bezel and the glass
+  all at `[0, 0, z]`, and only `z` differs — which does not move an orthographic projection. The
+  camera at `[0,0,10]` already lands world (0,0) on the viewport centre, so a fixed DOM box centred
+  with `translate(-50%,-50%)` sits on the glass. `Scene.tsx` needed no change at all.
+- **Reduced motion was already right.** `Scene.tsx` renders `zoom` as a prop under reduced motion
+  and drei's `<OrthographicCamera>` commits it in a layout effect, so the framing snaps.
+- **Flap clipping is free.** WebGL clips at the frustum, drei sizes the frustum to the canvas, and
+  R3F only raycasts coordinates that are on the canvas — so off-frame furniture is neither drawn
+  nor touchable. Nothing was written for it.
+- **Drag-to-rotate is off on a phone while open** (`Console.tsx`), reading `state.size.width` inside
+  the canvas rather than a media query. Closed, it still rotates at every width.
+
+### One firmware, two mounts
+
+`<Html transform>` does not mount below 640px. `MobileConsole.tsx` puts the same `<Firmware />`
+tree in a fixed box glued to the glass rect instead — the tree itself is unchanged, which is what
+SPEC §7 means by one implementation and two mounts.
+
+- **Glass-aligned, not fullscreen.** SPEC §6 says 92% of the viewport width and §7 says "fullscreen
+  DOM layer"; those reconcile only if "fullscreen" means "on the page rather than in the scene".
+  Yash chose the glass-aligned reading: the chassis and its bezel stay visible around the panel, so
+  on a phone the console is still the object rather than a web page that replaced it.
+- **The info monitor's `<Html>` comes off with it.** DOM in 3D has no frustum any more than it has a
+  depth test, so with the flaps framed off the sides it was rendering over the screen, mirrored,
+  with drei recomputing its matrix every frame. Between the two gates there is now no DOM-in-3D on
+  mobile at all, which is the point of the second mount.
+- **The panel is re-authored, not shrunk.** The desktop panel is 900px wide and lands on a ~560px
+  glass; the mobile one lands on ~350px. A single factor puts 16px body text at 6px, and raising the
+  factor clips a stack whose height follows the screen's aspect and does not grow with it. The
+  ratios differ per value — type wants about a fifth off, whitespace four fifths — so `MOBILE` in
+  `layout.ts` is a table of authored values. `deriveFirmwareLayout` has one caller, and every
+  firmware component reads that hook, so the numbers reach all of them with no component changed.
+  Marked `ponytail:`: a const dialled by hot reload at 390px, not a live `?tune` knob.
+- **A 180ms fade, delayed 260ms**, so the opaque panel does not overhang the glass while the camera
+  damps in. It reuses `firmware-fade`, already in `globals.css`, and is dropped under reduced motion.
+- **No `touch-action: none` on the layer**, unlike the canvas and the overlay. The detail view is a
+  real scrolling box and `touch-action` is intersected down the ancestor chain, so `none` here would
+  have taken a descendant's `pan-y` with it. Nothing else on the page scrolls.
+- `ENTER — DETAILS` and `ESC — BACK` name keys a phone does not have. There they read
+  `TAP — DETAILS` and `BACK`; the taps behind both already worked.
+
+### The control overlay
+
+The flap furniture, unfolded around the glass. Each control is on the side its physical counterpart
+is on: CV top-left and the D-pad bottom-left (the left flap's monitor and joystick), the theme
+toggle top-right, ABXY bottom-right with the close cap beneath it (the right flap's stack).
+
+- **Nothing is re-implemented.** The D-pad writes the same `held` direction the arrow keys and the
+  3D stick write, so `useInput`'s 180ms repeat, `useRailInput`'s subscription and the one `move()`
+  dispatcher all came along untouched — and the stick out of frame leans with the finger. ABXY
+  resolves through `linkForSlot`, fires `openLink`, and lights from the same `pressedSlot` the
+  meshes read. The CV is a plain anchor with the same `resumeHref` the monitor uses.
+- **`onClick` for ABXY, not the pointer events the cap already handles.** iOS only lets
+  `window.open` through inside a trusted gesture.
+- **Colours come from `useSpec().materials`,** so one set of tuning values dials the object and its
+  overlay together. SPEC §6 asks for a "red press state", but the chassis accent has been a tuning
+  value since Phase 1 and is currently green; a control that flashed a colour the object never uses
+  would read as a different product. Same reasoning `theme.ts` runs for the screen's selection
+  colour.
+- **A dark cap takes a light collar**, where the object's toggle is bezel-on-bezel. On the console
+  it reads because it is lit and specular; a flat black disc on a near-black stage would be a hole.
+- **U+FE0E on the sideways D-pad arms.** Without it Android and iOS render U+25C0/U+25B6 as blue
+  emoji while the up and down triangles stay text, and a D-pad with two arms in a different colour
+  is not a D-pad.
+- **The glyph paths moved to `glyphPaths.ts`, which imports nothing.** `glyphs.ts` needs three to
+  extrude the marks and the overlay is on the deliberately three-free DOM side, so importing it
+  there would have pulled the 3D chunk into everyone's page bundle (SPEC §12). The platform-to-mark
+  map went with it, so the cap and its DOM counterpart cannot disagree. `GLYPH_BOX` is new: every
+  path is authored in a 24 box except LinkedIn's, which is a 16 and would render two thirds size in
+  an `<svg>`.
+- **SPEC §6 puts ABXY and close both "bottom-right".** The physical right flap stacks them —
+  `closeButtonY` is near the flap's bottom edge, the diamond at its centre — so the overlay does too.
+- `MobileConsole` is dynamically imported: it is ordinary DOM, but no desktop visitor should pay for
+  it.
+
+### Swipes
+
+`useTouchRail` sits beside `useWheelRail` in `ConsoleStage` and goes through the same private
+`move()` — a swipe is only another way of naming a direction (SPEC §8).
+
+- **Carousel-natural**: the content follows the finger, so swiping left brings the next project in
+  from the right and swiping up goes to the next section. A judgement call; the opposite convention
+  is one sign flip.
+- 44px threshold, dominant axis wins outright, mouse pointers ignored, and the whole effect is gated
+  on mobile.
+- A gesture that starts on `[data-console-overlay]` is dropped, so dragging off the D-pad cannot
+  also move the rail.
+- Nothing calls `preventDefault`, so the firmware's own taps still work — a tile to select, a tile
+  again to drill in, `BACK` to come out. That closes the loop on touch: the detail view opens and
+  closes without a keyboard.
+
+### Accessibility
+
+Everything in the overlay is `aria-hidden` with `tabIndex={-1}` **except the close button and the
+theme toggle**, which are real buttons with labels, rendered outside the hidden containers.
+
+The `.sr-only` landmark in `app/page.tsx` already carries the four social links and the CV as real
+anchors — the same reasoning the firmware and the info monitor run on, and reading them twice is
+worse than reading them once. But close and theme have no twin anywhere, and a touch screen-reader
+user has no `Escape` key, so leaving them hidden would have meant no way out. A focusable element
+inside an `aria-hidden` subtree is the trap `InfoMonitor` already names, hence outside rather than
+inside.
+
+### Two things deferred from earlier phases, folded in
+
+- **The stored theme no longer flashes** (5c). A synchronous script in `<head>` reads the key the
+  store persists to and stamps `data-stage` before the first paint. It has to be inside an explicit
+  `<head>` element: React 19 refuses to order a sync inline script rendered anywhere else, and
+  `next/script` with `beforeInteractive` as a child of `<html>` is invalid HTML — both were tried and
+  both errored in the console. `<html>` carries `suppressHydrationWarning`, because the server
+  cannot know what is in someone's `localStorage` and that difference is the point of the script.
+  The stage only: the screen's palette lives inside the canvas, which does not exist that early.
+- **The info monitor carries the About copy** (5a). Phase 5a deleted the About tile and left
+  `aboutHeadline`/`aboutBody` rendering only in the hidden landmark. The monitor is the left flap's
+  one lit surface, so they sit beside the name, each guarded on its own like every other string on
+  that panel.
+
+### Verified
+
+In a real browser at 390×844 and 430×932, closed and open, plus 1440×900 to confirm nothing on
+desktop moved:
+
+- Closed at both widths is unchanged — the whole console centred, the same object Phase 1 built.
+- Open, the camera springs onto the glass, the flaps clip away, and the firmware is crisp DOM on it.
+  Menu, Library, Timeline and the detail view all fit and read; the detail view scrolls by finger.
+- Every D-pad arm moves the rail, and holding one repeats at 180ms — a 700ms hold walked several
+  projects.
+- An ABXY cap lights its accent ring and calls `window.open` with the bound URL (stubbed in the
+  harness to keep the popup from navigating away): `https://x.com/…` from the X cap.
+- The theme cap flips `data-stage`, the screen, the stage and the info monitor together, and its
+  label becomes "Switch to the dark theme". The close cap closes and the overlay unmounts with it.
+- Swipes: left advances the rail, right goes back, up enters the Timeline, and a 20px drag does
+  nothing. A swipe that starts on the D-pad is ignored.
+- Under reduced motion the layer's `animation-name` is `none` and the open snaps.
+- Desktop still mounts through `<Html transform>` with no overlay, and the info monitor now shows
+  the name, title, status, About headline and body, and the resume link.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build` and `prettier --check` all clean; the browser console
+  is clean.
+
+### Known issues / open risks
+
+- **Swipes were verified synthetically** — dispatched `PointerEvent`s with `pointerType: 'touch'`,
+  not a finger. The thresholds and the direction convention want a real-device pass.
+- **`env(safe-area-inset-*)` is unverified.** DevTools' viewport resize does not report insets, so
+  only the `max(14px, …)` fallback was exercised. The notch and home-indicator case needs a device.
+  `viewportFit: 'cover'` is set, without which the insets would report zero regardless.
+- **The mobile layout table cannot be dialled from `?tune`.** It is a const; the workflow is editing
+  it at 390px with the dev server hot reloading. Fine until it is not.
+- **The theme cap crossfades its two marks** rather than turning over like the physical one. A CSS
+  card-flip is a dozen lines for a fingertip-sized control; marked `ponytail:` and worth a look in
+  Phase 7 with the rest of the polish.
+- **The bottom cluster is tight.** At 390×844 there are 248px below the glass and the D-pad, the
+  ABXY diamond and the close cap take most of it. Caps are 46–52px, above the 44px floor, but there
+  is no room to grow them.
+- Everything Phase 7 already owned is still open: the hard-coded chrome strings, the 0.5-opacity
+  labels failing AA, organisation names clipping mid-word, and the detail panel scrolling with no
+  visible affordance — which is more noticeable on a phone than it was on a desktop.
+- `frameloop="always"` still renders the whole scene while open on a phone. SPEC §12 / Phase 8.
