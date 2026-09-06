@@ -49,7 +49,7 @@ export interface Tuning {
   abxyRadius: number
   /** Theme toggle, at the top of the right flap. */
   toggleY: number
-  toggleWidth: number
+  toggleRadius: number
   /** Multipliers on the computed camera zoom, for nudging the framing. */
   zoomScaleClosed: number
   zoomScaleOpen: number
@@ -126,7 +126,7 @@ export const DEFAULT_TUNING: Tuning = {
   abxySpacing: 0.36,
   abxyRadius: 0.14,
   toggleY: 0.34,
-  toggleWidth: 0.6,
+  toggleRadius: 0.14,
   zoomScaleClosed: 0.8,
   zoomScaleOpen: 1,
   shellColor: '#2e2e2e',

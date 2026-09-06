@@ -91,7 +91,7 @@ const CONSOLE_GROUPS: Group[] = [
     title: 'Theme toggle',
     controls: [
       {key: 'toggleY', label: 'Depth below top edge', min: 0.1, max: 2, step: 0.02},
-      {key: 'toggleWidth', label: 'Width', min: 0.2, max: 1.4, step: 0.01},
+      {key: 'toggleRadius', label: 'Cap radius', min: 0.05, max: 0.4, step: 0.005},
     ],
   },
   {

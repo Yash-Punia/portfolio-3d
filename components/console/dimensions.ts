@@ -25,7 +25,7 @@ const BUTTON_TRAVEL = 0.018
 /** SPEC §5: the joystick tilts to ~18°, with a deadzone of 25% of its radius. */
 const JOYSTICK_MAX_TILT = (18 * Math.PI) / 180
 const JOYSTICK_DEADZONE = 0.25
-const TOGGLE_DEPTH = 0.026
+const TOGGLE_CAP_HEIGHT = 0.06
 /** SPEC §5: the nub travels ~60% of its housing width, so ±30% from centre. */
 
 export interface Dimensions {
@@ -75,13 +75,11 @@ export interface Dimensions {
   /** Theme toggle at the top of the right flap's inner face. */
   toggle: {
     y: number
-    width: number
-    height: number
-    depth: number
-    channelDepth: number
-    knobRadius: number
-    knobHeight: number
-    travel: number
+    capRadius: number
+    capHeight: number
+    housingRadius: number
+    housingDepth: number
+    glyphSize: number
   }
   /** Inner face of a flap, in flap-local space — where the controls sit. */
   faceZ: number
@@ -183,14 +181,13 @@ export function deriveDimensions(t: Tuning): Dimensions {
       // Measured down from the flap's top edge, the way the close button is
       // measured up from its bottom one.
       y: flapHeight / 2 - t.toggleY,
-      width: t.toggleWidth,
-      height: t.toggleWidth * 0.44,
-      depth: TOGGLE_DEPTH,
-      channelDepth: 0.008,
-      knobRadius: t.toggleWidth * 0.17,
-      knobHeight: 0.05,
-      // The knob's two detents sit a knob's width in from each end.
-      travel: t.toggleWidth * 0.5,
+      capRadius: t.toggleRadius,
+      // Deeper than a face button's cap: this one turns over, so its edge is
+      // seen side-on halfway through and a wafer would read as a sheet of paper.
+      capHeight: TOGGLE_CAP_HEIGHT,
+      housingRadius: t.toggleRadius * 1.45,
+      housingDepth: BUTTON_HOUSING_DEPTH,
+      glyphSize: t.toggleRadius * 1.15,
     },
     faceZ: -t.flapDepth / 2,
     z: {

@@ -890,53 +890,61 @@ change would produce that: nothing in the schema says a BTech is education excep
   `▴ Menu` arrow, and `↓` there does nothing.
 - `pnpm typecheck`, `pnpm lint`, `pnpm build` and `prettier --check` all clean.
 
-### Phase 5b — The power slider becomes a theme toggle on the right flap
+### Phase 5b — The power slider becomes a theme button on the right flap
 
 SPEC §4 and §5 put a DS-style power slider on the body's lower bezel. Yash asked for it to move to
-the top of the right flap as a physical toggle, so `PowerSlider.tsx` is gone and
+the top of the right flap as a physical control, so `PowerSlider.tsx` is gone and
 `parts/ThemeToggle.tsx` takes its place.
 
 - **Where "the top side of the right panel" landed.** On the flap's **inner face**, above the ABXY
   cluster — not on its top edge. The camera is orthographic and dead-on (SPEC §4), so a control on
-  an upward-facing edge would be a line of pixels nobody could aim at. The toggle now mirrors the
-  close button: `closeButtonY` measures up from the flap's bottom edge, `toggleY` measures down
-  from its top one.
-- **The form is a switch, not a slider.** A capsule housing in bezel black, an accent channel
-  running its length, and a knob that throws between two detents on the same firm
-  `{tension: 900, friction: 30}` spring the slider used. Thrown right with the channel lit is dark;
-  thrown left with it all but out is light — which is how a "dark mode" switch reads everywhere
-  else, and which folds in the signal SPEC §5 wanted a separate LED beside the track for. The LED
-  is gone with the track.
-- **The knob is a flattened sphere**, the trick the joystick cap already uses: a flat disc under
-  this scene's key light shades exactly like the housing behind it, and the curve is the whole of
-  what reads as something you could push.
-- **Drag-to-throw is gone; it is a click now.** The slider carried ~35 lines that turned a pointer
-  drag past a quarter of its travel into a theme change, including the orthographic-zoom arithmetic
-  that converted world travel into a pixel threshold. A switch is clicked. If dragging one is ever
-  wanted back, that code is in `PowerSlider.tsx` at commit 3437be6.
-- **Built +X-right, +Z-out like its neighbours.** The group is turned through π at `d.faceZ`, the
-  same as the ABXY cluster and the joystick, so nothing in it has to reason about the mirroring an
-  open door applies to that face.
-- `sliderY` / `sliderWidth` in the tuning are replaced by `toggleY` / `toggleWidth`, and the panel's
-  "Power slider" group is now "Theme toggle". The `slider` block in `dimensions.ts` is a `toggle`
+  an upward-facing edge would be a line of pixels nobody could aim at. The toggle mirrors the close
+  button: `closeButtonY` measures up from the flap's bottom edge, `toggleY` measures down from its
+  top one.
+- **It is a round cap like the others, and it turns over.** The first cut was a capsule switch with
+  a sliding knob; Yash asked for a circle. So it is an ABXY-sized cap in a matching collar, but
+  black instead of off-white, with a moon on one face and a sun on the other in the accent colour.
+  Pressing it springs the cap through half a revolution: the mark on show _is_ the mode — moon for
+  dark, sun for light — so the control needs no label and no separate lamp beside it, which is what
+  SPEC §5's LED beside the slider track was for.
+- **Half a revolution, not a crossfade.** The two marks are real geometry on opposite faces, so the
+  one not showing is hidden by the cap itself rather than by a mask — and the rotation reads as a
+  physical object turning over, which a fade does not. It is negative, so the mark on show leaves
+  to the left and the next arrives from the right; the far mark is turned through π itself, or it
+  would arrive mirrored.
+- **The cap is deeper than a face button's.** It is seen edge-on halfway through every flip, and a
+  wafer would read as a sheet of paper: `TOGGLE_CAP_HEIGHT` is 0.06 against the face buttons' cap.
+- **Two glyphs joined `GLYPHS`.** A crescent moon, and a sun whose rays are rounded — the squared
+  rays of the first attempt read as spikes at this size. The sun is drawn 14% larger than the moon:
+  every glyph is normalised to its longest side, and the sun's rays inflate its bounding box, so at
+  equal sizes it reads smaller. An optical correction, not a different size.
+- **Drag-to-throw is gone with the slider.** It carried ~35 lines that turned a pointer drag past a
+  quarter of its travel into a theme change, including the orthographic-zoom arithmetic that turned
+  world travel into a pixel threshold. A button is pressed. That code is in `PowerSlider.tsx` at
+  commit 3437be6, and the capsule switch that briefly replaced it is at 2d4022d.
+- `sliderY` / `sliderWidth` in the tuning are now `toggleY` / `toggleRadius`, and the panel's
+  "Power slider" group is "Theme toggle". The `slider` block in `dimensions.ts` is a `toggle`
   block; nothing else read it.
 
 ### Verified
 
-- Clicked in a real browser at 800×450 and screenshotted: the knob throws left and the channel goes
-  dark as the screen, the info monitor and the firmware all turn light; clicking again throws it
-  back. Both directions, both themes.
-- The cursor becomes a pointer over the switch only while the console is open, and is dropped when
+- Clicked in a real browser and screenshotted: the cap turns over, the moon gives way to the sun,
+  and the screen, the info monitor and the firmware all turn light with it. Clicking again turns it
+  back. One frame caught it mid-flip, which is what confirms it is a rotation rather than a swap.
+- The cursor becomes a pointer over the button only while the console is open, and is dropped when
   the flap carries it away.
-- A press on the switch does not drag the console round — its `pointerdown` is swallowed, like the
+- A press on it does not drag the console round — its `pointerdown` is swallowed, like the
   joystick's and the close button's.
 - The body's lower bezel is now bare and the closed console is unchanged.
 - `pnpm typecheck`, `pnpm lint`, `pnpm build` and `prettier --check` all clean.
 
 ### Known issues / open risks
 
-- **The accent channel is painted, so it stays green in light mode**, just unlit. Against the
-  chassis that reads as a painted channel rather than a bug, but if the light theme ever wants a
-  quieter switch, the channel's material is the one place to change.
-- SPEC §4's list of permitted accent surfaces named the power-slider track; the toggle's channel
-  takes that slot, so the count of red (here: tuned green) accents on the object is unchanged.
+- **The cap is black where every other cap is off-white**, which is deliberate — Yash asked for a
+  black face with accent marks — but it does make this the one control on the object that does not
+  announce itself as pressable by its colour. Its collar and its size are the ABXY vocabulary, so
+  it still reads as a button; worth a look in Phase 7 with the rest of the polish.
+- SPEC §4's list of permitted accent surfaces named the power-slider track; the toggle's two marks
+  take that slot, so the count of accent surfaces on the object is unchanged.
+- **The target is smaller than the capsule was** — an ABXY cap rather than a 0.6-wide switch. Fine
+  with a mouse; Phase 6's mobile overlay gets its own DOM-sized control anyway.
