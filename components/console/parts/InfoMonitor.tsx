@@ -51,6 +51,15 @@ export function InfoMonitor({
   const name = settings?.fullName
   const title = settings?.title
   const status = settings?.statusLine
+  /*
+    The About copy, which Phase 5a left with nowhere to go when it deleted the
+    About tile from the rail: the monitor is the flap's one lit surface, and the
+    headline and body belong beside the name rather than only in the page's
+    hidden landmark. Both are optional in Sanity and both are guarded on their
+    own — the panel has always drawn whatever it was given.
+  */
+  const headline = settings?.aboutHeadline
+  const about = settings?.aboutBody
 
   const download = () => {
     if (!href) return
@@ -96,7 +105,7 @@ export function InfoMonitor({
         nobody can read. The screen's own mount comes off on mobile for the same
         reason, which leaves no DOM in 3D there at all.
       */}
-      {isOpen && !mobile && (name || title || status || href) ? (
+      {isOpen && !mobile && (name || title || status || headline || about || href) ? (
         <Html
           aria-hidden
           center
@@ -142,6 +151,21 @@ export function InfoMonitor({
                 }}
               >
                 {status}
+              </p>
+            ) : null}
+            {headline ? (
+              <p style={{margin: '30px 0 0', fontSize: '27px', fontWeight: 500}}>{headline}</p>
+            ) : null}
+            {about ? (
+              <p
+                style={{
+                  margin: '12px 0 0',
+                  fontSize: '20px',
+                  color: palette.muted,
+                  lineHeight: 1.45,
+                }}
+              >
+                {about}
               </p>
             ) : null}
             {href ? (
