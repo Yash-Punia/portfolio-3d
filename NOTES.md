@@ -734,3 +734,104 @@ DEFAULT_TUNING in tuning.ts"** when the posted values are identical to what is a
 — the route reports "the file did not change" as a failure to find the block. Harmless, and only
 reachable by posting to the route directly, since the button disables itself when nothing has
 changed.
+
+## Phase 5 — Firmware: Timeline
+
+The screen has a second section. `↓` from the Library enters a horizontal timeline of experience
+and education, `↑` comes back, and the selected dot's panel sits under the axis. The mobile mount
+and touch swipe are still Phase 6; themes and polish are Phase 7.
+
+### Versions installed
+
+None. Same as Phase 4: everything is built from what Phases 0–3 pulled in, and the axis moves on
+the same CSS transition the Library rail uses rather than a spring package that is not installed.
+
+### Decisions
+
+- **Order is SPEC §8's, not the date order the content implies.** The query sorts
+  `select(kind == "work" => 0, 1)` then `startDate desc` — work group first, education after, each
+  most-recent-first. The group key is written out rather than leaning on `"work"` sorting after
+  `"education"` alphabetically, which is true but accidental. **Consequence with the published
+  content:** `BTech` and `Class 12th` are both saved with `kind: "work"`, so the axis reads
+  Hypemasters → Goldman Sachs → Lucid Labs → Ajna Lens → BTech → Class 12th → MTech, and the MTech
+  lands right of Class 12th. That is a content fix in the Studio (set both to Education), not a code
+  one — Yash confirmed the SPEC ordering knowing this.
+- **`Enter` on a timeline entry does nothing** (confirmed with Yash). The entry's detail is already
+  on screen when it is selected, so there is no second layer to open and no second `Escape` level.
+  The Library keeps its drill-down; the check is on `section === 'library'`, not on the index alone.
+- **One `move()`, three inputs.** The arrow keys, the joystick and the wheel all land in the same
+  function in `ConsoleStage`, which dispatches on the section: left/right move within the rail on
+  screen, down/up move between the sections. Phase 4 left `up`/`down` as no-ops in the tick
+  subscriber; they are now the only place section changes happen, so the joystick, the keys and the
+  section hint cannot drift apart.
+- **The section hint is a control, not a sign.** `▾ TIMELINE` / `▴ LIBRARY` sits in the band the
+  rail leaves empty at the bottom of the screen — the gap Phase 4's notes flagged — and clicking it
+  switches. Everything else on the screen is clickable; a label that was not would read as broken.
+  With no timeline entries it does not render at all.
+- **The dots carry `kind` in their fill, not in a label.** Work is filled, education is ringed, the
+  selected one is accent-filled at 1.7×. The scale is a `transform` inside a fixed-size box, so the
+  axis line stays put and nothing reflows as the selection moves.
+- **`monthLabel`/`entryDates` live in `content.ts`, not in the firmware.** The hidden landmark
+  renders the same date strings on the server that the axis renders on the client. They slice the
+  `YYYY-MM-DD` string rather than parsing it — `new Date('2022-02-01')` is UTC midnight and reads as
+  January west of Greenwich — and use a fixed month table rather than `Intl`, because a locale that
+  disagreed between server and client is a hydration mismatch.
+- **Four knobs, not ten.** `fwAxisTop`, `fwDotGap`, `fwDotSize`, `fwEntryGap` join the firmware tab;
+  every font on the axis derives from the sizes already there. `/api/tuning` picked the four up on
+  its own, as designed.
+- **`logo` is queried and rendered nowhere.** Every published entry has one, but SPEC §8's timeline
+  is dots, dates and organisation names — a row of logos is a different design. The field is not in
+  the query at all, so adding it later is a query change plus a render, not a cleanup.
+
+### Verified
+
+Chrome DevTools MCP against `pnpm dev`, then again against `pnpm build && pnpm start` (SPEC §0
+rule 2). No console errors in either; the only warning is Phase 1's `THREE.Clock` deprecation.
+
+- `↓` enters the timeline and the status bar reads `TIMELINE`; `↑` returns and it reads `LIBRARY`.
+  A second `↑` in the Library does nothing.
+- Order on screen is Hypemasters → Goldman Sachs → Lucid Labs → Ajna Lens → BTech → Class 12th →
+  MTech, matching the query and the decision above.
+- `←`/`→` move one entry per press; **holding for 560ms moved four entries** — one on the take plus
+  three at the 180ms repeat, so the joystick's stream drives the axis exactly as it drives the rail.
+- A twenty-event inertial flick (600px of `deltaY`) moves **one** entry.
+- At either end, another notch does nothing: clamped, no wrap, no bounce.
+- `Enter` on a selected entry leaves the screen unchanged; `Escape` still closes the console.
+- The live region announces `Timeline, <role> at <organisation>` on every move, and the `.sr-only`
+  landmark now carries all seven entries as real headings with dates, summary and result.
+- Empty states, forced by stubbing the query result in `app/page.tsx`:
+  - **Zero entries** — the section hint does not render, `↓` is a no-op, no axis is mounted.
+  - **One entry** — left and right are no-ops and the axis does not translate.
+  - **No `highlights`, no `relatedProjects`, no `result`** — each collapses; nothing published has
+    highlights, and `result` renders only on the three entries that have one.
+  - **`isCurrent`** — the range reads `Mar 2026 – now`.
+- **Chips**, stubbed by linking a project to the first entry: the chip renders under the summary and
+  clicking it lands on that project in the Library rail with the status bar back to `LIBRARY`.
+- `prefers-reduced-motion: reduce` (injected `matchMedia`): the axis and dots fall back to the 100ms
+  opacity crossfade, and the panel has no entry animation.
+- Light theme via `prefers-color-scheme`: the screen, the axis and the accent flip together and the
+  chassis is unchanged.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build` all clean.
+
+### Known issues / open risks
+
+- **Unselected dots and their labels sit at `fwUnselectedOpacity` (0.5)**, which puts them under AA
+  as measured text. That is the Library rail's existing treatment for unselected tiles and the same
+  argument holds: the accessible copy of every entry is the landmark, and the selected entry — the
+  one being read — is at full contrast. Worth revisiting in Phase 7 if the light theme's muted grey
+  proves too quiet at 50%.
+- **A neighbour's organisation name is clipped mid-word at both panel edges** as the axis slides
+  (`ool` of "DAV Public School" at the left edge, `NIT Ham` at the right). It is the rail continuing
+  past the frame, the same as the Library's tiles, but a soft mask at the edges would read better.
+  Phase 7.
+- **`timelineIndex` is not reset when the section changes**, only when the console opens. Coming
+  back to the timeline returns you to where you were in it, which is the opposite of the Library's
+  behaviour on open — deliberate, but the two rules are worth stating together if a third section
+  ever appears.
+- **`RESULT — ` is another hard-coded chrome string**, joining `ENTER — DETAILS`, `ESC — BACK`,
+  `YP-OS 1.0` and the section hint's `TIMELINE` / `LIBRARY`. SPEC §15 wants every on-screen string to
+  come from Sanity; these are diegetic chrome and the question is still open from Phase 4.
+- The `THREE.Clock` deprecation warning and the bundle budget: still open from Phases 1–3.
+- **Verification tip, learned the hard way:** `console-tuning` in `localStorage` is per-origin, so a
+  `pnpm start` on a different port than the last one can render with months-old proportions and
+  colours. Clear it before trusting a screenshot.

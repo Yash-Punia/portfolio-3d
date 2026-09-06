@@ -1,7 +1,12 @@
 import {ConsoleStage} from '@/components/console/ConsoleStage'
-import {isLocalHref, RESUME_FILENAME, resumeHref} from '@/components/console/content'
+import {entryDates, isLocalHref, RESUME_FILENAME, resumeHref} from '@/components/console/content'
 import {client} from '@/sanity/lib/client'
-import {projectsQuery, siteSettingsQuery, socialLinksQuery} from '@/sanity/lib/queries'
+import {
+  projectsQuery,
+  siteSettingsQuery,
+  socialLinksQuery,
+  timelineQuery,
+} from '@/sanity/lib/queries'
 
 /** SPEC §3's own default for `resumeLabel`, used when the field is empty. */
 const RESUME_LABEL = 'Download CV'
@@ -20,17 +25,18 @@ const RESUME_LABEL = 'Download CV'
  * It renders nothing it was not given.
  */
 export default async function Home() {
-  const [settings, socialLinks, projects] = await Promise.all([
+  const [settings, socialLinks, projects, timeline] = await Promise.all([
     client.fetch(siteSettingsQuery, {}, {cache: 'force-cache', next: {tags: ['siteSettings']}}),
     client.fetch(socialLinksQuery, {}, {cache: 'force-cache', next: {tags: ['socialLink']}}),
     client.fetch(projectsQuery, {}, {cache: 'force-cache', next: {tags: ['project']}}),
+    client.fetch(timelineQuery, {}, {cache: 'force-cache', next: {tags: ['timelineEntry']}}),
   ])
 
   const resume = resumeHref(settings)
 
   return (
     <>
-      <ConsoleStage content={{settings, socialLinks, projects}} />
+      <ConsoleStage content={{settings, socialLinks, projects, timeline}} />
 
       <main className="sr-only">
         {settings?.fullName ? <h1>{settings.fullName}</h1> : null}
@@ -66,6 +72,24 @@ export default async function Home() {
                 )}
               </ul>
             ) : null}
+          </article>
+        ))}
+        {/* The timeline's entries, in axis order, for the same reason. */}
+        {timeline.map((entry) => (
+          <article key={entry._id}>
+            {entry.role ? <h3>{entry.role}</h3> : null}
+            {entry.organisation ? <p>{entry.organisation}</p> : null}
+            <p>{entryDates(entry)}</p>
+            {entry.location ? <p>{entry.location}</p> : null}
+            {entry.summary ? <p>{entry.summary}</p> : null}
+            {entry.highlights?.length ? (
+              <ul>
+                {entry.highlights.map((highlight) => (
+                  <li key={highlight}>{highlight}</li>
+                ))}
+              </ul>
+            ) : null}
+            {entry.result ? <p>{entry.result}</p> : null}
           </article>
         ))}
         {socialLinks.length > 0 ? (

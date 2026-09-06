@@ -149,6 +149,15 @@ const FIRMWARE_GROUPS: Group[] = [
     title: 'Detail view',
     controls: [{key: 'fwDetailCoverHeight', label: 'Cover height', min: 60, max: 520, step: 5}],
   },
+  {
+    title: 'Timeline',
+    controls: [
+      {key: 'fwAxisTop', label: 'Space above axis', min: 20, max: 400, step: 2},
+      {key: 'fwDotGap', label: 'Space between dots', min: 60, max: 400, step: 5},
+      {key: 'fwDotSize', label: 'Dot size', min: 4, max: 40, step: 1},
+      {key: 'fwEntryGap', label: 'Space below axis', min: 0, max: 200, step: 2},
+    ],
+  },
 ]
 
 const TABS: {id: string; label: string; groups: Group[]; colours: boolean}[] = [

@@ -2,6 +2,7 @@ import type {
   ProjectsQueryResult,
   SiteSettingsQueryResult,
   SocialLinksQueryResult,
+  TimelineQueryResult,
 } from '@/sanity.types'
 
 /**
@@ -15,11 +16,13 @@ export interface ConsoleContent {
   settings: SiteSettingsQueryResult
   socialLinks: SocialLinksQueryResult
   projects: ProjectsQueryResult
+  timeline: TimelineQueryResult
 }
 
 export type ButtonSlot = 'A' | 'B' | 'X' | 'Y'
 export type SocialLink = SocialLinksQueryResult[number]
 export type Project = ProjectsQueryResult[number]
+export type TimelineEntry = TimelineQueryResult[number]
 
 /** SPEC §14: the CV downloads under a name a recruiter can file. */
 export const RESUME_FILENAME = 'Yash-Punia-Gameplay-Programmer.pdf'
@@ -61,4 +64,29 @@ export function linkForSlot(links: SocialLinksQueryResult, slot: ButtonSlot): So
  */
 export function openLink(url: string) {
   window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+/**
+ * Dates on the timeline. `startDate`/`endDate` are date-only `YYYY-MM-DD`
+ * strings, so they are sliced rather than parsed: `new Date('2022-02-01')` is
+ * UTC midnight and would read as January to anyone west of Greenwich.
+ *
+ * Fixed month names rather than `Intl`, because the same string is rendered on
+ * the server (the hidden landmark) and on the client (the axis), and a locale
+ * that disagreed between the two is a hydration mismatch.
+ */
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** `2022-02-01` → `Feb 2022`. */
+export function monthLabel(date: string | null): string | null {
+  if (!date) return null
+  const month = MONTHS[Number(date.slice(5, 7)) - 1]
+  return month ? `${month} ${date.slice(0, 4)}` : date.slice(0, 4)
+}
+
+/** An entry's span. An open end reads `now` — it is where Yash is right now. */
+export function entryDates(entry: TimelineEntry): string {
+  const start = monthLabel(entry.startDate) ?? ''
+  const end = entry.isCurrent || !entry.endDate ? 'now' : monthLabel(entry.endDate)
+  return end ? `${start} – ${end}` : start
 }

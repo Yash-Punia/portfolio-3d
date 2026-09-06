@@ -92,6 +92,12 @@ export interface Tuning {
   fwBodyFont: number
   /** Height of the cover image at the top of the detail view. */
   fwDetailCoverHeight: number
+  /** Timeline: space above the axis, spacing along it, and the dot size. */
+  fwAxisTop: number
+  fwDotGap: number
+  fwDotSize: number
+  /** Space between the axis and the selected entry's panel below it. */
+  fwEntryGap: number
 }
 
 export const DEFAULT_TUNING: Tuning = {
@@ -146,6 +152,10 @@ export const DEFAULT_TUNING: Tuning = {
   fwMetaFont: 12,
   fwBodyFont: 16,
   fwDetailCoverHeight: 270,
+  fwAxisTop: 150,
+  fwDotGap: 190,
+  fwDotSize: 14,
+  fwEntryGap: 64,
 }
 
 interface TuningState {

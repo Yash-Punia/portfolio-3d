@@ -70,7 +70,7 @@ function useConsoleKeys(content: ConsoleContent) {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
       if (isTyping()) return
 
-      const {isOpen, open, close, isDetailOpen, openDetail, closeDetail, libraryIndex} =
+      const {isOpen, open, close, isDetailOpen, openDetail, closeDetail, libraryIndex, section} =
         useConsole.getState()
 
       // SPEC §8: Escape closes the detail view; with none open, it closes the
@@ -91,11 +91,12 @@ function useConsoleKeys(content: ConsoleContent) {
         }
 
         // Enter opens the selected project; the About tile has nothing to drill
-        // into, so it stays a no-op there rather than opening an empty panel.
+        // into, so it stays a no-op there rather than opening an empty panel —
+        // and neither has a timeline entry, whose detail is already on screen.
         if (event.key === 'Enter' || event.key === ' ') {
           if (document.activeElement !== document.body) return
           event.preventDefault()
-          if (!isDetailOpen && libraryIndex > 0) openDetail()
+          if (!isDetailOpen && section === 'library' && libraryIndex > 0) openDetail()
           return
         }
 
@@ -177,22 +178,44 @@ function useSocialFocus() {
  * is what makes both of them move the selection, at one tile per notch rather
  * than one per frame (SPEC §5, §8).
  */
-function useRailInput(count: number) {
+function useRailInput(railCount: number, timelineCount: number) {
   useEffect(
     () =>
       useInput.subscribe((state, previous) => {
         if (state.tick === previous.tick) return
         const direction = state.held
-        if (direction !== 'left' && direction !== 'right') return
+        if (direction === null) return
 
-        const {isOpen, isDetailOpen, moveLibrary} = useConsole.getState()
-        // Up and down have nowhere to go until Phase 5's timeline, and a detail
-        // view is not a rail.
-        if (!isOpen || isDetailOpen) return
-        moveLibrary(direction === 'left' ? -1 : 1, count)
+        // A detail view is not a rail.
+        if (!useConsole.getState().isOpen || useConsole.getState().isDetailOpen) return
+        move(direction, railCount, timelineCount)
       }),
-    [count],
+    [railCount, timelineCount],
   )
+}
+
+/**
+ * One directional move, from whichever input made it.
+ *
+ * Left and right move within the section on screen; down and up move between
+ * the two (SPEC §8). With no timeline entries published, down has nowhere to go
+ * and does nothing — there is no empty axis to land on (SPEC §3.2).
+ */
+function move(direction: Direction, railCount: number, timelineCount: number) {
+  const {section, setSection, moveLibrary, moveTimeline} = useConsole.getState()
+
+  if (direction === 'down') {
+    if (section === 'library' && timelineCount > 0) setSection('timeline')
+    return
+  }
+  if (direction === 'up') {
+    if (section === 'timeline') setSection('library')
+    return
+  }
+
+  const delta = direction === 'left' ? -1 : 1
+  if (section === 'timeline') moveTimeline(delta, timelineCount)
+  else moveLibrary(delta, railCount)
 }
 
 /** SPEC §8: accumulate, fire on a threshold, then lock so a flick cannot skip. */
@@ -206,13 +229,13 @@ const WHEEL_LOCK_MS = 120
  * for 120ms and whatever inertia arrives during it is discarded, which is what
  * keeps an inertial flick from skipping eight projects.
  */
-function useWheelRail(count: number) {
+function useWheelRail(railCount: number, timelineCount: number) {
   useEffect(() => {
     let accumulated = 0
     let lockedUntil = 0
 
     function onWheel(event: WheelEvent) {
-      const {isOpen, isDetailOpen, moveLibrary} = useConsole.getState()
+      const {isOpen, isDetailOpen} = useConsole.getState()
       if (!isOpen || isDetailOpen) return
 
       const now = performance.now()
@@ -224,14 +247,14 @@ function useWheelRail(count: number) {
       accumulated += Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
       if (Math.abs(accumulated) < WHEEL_THRESHOLD) return
 
-      moveLibrary(accumulated > 0 ? 1 : -1, count)
+      move(accumulated > 0 ? 'right' : 'left', railCount, timelineCount)
       accumulated = 0
       lockedUntil = now + WHEEL_LOCK_MS
     }
 
     window.addEventListener('wheel', onWheel, {passive: true})
     return () => window.removeEventListener('wheel', onWheel)
-  }, [count])
+  }, [railCount, timelineCount])
 }
 
 /** The URL is an external source the server render cannot see. */
@@ -255,10 +278,18 @@ function useTuningFlag() {
  */
 function useAnnouncement(content: ConsoleContent): string {
   const isOpen = useConsole((state) => state.isOpen)
+  const section = useConsole((state) => state.section)
   const index = useConsole((state) => state.libraryIndex)
+  const timelineIndex = useConsole((state) => state.timelineIndex)
   const isDetailOpen = useConsole((state) => state.isDetailOpen)
 
   if (!isOpen) return ''
+
+  if (section === 'timeline') {
+    const entry = content.timeline[timelineIndex]
+    if (!entry) return 'Timeline'
+    return `Timeline, ${entry.role} at ${entry.organisation}`
+  }
 
   const name =
     index === 0
@@ -271,11 +302,12 @@ function useAnnouncement(content: ConsoleContent): string {
 export function ConsoleStage({content}: {content: ConsoleContent}) {
   // The About tile plus one per project (SPEC §8).
   const railCount = content.projects.length + 1
+  const timelineCount = content.timeline.length
 
   useConsoleKeys(content)
   useSocialFocus()
-  useRailInput(railCount)
-  useWheelRail(railCount)
+  useRailInput(railCount, timelineCount)
+  useWheelRail(railCount, timelineCount)
   const tuning = useTuningFlag()
   const announcement = useAnnouncement(content)
 

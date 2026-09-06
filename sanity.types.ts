@@ -404,6 +404,28 @@ export type ProjectsQueryResult = Array<{
   featured: boolean | null
 }>
 
+// Source: sanity/lib/queries.ts
+// Variable: timelineQuery
+// Query: *[_type == "timelineEntry"] | order(select(kind == "work" => 0, 1) asc, startDate desc){  _id,  kind,  organisation,  role,  startDate,  endDate,  isCurrent,  location,  summary,  highlights,  result,  relatedProjects[]->{_id, title, "slug": slug.current}}
+export type TimelineQueryResult = Array<{
+  _id: string
+  kind: 'education' | 'work' | null
+  organisation: string | null
+  role: string | null
+  startDate: string | null
+  endDate: string | null
+  isCurrent: boolean | null
+  location: string | null
+  summary: string | null
+  highlights: Array<string> | null
+  result: string | null
+  relatedProjects: Array<{
+    _id: string
+    title: string | null
+    slug: string | null
+  }> | null
+}>
+
 // Query TypeMap
 import '@sanity/client'
 declare module '@sanity/client' {
@@ -411,5 +433,6 @@ declare module '@sanity/client' {
     '*[_type == "siteSettings"][0]{\n  fullName,\n  title,\n  statusLine,\n  aboutHeadline,\n  aboutBody,\n  resumeLabel,\n  "resumeUrl": resumeFile.asset->url,\n  seo\n}': SiteSettingsQueryResult
     '*[_type == "socialLink"] | order(buttonSlot asc){\n  _id,\n  platform,\n  url,\n  buttonSlot,\n  label\n}': SocialLinksQueryResult
     '*[_type == "project"] | order(order asc){\n  _id,\n  title,\n  "slug": slug.current,\n  order,\n  blurb,\n  description,\n  role,\n  year,\n  engine,\n  tech,\n  platforms,\n  cover,\n  gallery,\n  videoUrl,\n  links[]{label, url},\n  teamSize,\n  featured\n}': ProjectsQueryResult
+    '*[_type == "timelineEntry"] | order(select(kind == "work" => 0, 1) asc, startDate desc){\n  _id,\n  kind,\n  organisation,\n  role,\n  startDate,\n  endDate,\n  isCurrent,\n  location,\n  summary,\n  highlights,\n  result,\n  relatedProjects[]->{_id, title, "slug": slug.current}\n}': TimelineQueryResult
   }
 }

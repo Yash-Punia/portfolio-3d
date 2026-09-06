@@ -35,6 +35,10 @@ export interface FirmwareLayout {
   metaFont: number
   bodyFont: number
   detailCoverHeight: number
+  axisTop: number
+  dotGap: number
+  dotSize: number
+  entryGap: number
 }
 
 export function deriveFirmwareLayout(t: Tuning): FirmwareLayout {
@@ -57,6 +61,10 @@ export function deriveFirmwareLayout(t: Tuning): FirmwareLayout {
     metaFont: t.fwMetaFont,
     bodyFont: t.fwBodyFont,
     detailCoverHeight: t.fwDetailCoverHeight,
+    axisTop: t.fwAxisTop,
+    dotGap: t.fwDotGap,
+    dotSize: t.fwDotSize,
+    entryGap: t.fwEntryGap,
   }
 }
 

@@ -43,3 +43,24 @@ export const projectsQuery = defineQuery(`*[_type == "project"] | order(order as
   teamSize,
   featured
 }`)
+
+/**
+ * SPEC §8: work first, then education, each most-recent-first — the axis runs
+ * leftwards into the past. The group key is written out rather than leaning on
+ * `kind` sorting the right way alphabetically by accident.
+ */
+export const timelineQuery =
+  defineQuery(`*[_type == "timelineEntry"] | order(select(kind == "work" => 0, 1) asc, startDate desc){
+  _id,
+  kind,
+  organisation,
+  role,
+  startDate,
+  endDate,
+  isCurrent,
+  location,
+  summary,
+  highlights,
+  result,
+  relatedProjects[]->{_id, title, "slug": slug.current}
+}`)

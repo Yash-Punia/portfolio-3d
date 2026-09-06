@@ -15,6 +15,13 @@ import {useMediaQuery} from '@/components/console/useMediaQuery'
  * inside it is the whole implementation.
  */
 export type Theme = 'dark' | 'light'
+/** The two firmware sections, stacked vertically (SPEC §8). */
+export type Section = 'library' | 'timeline'
+
+/** No wrap and no bounce: with one item in a rail, left and right are no-ops. */
+function clamp(index: number, count: number): number {
+  return Math.min(Math.max(index, 0), Math.max(count - 1, 0))
+}
 
 interface ConsoleState {
   isOpen: boolean
@@ -29,6 +36,9 @@ interface ConsoleState {
   isBooting: boolean
   hasBooted: boolean
   endBoot: () => void
+  /** Which rail is on screen. Down enters the timeline, up returns (SPEC §8). */
+  section: Section
+  setSection: (section: Section) => void
   /** 0 is the About tile; 1..n are the projects in `order` (SPEC §8). */
   libraryIndex: number
   /**
@@ -37,6 +47,10 @@ interface ConsoleState {
    */
   moveLibrary: (delta: number, count: number) => void
   setLibraryIndex: (index: number) => void
+  /** The same, for the timeline's axis of dots. */
+  timelineIndex: number
+  moveTimeline: (delta: number, count: number) => void
+  setTimelineIndex: (index: number) => void
   isDetailOpen: boolean
   openDetail: () => void
   closeDetail: () => void
@@ -55,17 +69,29 @@ export const useConsole = create<ConsoleState>()(
       // Every open starts the firmware from the top: booting, on the About tile,
       // with no detail view (SPEC §7). A console reopened into someone else's
       // half-finished navigation would read as a page that never closed.
-      open: () => set({isOpen: true, isBooting: true, libraryIndex: 0, isDetailOpen: false}),
+      open: () =>
+        set({
+          isOpen: true,
+          isBooting: true,
+          section: 'library',
+          libraryIndex: 0,
+          timelineIndex: 0,
+          isDetailOpen: false,
+        }),
       close: () => set({isOpen: false, isBooting: false, isDetailOpen: false}),
       isBooting: false,
       hasBooted: false,
       endBoot: () => set({isBooting: false, hasBooted: true}),
+      section: 'library',
+      setSection: (section) => set({section}),
       libraryIndex: 0,
       moveLibrary: (delta, count) =>
-        set((state) => ({
-          libraryIndex: Math.min(Math.max(state.libraryIndex + delta, 0), Math.max(count - 1, 0)),
-        })),
+        set((state) => ({libraryIndex: clamp(state.libraryIndex + delta, count)})),
       setLibraryIndex: (libraryIndex) => set({libraryIndex}),
+      timelineIndex: 0,
+      moveTimeline: (delta, count) =>
+        set((state) => ({timelineIndex: clamp(state.timelineIndex + delta, count)})),
+      setTimelineIndex: (timelineIndex) => set({timelineIndex}),
       isDetailOpen: false,
       openDetail: () => set({isDetailOpen: true}),
       closeDetail: () => set({isDetailOpen: false}),
