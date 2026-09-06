@@ -835,3 +835,57 @@ rule 2). No console errors in either; the only warning is Phase 1's `THREE.Clock
 - **Verification tip, learned the hard way:** `console-tuning` in `localStorage` is per-origin, so a
   `pnpm start` on a different port than the last one can render with months-old proportions and
   colours. Clear it before trusting a screenshot.
+
+### Phase 5a — Menu, section arrows, no About tile
+
+Three changes Yash asked for after seeing Phase 5 on the screen.
+
+- **The About tile is gone from the Library rail.** Index 0 is now the first project, and the rail
+  is projects and nothing else. The name, title and about text move to the left flap's info monitor
+  in a later pass, where they are visible whatever the screen is showing — which is the argument
+  against a tile that had to be scrolled away from. `libraryIndex` shifted by one everywhere it is
+  read: the rail, the detail lookup, the announcement, and the timeline's related-project chips.
+  `aboutHeadline` / `aboutBody` still render in the hidden landmark (SPEC §11.1); nothing on the
+  screen reads them at the moment.
+- **The boot hands over to a menu, not to the Library.** Two buttons, one per half of the screen:
+  `Games / Projects` on top, `Experience` under it. Up and down move the highlight, `Enter` opens
+  it, a click opens that half directly, and hovering a half highlights it. The screens are now a
+  vertical stack — menu, Library, Timeline — that up and down walk.
+- **The stack is one definition.** `neighbours(section, content)` in `content.ts` says where up and
+  down go from each screen, and both the keys and the arrows drawn on the screen read it, so a
+  section that is not reachable cannot be drawn as reachable. `menuOptions()` is the same idea for
+  the menu: a section with nothing published is not offered, is not a neighbour, and its arrow does
+  not render.
+- **`SectionArrow` replaces the small `▾ TIMELINE` hint.** A large accent chevron with the
+  destination's name beside it, above the section for up and below it for down. The up/down axis is
+  the one thing a horizontal rail cannot suggest on its own, which is why it needed to be bigger
+  than a hint.
+- **Two vocabularies for the same screens, deliberately.** The status bar keeps its short caps
+  chrome (`MENU`, `LIBRARY`, `TIMELINE`); the menu and the arrows use readable names
+  (`Games / Projects`, `Experience`, `Menu`) from `SECTION_LABELS`. Both are hard-coded chrome, the
+  same open question as `ENTER — DETAILS` and `YP-OS 1.0`.
+- **On the menu, every direction moves the highlight.** The two halves are stacked, so left and
+  right do what up and down do rather than being swallowed — and the wheel, which maps vertical
+  scroll to `left`/`right`, therefore also works there.
+
+**The education ordering was already correct; the content is what is wrong.** The query sorts
+`select(kind == "work" => 0, 1) asc, startDate desc`, so each group is newest-first — verified
+against the live dataset by splitting it into two multi-entry groups, which came back in date order
+within each. The education group has exactly one member because **`BTech` and `Class 12th` are both
+published with `kind: "work"`**. Setting those two documents to Education in the Studio gives
+Hypemasters → Goldman Sachs → Lucid Labs → Ajna Lens, then MTech → BTech → Class 12th. No code
+change would produce that: nothing in the schema says a BTech is education except the field itself.
+
+### Verified
+
+- Boot ends on the menu with `Games / Projects` highlighted; `↓`/`↑` move between the halves and
+  clamp at both ends; `Enter` and a click both enter the highlighted half.
+- `↑` from the Library returns to the menu, `↓` goes to the Timeline; `↑` from the Timeline returns
+  to the Library. The arrows on screen match, and clicking one switches.
+- `Enter` on the first project now opens its detail — the tile that used to be About no longer
+  swallows it — and `Escape` backs out to the rail, then closes the console.
+- **Zero projects:** the menu offers only `Experience`, `↑` from the Timeline goes to the menu
+  rather than to an empty rail.
+- **Zero timeline entries:** the menu offers only `Games / Projects`, the Library draws only its
+  `▴ Menu` arrow, and `↓` there does nothing.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build` and `prettier --check` all clean.

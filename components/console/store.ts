@@ -15,8 +15,12 @@ import {useMediaQuery} from '@/components/console/useMediaQuery'
  * inside it is the whole implementation.
  */
 export type Theme = 'dark' | 'light'
-/** The two firmware sections, stacked vertically (SPEC §8). */
-export type Section = 'library' | 'timeline'
+/**
+ * The firmware's screens, stacked vertically: the menu the boot hands over to,
+ * the Library under it, the Timeline under that. Up and down walk the stack
+ * (SPEC §8).
+ */
+export type Section = 'menu' | 'library' | 'timeline'
 
 /** No wrap and no bounce: with one item in a rail, left and right are no-ops. */
 function clamp(index: number, count: number): number {
@@ -36,9 +40,13 @@ interface ConsoleState {
   isBooting: boolean
   hasBooted: boolean
   endBoot: () => void
-  /** Which rail is on screen. Down enters the timeline, up returns (SPEC §8). */
+  /** Which screen is showing. Down goes deeper into the stack, up comes back. */
   section: Section
   setSection: (section: Section) => void
+  /** Which half of the menu is highlighted: 0 the top button, 1 the bottom. */
+  menuIndex: number
+  moveMenu: (delta: number, count: number) => void
+  setMenuIndex: (index: number) => void
   /** 0 is the About tile; 1..n are the projects in `order` (SPEC §8). */
   libraryIndex: number
   /**
@@ -66,14 +74,15 @@ export const useConsole = create<ConsoleState>()(
   persist(
     (set) => ({
       isOpen: false,
-      // Every open starts the firmware from the top: booting, on the About tile,
+      // Every open starts the firmware from the top: booting, then the menu,
       // with no detail view (SPEC §7). A console reopened into someone else's
       // half-finished navigation would read as a page that never closed.
       open: () =>
         set({
           isOpen: true,
           isBooting: true,
-          section: 'library',
+          section: 'menu',
+          menuIndex: 0,
           libraryIndex: 0,
           timelineIndex: 0,
           isDetailOpen: false,
@@ -82,8 +91,12 @@ export const useConsole = create<ConsoleState>()(
       isBooting: false,
       hasBooted: false,
       endBoot: () => set({isBooting: false, hasBooted: true}),
-      section: 'library',
+      section: 'menu',
       setSection: (section) => set({section}),
+      menuIndex: 0,
+      moveMenu: (delta, count) =>
+        set((state) => ({menuIndex: clamp(state.menuIndex + delta, count)})),
+      setMenuIndex: (menuIndex) => set({menuIndex}),
       libraryIndex: 0,
       moveLibrary: (delta, count) =>
         set((state) => ({libraryIndex: clamp(state.libraryIndex + delta, count)})),

@@ -1,42 +1,79 @@
 'use client'
 
-import type {ConsoleContent} from '@/components/console/content'
+import {neighbours, SECTION_LABELS, type ConsoleContent} from '@/components/console/content'
 import {useConsole} from '@/components/console/store'
 import {Boot} from '@/components/firmware/Boot'
 import {Detail} from '@/components/firmware/Detail'
 import {useFirmwareLayout} from '@/components/firmware/layout'
 import {LibraryRail} from '@/components/firmware/LibraryRail'
+import {Menu} from '@/components/firmware/Menu'
 import {StatusBar} from '@/components/firmware/StatusBar'
 import {Timeline} from '@/components/firmware/Timeline'
 import {useScreenTheme} from '@/components/firmware/theme'
+import type {Section} from '@/components/console/store'
+
+/** The status bar's own names: short caps chrome, not the readable labels. */
+const STATUS_NAMES: Record<Section, string> = {
+  menu: 'MENU',
+  library: 'LIBRARY',
+  timeline: 'TIMELINE',
+}
 
 /**
- * The section indicator, in the band the rail leaves empty at the bottom of the
- * screen: down enters the timeline, up comes back (SPEC §8). It is a control as
- * well as a sign, because every tile on the screen above it is clickable too.
+ * The way out of a screen, at the edge it leads to: a large chevron and the
+ * name of where it goes. Up sits above the section, down below it, and the pair
+ * of them is what makes the up/down keys discoverable — the joystick's other
+ * axis is not obvious from a rail that only moves sideways.
  *
- * With no timeline entries published there is nowhere to go, so it does not
- * render at all — no empty axis, no dead affordance (SPEC §3.2).
+ * It is a control as well as a sign, because everything else on the screen is
+ * clickable too. Where the stack has no neighbour, `neighbours()` returns none
+ * and nothing renders — no dead affordance (SPEC §3.2).
  */
-function SectionHint({toTimeline, onSwitch}: {toTimeline: boolean; onSwitch: () => void}) {
+function SectionArrow({
+  direction,
+  label,
+  onSwitch,
+}: {
+  direction: 'up' | 'down'
+  label: string
+  onSwitch: () => void
+}) {
   const layout = useFirmwareLayout()
 
   return (
-    <p
+    <div
       onClick={onSwitch}
       style={{
         flex: '0 0 auto',
-        margin: 0,
-        padding: `0 ${layout.railX}px ${Math.round(layout.railX * 0.42)}px`,
-        color: 'var(--screen-muted)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: `${Math.round(layout.railX * 0.3)}px`,
         cursor: 'pointer',
-        fontFamily: 'var(--font-martian-mono), ui-monospace, monospace',
-        fontSize: `${layout.metaFont}px`,
-        letterSpacing: '0.16em',
+        padding: `${Math.round(layout.railX * 0.2)}px 0`,
+        color: 'var(--screen-muted)',
       }}
     >
-      {toTimeline ? '▾  TIMELINE' : '▴  LIBRARY'}
-    </p>
+      <span
+        style={{
+          color: 'var(--screen-accent)',
+          fontSize: `${Math.round(layout.titleFont * 0.8)}px`,
+          lineHeight: 0.7,
+        }}
+      >
+        {direction === 'up' ? '▴' : '▾'}
+      </span>
+      <span
+        style={{
+          fontFamily: 'var(--font-martian-mono), ui-monospace, monospace',
+          fontSize: `${layout.metaFont + 2}px`,
+          letterSpacing: '0.16em',
+          textTransform: 'uppercase',
+        }}
+      >
+        {label}
+      </span>
+    </div>
   )
 }
 
@@ -65,7 +102,8 @@ export function Firmware({content}: {content: ConsoleContent}) {
   const section = useConsole((state) => state.section)
   const setSection = useConsole((state) => state.setSection)
 
-  const project = index > 0 ? (content.projects[index - 1] ?? null) : null
+  const project = content.projects[index] ?? null
+  const {up, down} = neighbours(section, content)
 
   return (
     <div
@@ -84,21 +122,24 @@ export function Firmware({content}: {content: ConsoleContent}) {
         userSelect: 'none',
       }}
     >
-      <StatusBar section={section === 'timeline' ? 'TIMELINE' : 'LIBRARY'} />
+      <StatusBar section={STATUS_NAMES[section]} />
 
-      {/* Keyed so the two sections crossfade into one another. */}
+      {up ? (
+        <SectionArrow direction="up" label={SECTION_LABELS[up]} onSwitch={() => setSection(up)} />
+      ) : null}
+
+      {/* Keyed so the screens crossfade into one another. */}
       <div key={section} style={{display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0}}>
-        {section === 'timeline' ? (
-          <Timeline content={content} />
-        ) : (
-          <LibraryRail content={content} />
-        )}
+        {section === 'menu' ? <Menu content={content} /> : null}
+        {section === 'library' ? <LibraryRail content={content} /> : null}
+        {section === 'timeline' ? <Timeline content={content} /> : null}
       </div>
 
-      {content.timeline.length > 0 ? (
-        <SectionHint
-          toTimeline={section === 'library'}
-          onSwitch={() => setSection(section === 'library' ? 'timeline' : 'library')}
+      {down ? (
+        <SectionArrow
+          direction="down"
+          label={SECTION_LABELS[down]}
+          onSwitch={() => setSection(down)}
         />
       ) : null}
 

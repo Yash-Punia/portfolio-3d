@@ -5,7 +5,10 @@ import {useEffect, useSyncExternalStore} from 'react'
 
 import {
   linkForSlot,
+  menuOptions,
+  neighbours,
   openLink,
+  SECTION_LABELS,
   type ButtonSlot,
   type ConsoleContent,
 } from '@/components/console/content'
@@ -90,13 +93,19 @@ function useConsoleKeys(content: ConsoleContent) {
           return
         }
 
-        // Enter opens the selected project; the About tile has nothing to drill
-        // into, so it stays a no-op there rather than opening an empty panel —
-        // and neither has a timeline entry, whose detail is already on screen.
+        // Enter takes the highlighted menu half, or opens the selected
+        // project. A timeline entry has nothing to drill into — its detail is
+        // already on screen — so it stays a no-op there.
         if (event.key === 'Enter' || event.key === ' ') {
           if (document.activeElement !== document.body) return
           event.preventDefault()
-          if (!isDetailOpen && section === 'library' && libraryIndex > 0) openDetail()
+          if (isDetailOpen) return
+          if (section === 'menu') {
+            const target = menuOptions(content)[useConsole.getState().menuIndex]
+            if (target) useConsole.getState().setSection(target)
+          } else if (section === 'library' && content.projects[libraryIndex]) {
+            openDetail()
+          }
           return
         }
 
@@ -178,7 +187,7 @@ function useSocialFocus() {
  * is what makes both of them move the selection, at one tile per notch rather
  * than one per frame (SPEC §5, §8).
  */
-function useRailInput(railCount: number, timelineCount: number) {
+function useRailInput(content: ConsoleContent) {
   useEffect(
     () =>
       useInput.subscribe((state, previous) => {
@@ -188,34 +197,38 @@ function useRailInput(railCount: number, timelineCount: number) {
 
         // A detail view is not a rail.
         if (!useConsole.getState().isOpen || useConsole.getState().isDetailOpen) return
-        move(direction, railCount, timelineCount)
+        move(direction, content)
       }),
-    [railCount, timelineCount],
+    [content],
   )
 }
 
 /**
  * One directional move, from whichever input made it.
  *
- * Left and right move within the section on screen; down and up move between
- * the two (SPEC §8). With no timeline entries published, down has nowhere to go
- * and does nothing — there is no empty axis to land on (SPEC §3.2).
+ * Up and down walk the stack of screens — menu, Library, Timeline — through the
+ * one `neighbours()` definition the arrows on screen also draw themselves from.
+ * Left and right move within the rail showing, except on the menu, where the
+ * two halves are stacked and every direction moves the highlight: a menu that
+ * ignored a sideways nudge would feel broken (SPEC §8).
  */
-function move(direction: Direction, railCount: number, timelineCount: number) {
-  const {section, setSection, moveLibrary, moveTimeline} = useConsole.getState()
+function move(direction: Direction, content: ConsoleContent) {
+  const {section, setSection, moveMenu, moveLibrary, moveTimeline} = useConsole.getState()
+  const delta = direction === 'up' || direction === 'left' ? -1 : 1
 
-  if (direction === 'down') {
-    if (section === 'library' && timelineCount > 0) setSection('timeline')
-    return
-  }
-  if (direction === 'up') {
-    if (section === 'timeline') setSection('library')
+  if (section === 'menu') {
+    moveMenu(delta, menuOptions(content).length)
     return
   }
 
-  const delta = direction === 'left' ? -1 : 1
-  if (section === 'timeline') moveTimeline(delta, timelineCount)
-  else moveLibrary(delta, railCount)
+  if (direction === 'up' || direction === 'down') {
+    const target = neighbours(section, content)[direction]
+    if (target) setSection(target)
+    return
+  }
+
+  if (section === 'timeline') moveTimeline(delta, content.timeline.length)
+  else moveLibrary(delta, content.projects.length)
 }
 
 /** SPEC §8: accumulate, fire on a threshold, then lock so a flick cannot skip. */
@@ -229,7 +242,7 @@ const WHEEL_LOCK_MS = 120
  * for 120ms and whatever inertia arrives during it is discarded, which is what
  * keeps an inertial flick from skipping eight projects.
  */
-function useWheelRail(railCount: number, timelineCount: number) {
+function useWheelRail(content: ConsoleContent) {
   useEffect(() => {
     let accumulated = 0
     let lockedUntil = 0
@@ -247,14 +260,14 @@ function useWheelRail(railCount: number, timelineCount: number) {
       accumulated += Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
       if (Math.abs(accumulated) < WHEEL_THRESHOLD) return
 
-      move(accumulated > 0 ? 'right' : 'left', railCount, timelineCount)
+      move(accumulated > 0 ? 'right' : 'left', content)
       accumulated = 0
       lockedUntil = now + WHEEL_LOCK_MS
     }
 
     window.addEventListener('wheel', onWheel, {passive: true})
     return () => window.removeEventListener('wheel', onWheel)
-  }, [railCount, timelineCount])
+  }, [content])
 }
 
 /** The URL is an external source the server render cannot see. */
@@ -279,11 +292,17 @@ function useTuningFlag() {
 function useAnnouncement(content: ConsoleContent): string {
   const isOpen = useConsole((state) => state.isOpen)
   const section = useConsole((state) => state.section)
+  const menuIndex = useConsole((state) => state.menuIndex)
   const index = useConsole((state) => state.libraryIndex)
   const timelineIndex = useConsole((state) => state.timelineIndex)
   const isDetailOpen = useConsole((state) => state.isDetailOpen)
 
   if (!isOpen) return ''
+
+  if (section === 'menu') {
+    const option = menuOptions(content)[menuIndex]
+    return option ? `Menu, ${SECTION_LABELS[option]}` : 'Menu'
+  }
 
   if (section === 'timeline') {
     const entry = content.timeline[timelineIndex]
@@ -291,23 +310,16 @@ function useAnnouncement(content: ConsoleContent): string {
     return `Timeline, ${entry.role} at ${entry.organisation}`
   }
 
-  const name =
-    index === 0
-      ? (content.settings?.aboutHeadline ?? 'About')
-      : (content.projects[index - 1]?.title ?? '')
+  const name = content.projects[index]?.title ?? ''
 
   return isDetailOpen ? `${name}, details` : `Library, ${name}`
 }
 
 export function ConsoleStage({content}: {content: ConsoleContent}) {
-  // The About tile plus one per project (SPEC §8).
-  const railCount = content.projects.length + 1
-  const timelineCount = content.timeline.length
-
   useConsoleKeys(content)
   useSocialFocus()
-  useRailInput(railCount, timelineCount)
-  useWheelRail(railCount, timelineCount)
+  useRailInput(content)
+  useWheelRail(content)
   const tuning = useTuningFlag()
   const announcement = useAnnouncement(content)
 

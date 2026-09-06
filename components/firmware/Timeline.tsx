@@ -124,11 +124,11 @@ function Entry({entry, projects}: {entry: TimelineEntry; projects: ConsoleConten
 
   const meta = [entry.organisation, entryDates(entry), entry.location].filter(Boolean)
 
-  // A chip jumps to the project in the Library rail, where index 0 is About
-  // (SPEC §8). One that is not in the rail has nowhere to jump to.
+  // A chip jumps to the project's place in the Library rail (SPEC §8). One that
+  // is not in the rail has nowhere to jump to.
   const chips = (entry.relatedProjects ?? []).flatMap((related) => {
-    const position = projects.findIndex((project) => project._id === related._id)
-    return position < 0 ? [] : [{id: related._id, title: related.title, index: position + 1}]
+    const index = projects.findIndex((project) => project._id === related._id)
+    return index < 0 ? [] : [{id: related._id, title: related.title, index}]
   })
 
   return (

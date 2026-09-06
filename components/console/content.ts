@@ -4,6 +4,7 @@ import type {
   SocialLinksQueryResult,
   TimelineQueryResult,
 } from '@/sanity.types'
+import type {Section} from '@/components/console/store'
 
 /**
  * Everything the console renders that came from Sanity, passed down the tree as
@@ -17,6 +18,47 @@ export interface ConsoleContent {
   socialLinks: SocialLinksQueryResult
   projects: ProjectsQueryResult
   timeline: TimelineQueryResult
+}
+
+/**
+ * What each screen is called where the visitor is offered it — on the menu's
+ * two buttons and on the arrows that walk between them. The status bar has its
+ * own short caps names; these are the readable ones.
+ *
+ * Chrome rather than content, like the status bar's own strings.
+ */
+export const SECTION_LABELS: Record<Section, string> = {
+  menu: 'Menu',
+  library: 'Games / Projects',
+  timeline: 'Experience',
+}
+
+/**
+ * The destinations the post-boot menu offers, top half then bottom half. A
+ * section with nothing published is not offered: the menu is the way in, so an
+ * option that led to an empty screen would be a dead end (SPEC §3.2).
+ */
+export function menuOptions(content: ConsoleContent): Section[] {
+  const options: Section[] = []
+  if (content.projects.length > 0) options.push('library')
+  if (content.timeline.length > 0) options.push('timeline')
+  return options
+}
+
+/**
+ * Where up and down go from a screen — the one definition of the stack, read by
+ * both the arrow keys and the arrows drawn on the screen so the two cannot
+ * disagree. A section with nothing in it is not a neighbour.
+ */
+export function neighbours(
+  section: Section,
+  content: ConsoleContent,
+): {up: Section | null; down: Section | null} {
+  if (section === 'menu') return {up: null, down: null}
+  if (section === 'library') {
+    return {up: 'menu', down: content.timeline.length > 0 ? 'timeline' : null}
+  }
+  return {up: content.projects.length > 0 ? 'library' : 'menu', down: null}
 }
 
 export type ButtonSlot = 'A' | 'B' | 'X' | 'Y'

@@ -9,10 +9,11 @@ import {useFirmwareLayout} from '@/components/firmware/layout'
 import {urlFor} from '@/sanity/lib/image'
 
 /**
- * The Library rail (SPEC §8). One horizontal row: the About tile at index 0,
- * then the projects in `order`. Moving right from About enters the games, which
- * is what makes About prompt you to go across rather than sitting on a screen of
- * its own (SPEC §16.1, confirmed).
+ * The Library rail (SPEC §8). One horizontal row of projects in `order`.
+ *
+ * The About tile that used to sit at index 0 is gone: that information belongs
+ * on the left flap's info monitor, where it is visible whatever the screen is
+ * showing, so the rail is projects and nothing else.
  *
  * The rail translates so the selected tile always sits at the same place. The
  * screen is close to square, so only two or three tiles are ever in frame and
@@ -76,44 +77,6 @@ function Tile({
 }
 
 /**
- * Index 0: no cover art (SPEC §8). It carries the name, not the headline — the
- * headline is already the heading directly below the rail when this tile is
- * selected, and a tile that repeats the sentence under it reads as a bug.
- */
-function AboutFace({settings}: {settings: ConsoleContent['settings']}) {
-  const layout = useFirmwareLayout()
-
-  return (
-    <div
-      style={{
-        height: '100%',
-        padding: '18px 20px',
-        boxSizing: 'border-box',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'flex-end',
-        background: 'color-mix(in srgb, var(--screen-accent) 14%, var(--screen-bg))',
-        border: '1px solid color-mix(in srgb, var(--screen-accent) 55%, transparent)',
-        borderRadius: '4px',
-      }}
-    >
-      <p
-        style={{
-          margin: 0,
-          color: 'var(--screen-fg)',
-          fontSize: `${layout.tileFont}px`,
-          fontStretch: '118%',
-          fontWeight: 600,
-          lineHeight: 1.1,
-        }}
-      >
-        {settings?.fullName ?? 'About'}
-      </p>
-    </div>
-  )
-}
-
-/**
  * A project's cover, or — when the field is empty — a solid accent-tinted tile
  * with the title set in Archivo Expanded. Deliberate, not a broken image
  * (SPEC §3.2).
@@ -169,12 +132,12 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
   const reducedMotion = useReducedMotion()
   const layout = useFirmwareLayout()
 
-  const {settings, projects} = content
-  const selected = index > 0 ? (projects[index - 1] ?? null) : null
+  const {projects} = content
+  const selected = projects[index] ?? null
 
   /** A click selects; a click on what is already selected drills in. */
   const select = (target: number) => {
-    if (target === index && target > 0) {
+    if (target === index) {
       openDetail()
       return
     }
@@ -194,16 +157,12 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
             ...transition(reducedMotion, 'transform'),
           }}
         >
-          <Tile selected={index === 0} reducedMotion={reducedMotion} onSelect={() => select(0)}>
-            <AboutFace settings={settings} />
-          </Tile>
-
           {projects.map((project, position) => (
             <Tile
               key={project._id}
-              selected={index === position + 1}
+              selected={index === position}
               reducedMotion={reducedMotion}
-              onSelect={() => select(position + 1)}
+              onSelect={() => select(position)}
             >
               <ProjectFace project={project} />
             </Tile>
@@ -216,29 +175,29 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
         crossfades as a whole rather than the words changing under a static
         heading.
       */}
-      <div
-        key={index}
-        style={{
-          padding: `${layout.blockGap}px ${layout.railX}px 0`,
-          maxWidth: '62ch',
-          animation: reducedMotion ? undefined : 'firmware-fade 240ms ease-out',
-        }}
-      >
-        <h2
+      {selected ? (
+        <div
+          key={index}
           style={{
-            margin: 0,
-            color: 'var(--screen-fg)',
-            fontSize: `${layout.titleFont}px`,
-            fontStretch: '125%',
-            fontWeight: 600,
-            letterSpacing: '-0.015em',
-            lineHeight: 1.02,
+            padding: `${layout.blockGap}px ${layout.railX}px 0`,
+            maxWidth: '62ch',
+            animation: reducedMotion ? undefined : 'firmware-fade 240ms ease-out',
           }}
         >
-          {selected ? selected.title : (settings?.aboutHeadline ?? settings?.fullName)}
-        </h2>
+          <h2
+            style={{
+              margin: 0,
+              color: 'var(--screen-fg)',
+              fontSize: `${layout.titleFont}px`,
+              fontStretch: '125%',
+              fontWeight: 600,
+              letterSpacing: '-0.015em',
+              lineHeight: 1.02,
+            }}
+          >
+            {selected.title}
+          </h2>
 
-        {selected ? (
           <p
             style={{
               margin: `${Math.round(layout.textGap * 0.85)}px 0 0`,
@@ -250,21 +209,19 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
           >
             {[selected.year, selected.role, selected.engine].filter(Boolean).join('   /   ')}
           </p>
-        ) : null}
 
-        <p
-          style={{
-            margin: `${layout.textGap}px 0 0`,
-            color: 'var(--screen-fg)',
-            fontSize: `${layout.bodyFont}px`,
-            lineHeight: 1.5,
-          }}
-        >
-          {selected ? selected.blurb : settings?.aboutBody}
-        </p>
+          <p
+            style={{
+              margin: `${layout.textGap}px 0 0`,
+              color: 'var(--screen-fg)',
+              fontSize: `${layout.bodyFont}px`,
+              lineHeight: 1.5,
+            }}
+          >
+            {selected.blurb}
+          </p>
 
-        {/* Says what happens, not marketing copy (SPEC §10). */}
-        {selected ? (
+          {/* Says what happens, not marketing copy (SPEC §10). */}
           <p
             style={{
               margin: `${Math.round(layout.textGap * 1.5)}px 0 0`,
@@ -276,8 +233,8 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
           >
             ENTER — DETAILS
           </p>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </div>
   )
 }
