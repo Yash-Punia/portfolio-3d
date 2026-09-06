@@ -282,6 +282,68 @@ function useWheelRail(content: ConsoleContent) {
   }, [content])
 }
 
+/** A finger has to travel this far before it is a swipe and not a tap. */
+const SWIPE_PX = 44
+
+/**
+ * SPEC §8's touch mappings: swipe left/right to move within the rail, up/down
+ * to change section. The same `move()` the keys, the stick and the wheel go
+ * through — a swipe is only another way of naming a direction.
+ *
+ * Carousel-natural rather than scroll-natural: the content follows the finger,
+ * so swiping left brings the next project in from the right. The opposite
+ * convention is one sign flip if it reads wrong on a real device.
+ *
+ * A gesture that starts on the control overlay is dropped, so dragging off the
+ * D-pad cannot also move the rail. Nothing here calls `preventDefault`, so the
+ * taps the firmware already handles — a tile to select, a tile again to drill
+ * in, `BACK` to come out — keep working, and the detail view stays scrollable.
+ */
+function useTouchRail(content: ConsoleContent, enabled: boolean) {
+  useEffect(() => {
+    if (!enabled) return
+
+    let start: {x: number; y: number} | null = null
+
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target
+      start =
+        event.pointerType === 'mouse' ||
+        (target instanceof Element && target.closest('[data-console-overlay]'))
+          ? null
+          : {x: event.clientX, y: event.clientY}
+    }
+
+    function onPointerUp(event: PointerEvent) {
+      const from = start
+      start = null
+      if (!from) return
+
+      // A detail view is not a rail, and neither is a closed console.
+      const {isOpen, isDetailOpen} = useConsole.getState()
+      if (!isOpen || isDetailOpen) return
+
+      const x = event.clientX - from.x
+      const y = event.clientY - from.y
+
+      // The dominant axis wins outright: a diagonal drag should do one thing.
+      if (Math.abs(x) > Math.abs(y)) {
+        if (Math.abs(x) > SWIPE_PX) move(x < 0 ? 'right' : 'left', content)
+      } else if (Math.abs(y) > SWIPE_PX) {
+        move(y < 0 ? 'down' : 'up', content)
+      }
+    }
+
+    window.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('pointerup', onPointerUp)
+
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('pointerup', onPointerUp)
+    }
+  }, [content, enabled])
+}
+
 /**
  * The stage behind the console follows the screen's theme.
  *
@@ -353,6 +415,8 @@ export function ConsoleStage({content}: {content: ConsoleContent}) {
   const announcement = useAnnouncement(content)
   const mobile = useIsMobile()
   const isOpen = useConsole((state) => state.isOpen)
+
+  useTouchRail(content, mobile)
 
   return (
     <div className="fixed inset-0">
