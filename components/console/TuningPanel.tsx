@@ -88,10 +88,10 @@ const CONSOLE_GROUPS: Group[] = [
     ],
   },
   {
-    title: 'Power slider',
+    title: 'Theme toggle',
     controls: [
-      {key: 'sliderY', label: 'Height', min: -2.5, max: 2.5, step: 0.01},
-      {key: 'sliderWidth', label: 'Width', min: 0.15, max: 1.5, step: 0.01},
+      {key: 'toggleY', label: 'Depth below top edge', min: 0.1, max: 2, step: 0.02},
+      {key: 'toggleWidth', label: 'Width', min: 0.2, max: 1.4, step: 0.01},
     ],
   },
   {

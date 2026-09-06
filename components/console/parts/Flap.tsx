@@ -11,6 +11,7 @@ import {FaceButtons} from '@/components/console/parts/FaceButtons'
 import {InfoMonitor} from '@/components/console/parts/InfoMonitor'
 import {Joystick} from '@/components/console/parts/Joystick'
 import {CloseButton} from '@/components/console/parts/CloseButton'
+import {ThemeToggle} from '@/components/console/parts/ThemeToggle'
 import {useSpec} from '@/components/console/spec'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
@@ -193,6 +194,7 @@ export function Flap({side, content}: {side: FlapSide; content: ConsoleContent})
           </>
         ) : (
           <>
+            <ThemeToggle />
             <FaceButtons socialLinks={content.socialLinks} />
             <CloseButton />
           </>

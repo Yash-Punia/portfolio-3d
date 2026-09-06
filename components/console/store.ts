@@ -63,7 +63,7 @@ interface ConsoleState {
   openDetail: () => void
   closeDetail: () => void
   /**
-   * `null` until the power slider is touched, and the visitor's system
+   * `null` until the theme toggle is touched, and the visitor's system
    * preference until then (SPEC §9). Read it through `useTheme()`.
    */
   theme: Theme | null
@@ -122,8 +122,8 @@ export const useConsole = create<ConsoleState>()(
 )
 
 /**
- * The screen theme in force: the slider's choice if it has been made, otherwise
- * `prefers-color-scheme`. Once the visitor touches the slider it is the source
+ * The screen theme in force: the toggle's choice if it has been made, otherwise
+ * `prefers-color-scheme`. Once the visitor touches the toggle it is the source
  * of truth (SPEC §9), which is what the `null` in the store records.
  */
 export function useTheme(): Theme {

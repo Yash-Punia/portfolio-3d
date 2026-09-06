@@ -103,7 +103,7 @@ export function Console({content}: {content: ConsoleContent}) {
       rotation-y={pose.yaw}
       /*
         Chassis meshes reach this by bubbling. The interactive ones — buttons,
-        the joystick, the slider, the screen — stop their pointerdown here
+        the joystick, the toggle, the screen — stop their pointerdown here
         (SPEC §5: a drag starting on those does not rotate the model). A closed
         flap deliberately does not: §5 wants a shaky tap on a door to still open
         it, which is the flap's own 6px threshold, not a veto on dragging.

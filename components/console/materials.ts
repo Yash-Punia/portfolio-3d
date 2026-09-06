@@ -44,7 +44,7 @@ export function deriveMaterials(t: Tuning): Materials {
     bezel: {color: t.bezelColor, roughness: 0.35, metalness: 0.05},
     /**
      * Red accents. SPEC §4: the centre seam strip, a hinge detail, the joystick
-     * collar ring and the power-slider track. Nowhere else.
+     * collar ring and the theme toggle's channel. Nowhere else.
      */
     accent: {color: t.accentColor, roughness: 0.4, metalness: 0.05},
     /** Button caps — off-white, not pure white. */

@@ -25,9 +25,8 @@ const BUTTON_TRAVEL = 0.018
 /** SPEC §5: the joystick tilts to ~18°, with a deadzone of 25% of its radius. */
 const JOYSTICK_MAX_TILT = (18 * Math.PI) / 180
 const JOYSTICK_DEADZONE = 0.25
-const SLIDER_DEPTH = 0.02
+const TOGGLE_DEPTH = 0.026
 /** SPEC §5: the nub travels ~60% of its housing width, so ±30% from centre. */
-const SLIDER_TRAVEL_FRACTION = 0.3
 
 export interface Dimensions {
   body: {width: number; height: number; depth: number; radius: number}
@@ -73,18 +72,16 @@ export interface Dimensions {
     ringRadius: number
     ringTube: number
   }
-  /** Power slider on the body's lower bezel, with its LED. */
-  slider: {
+  /** Theme toggle at the top of the right flap's inner face. */
+  toggle: {
     y: number
     width: number
     height: number
     depth: number
-    nubWidth: number
-    nubHeight: number
-    nubDepth: number
+    channelDepth: number
+    knobRadius: number
+    knobHeight: number
     travel: number
-    ledRadius: number
-    ledOffset: number
   }
   /** Inner face of a flap, in flap-local space — where the controls sit. */
   faceZ: number
@@ -182,17 +179,18 @@ export function deriveDimensions(t: Tuning): Dimensions {
       ringRadius: t.abxyRadius * 1.72,
       ringTube: 0.013,
     },
-    slider: {
-      y: t.sliderY,
-      width: t.sliderWidth,
-      height: t.sliderWidth * 0.3,
-      depth: SLIDER_DEPTH,
-      nubWidth: t.sliderWidth * 0.3,
-      nubHeight: t.sliderWidth * 0.24,
-      nubDepth: 0.03,
-      travel: t.sliderWidth * SLIDER_TRAVEL_FRACTION,
-      ledRadius: t.sliderWidth * 0.05,
-      ledOffset: t.sliderWidth * 0.74,
+    toggle: {
+      // Measured down from the flap's top edge, the way the close button is
+      // measured up from its bottom one.
+      y: flapHeight / 2 - t.toggleY,
+      width: t.toggleWidth,
+      height: t.toggleWidth * 0.44,
+      depth: TOGGLE_DEPTH,
+      channelDepth: 0.008,
+      knobRadius: t.toggleWidth * 0.17,
+      knobHeight: 0.05,
+      // The knob's two detents sit a knob's width in from each end.
+      travel: t.toggleWidth * 0.5,
     },
     faceZ: -t.flapDepth / 2,
     z: {

@@ -8,7 +8,6 @@ import type {ConsoleContent} from '@/components/console/content'
 import {usePanelGeometry, type PanelSpec} from '@/components/console/geometry'
 import {useSpec} from '@/components/console/spec'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
-import {PowerSlider} from '@/components/console/parts/PowerSlider'
 import {Screen} from '@/components/console/parts/Screen'
 import {useConsole, useTheme} from '@/components/console/store'
 
@@ -54,7 +53,7 @@ export function Body({content}: {content: ConsoleContent}) {
   const reducedMotion = useReducedMotion()
   const theme = useTheme()
   const glass = useRef<MeshPhysicalMaterial>(null)
-  // The power slider flips this, and nothing else on the chassis (SPEC §5).
+  // The theme toggle flips this, and nothing else on the chassis (SPEC §5).
   const on = useMemo(() => new Color(m.screenOn[theme]), [m.screenOn, theme])
   const off = useMemo(() => new Color(m.screenOff), [m.screenOff])
 
@@ -104,8 +103,6 @@ export function Body({content}: {content: ConsoleContent}) {
       </mesh>
 
       <Screen content={content} />
-
-      <PowerSlider />
     </group>
   )
 }

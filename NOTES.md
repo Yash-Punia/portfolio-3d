@@ -889,3 +889,54 @@ change would produce that: nothing in the schema says a BTech is education excep
 - **Zero timeline entries:** the menu offers only `Games / Projects`, the Library draws only its
   `▴ Menu` arrow, and `↓` there does nothing.
 - `pnpm typecheck`, `pnpm lint`, `pnpm build` and `prettier --check` all clean.
+
+### Phase 5b — The power slider becomes a theme toggle on the right flap
+
+SPEC §4 and §5 put a DS-style power slider on the body's lower bezel. Yash asked for it to move to
+the top of the right flap as a physical toggle, so `PowerSlider.tsx` is gone and
+`parts/ThemeToggle.tsx` takes its place.
+
+- **Where "the top side of the right panel" landed.** On the flap's **inner face**, above the ABXY
+  cluster — not on its top edge. The camera is orthographic and dead-on (SPEC §4), so a control on
+  an upward-facing edge would be a line of pixels nobody could aim at. The toggle now mirrors the
+  close button: `closeButtonY` measures up from the flap's bottom edge, `toggleY` measures down
+  from its top one.
+- **The form is a switch, not a slider.** A capsule housing in bezel black, an accent channel
+  running its length, and a knob that throws between two detents on the same firm
+  `{tension: 900, friction: 30}` spring the slider used. Thrown right with the channel lit is dark;
+  thrown left with it all but out is light — which is how a "dark mode" switch reads everywhere
+  else, and which folds in the signal SPEC §5 wanted a separate LED beside the track for. The LED
+  is gone with the track.
+- **The knob is a flattened sphere**, the trick the joystick cap already uses: a flat disc under
+  this scene's key light shades exactly like the housing behind it, and the curve is the whole of
+  what reads as something you could push.
+- **Drag-to-throw is gone; it is a click now.** The slider carried ~35 lines that turned a pointer
+  drag past a quarter of its travel into a theme change, including the orthographic-zoom arithmetic
+  that converted world travel into a pixel threshold. A switch is clicked. If dragging one is ever
+  wanted back, that code is in `PowerSlider.tsx` at commit 3437be6.
+- **Built +X-right, +Z-out like its neighbours.** The group is turned through π at `d.faceZ`, the
+  same as the ABXY cluster and the joystick, so nothing in it has to reason about the mirroring an
+  open door applies to that face.
+- `sliderY` / `sliderWidth` in the tuning are replaced by `toggleY` / `toggleWidth`, and the panel's
+  "Power slider" group is now "Theme toggle". The `slider` block in `dimensions.ts` is a `toggle`
+  block; nothing else read it.
+
+### Verified
+
+- Clicked in a real browser at 800×450 and screenshotted: the knob throws left and the channel goes
+  dark as the screen, the info monitor and the firmware all turn light; clicking again throws it
+  back. Both directions, both themes.
+- The cursor becomes a pointer over the switch only while the console is open, and is dropped when
+  the flap carries it away.
+- A press on the switch does not drag the console round — its `pointerdown` is swallowed, like the
+  joystick's and the close button's.
+- The body's lower bezel is now bare and the closed console is unchanged.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build` and `prettier --check` all clean.
+
+### Known issues / open risks
+
+- **The accent channel is painted, so it stays green in light mode**, just unlit. Against the
+  chassis that reads as a painted channel rather than a bug, but if the light theme ever wants a
+  quieter switch, the channel's material is the one place to change.
+- SPEC §4's list of permitted accent surfaces named the power-slider track; the toggle's channel
+  takes that slot, so the count of red (here: tuned green) accents on the object is unchanged.
