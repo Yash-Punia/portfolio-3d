@@ -45,36 +45,41 @@ export interface FirmwareLayout {
 /**
  * The panel's own values on a phone (SPEC §6).
  *
- * The desktop panel is authored at 900px and lands on a ~560px glass; the
- * mobile one lands on ~350px. Shrinking the desktop numbers by a single factor
- * would put body text at 6px — and raising the factor to fix that clips the
- * stack, because the panel's height follows the screen's aspect and does not
- * grow with it. The ratios have to differ per value: type shrinks by about a
- * fifth, whitespace by four fifths. So the mobile panel is re-authored rather
- * than scaled, and it is a table because that is all it is.
+ * The desktop panel is authored at 900px and lands on a ~560px glass; on a
+ * phone the whole console is in frame and the glass is nearer 315px. Shrinking
+ * the desktop numbers by a single factor would put body text at 6px — and
+ * raising the factor to fix that clips the stack, because the panel's height
+ * follows the screen's aspect and does not grow with it. The ratios have to
+ * differ per value: type shrinks by about a fifth, whitespace by four fifths.
+ * So the mobile panel is re-authored rather than scaled, and it is a table
+ * because that is all it is.
+ *
+ * `fwPanelWidth` is set close to that 315px so the panel is scaled by roughly
+ * one on the way to the glass and the sizes below are, near enough, the sizes
+ * that reach the visitor's eye.
  *
  * ponytail: a const, dialled by editing at 390px with the dev server hot
  * reloading. It moves into the tuning store the day it needs live knobs.
  */
 const MOBILE: Partial<Tuning> = {
-  fwPanelWidth: 360,
-  fwStatusHeight: 30,
+  fwPanelWidth: 320,
+  fwStatusHeight: 28,
   fwStatusFont: 10,
-  fwRailX: 20,
-  fwRailTop: 16,
-  fwTileWidth: 170,
-  fwTileHeight: 96,
-  fwTileGap: 20,
-  fwBlockGap: 18,
-  fwTextGap: 8,
+  fwRailX: 18,
+  fwRailTop: 14,
+  fwTileWidth: 150,
+  fwTileHeight: 84,
+  fwTileGap: 18,
+  fwBlockGap: 16,
+  fwTextGap: 7,
   fwTitleFont: 22,
-  fwMetaFont: 10,
-  fwBodyFont: 13,
-  fwDetailCoverHeight: 96,
-  fwAxisTop: 40,
-  fwDotGap: 90,
+  fwMetaFont: 11,
+  fwBodyFont: 14,
+  fwDetailCoverHeight: 88,
+  fwAxisTop: 36,
+  fwDotGap: 82,
   fwDotSize: 10,
-  fwEntryGap: 24,
+  fwEntryGap: 22,
 }
 
 export function deriveFirmwareLayout(tuning: Tuning, mobile = false): FirmwareLayout {

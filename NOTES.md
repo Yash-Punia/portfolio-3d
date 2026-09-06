@@ -1158,3 +1158,101 @@ desktop moved:
   labels failing AA, organisation names clipping mid-word, and the detail panel scrolling with no
   visible affordance — which is more noticeable on a phone than it was on a desktop.
 - `frameloop="always"` still renders the whole scene while open on a phone. SPEC §12 / Phase 8.
+
+### Phase 6a — The phone is the handheld
+
+Phase 6 zoomed the camera onto the glass and redrew the flap furniture as a DOM overlay, because
+the flaps were off-frame. Yash asked for the opposite: keep the object whole, turn it sideways, and
+let the visitor turn the phone to match. A handheld should be held.
+
+So the overlay is gone — the D-pad, the ABXY cluster, the CV pill, the theme cap and the close cap
+are all deleted, along with the fullscreen firmware layer they sat around. The controls people press
+on a phone are now the same meshes they press on a desktop.
+
+- **`MobileConsole.tsx` is deleted** (439 lines), and with it the second firmware mount. `Screen`
+  and `InfoMonitor` mount their `<Html transform>` at every width again, so SPEC §7's "one
+  implementation, two mounts" is back to one mount. The glass is part of the object, so the panel
+  rides the object's matrix and the quarter turn comes free.
+- **The glyph split is reverted.** `glyphPaths.ts` existed so the three-free DOM overlay could draw
+  the same marks; with no overlay there is no second consumer, and a module that exists for a
+  deleted reason is worse than the duplication it prevented. `glyphs.ts` and `FaceButtons` are back
+  to what they were at 22170be.
+
+**The quarter turn.** `Console` springs `rotation-z` to 90° when the console is open on an upright
+phone, and back to 0 when it closes. Closed, the console still stands portrait and centred — the
+first thing anyone sees is unchanged. The turn on open _is_ the instruction to turn the phone;
+nothing tells the visitor to, because a thing rotating in your hand is a clearer instruction than a
+sentence.
+
+- **Counter-clockwise, so the phone is turned clockwise to follow it.** That puts the left flap —
+  the info monitor and the joystick — under the left hand and ABXY under the right, which is the
+  grip the object was drawn for. Turning the other way would hand you a console upside down. One
+  sign flip if it reads wrong on a real device.
+- **Auto-rotate needs no orientation API.** A phone that has already rotated to landscape has a
+  viewport wider than it is tall, and `isPortraitPhone` is false there, so the console does not
+  turn — the browser has done the turning. That is the whole of the handling: one comparison, no
+  permissions, no `screen.orientation` listener. With auto-rotate locked off the viewport stays
+  portrait and the roll does the work instead. Both paths end with the console upright in the
+  visitor's hands.
+
+**The framing follows.** `useConsoleZoom` no longer has a zoom-to-glass case. Turned, the console's
+footprint is its own box with the sides swapped, so the fit is the same arithmetic transposed, at
+0.92 × 0.94 of the viewport — an open console being held should take nearly all of it, and there is
+nothing else on the page to leave room for. The glass lands at about 315px on a 390px phone, which
+is why `MOBILE`'s `fwPanelWidth` came down from 360 to 320: the panel is then scaled by roughly one
+on its way to the glass, and the sizes in that table are near enough the sizes that reach the eye.
+
+**Two input mappings had to learn about the turn.** Both are the same rotation, and both must match
+`Console`'s roll — if one sign flips, all three do.
+
+- `useTouchRail` — a swipe's screen deltas are turned by a quarter before they are named, so a
+  finger moving what the visitor sees as left still moves the rail left.
+- `Joystick` — same correction, and for the same reason: the stick's own right points up the
+  screen once the console has rolled, so without it pushing the stick right emitted `up`. The
+  stick's _lean_ needed no correction — it is rendered in the console's own space, which the roll
+  has already rotated.
+
+Everything that was not about the overlay stayed: `TAP — DETAILS` and `BACK` still replace the key
+names a phone does not have, the theme-flash script and the About copy in the info monitor are
+untouched, and drag-to-rotate is still off on a phone while open — though now because the controls
+are a fingertip wide and a drag would fight the taps aimed at them, not because the object is
+off-frame.
+
+#### Verified
+
+At 390×844, 844×390 and 1440×900:
+
+- Closed at 390×844 is unchanged. Opening rolls the console a quarter turn and settles with the
+  whole object in frame — both flaps, the joystick, ABXY, the theme cap, the close cap, the info
+  monitor and the screen, nothing clipped.
+- The firmware reads at a good size on the turned glass through Menu, Library and Timeline.
+- Swipes in the turned frame all four map correctly: what the visitor feels as left advances the
+  rail, right goes back, up enters the Timeline and down returns to the Library.
+- Tapping the meshes works in the turned layout: the theme cap flipped the stage dark→light→dark,
+  and the X cap opened `https://github.com/Yash-Punia`.
+- At 844×390 — a phone that auto-rotated — the console does not roll and stands upright with the
+  joystick left and ABXY right.
+- Desktop at 1440×900 is untouched: same framing, same `<Html transform>` mounts, info monitor and
+  firmware both rendering.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build` and `prettier --check` all clean.
+
+#### Known issues / open risks
+
+- **The joystick's turned mapping is not verified by driving the stick.** The browser pane in this
+  session throttles timers and frames whenever it is hidden, which kills any synthetic drag — a
+  press-and-hold needs frames to advance. The correction is the same transform as the swipe's,
+  which is verified end to end, and the stick's hit-testing is the same R3F path as the two caps
+  that were tapped successfully. It still wants a real thumb on a real phone.
+- **The close cap was not tapped either**, for the same reason. It is the same tap path as the
+  theme and ABXY caps, both of which work.
+- **The turn direction is a guess about how people hold phones.** Clockwise is the right-handed
+  motion, but a left-handed visitor may turn the other way and get the console upside down. There
+  is no fix short of `DeviceOrientation`, which needs a permission prompt on iOS.
+- **The turn is not announced.** A visitor with reduced motion set gets the console already turned,
+  with no rotation to read as an instruction. The `.sr-only` landmark carries the whole portfolio
+  regardless, so nothing is unreachable, but the hint is gone.
+- **Controls are small.** Held sideways on a 390px phone the ABXY caps are around 30px across —
+  under the 44px touch target the deleted overlay was built to hit. That is the trade for pressing
+  the real object, and it wants a device test before it is called fine.
+- `env(safe-area-inset-*)` is now unused. `viewportFit: 'cover'` is kept, because the canvas fills
+  the viewport and the stage gradient should reach under the notch.

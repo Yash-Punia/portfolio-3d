@@ -1,6 +1,6 @@
 import {useThree} from '@react-three/fiber'
 
-import {MOBILE_MAX_WIDTH, SCREEN_FILL} from '@/components/console/mobile'
+import {isPortraitPhone} from '@/components/console/mobile'
 import {useSpec} from '@/components/console/spec'
 import {useTuning} from '@/components/console/tuning'
 
@@ -10,10 +10,13 @@ import {useTuning} from '@/components/console/tuning'
  * vertical fills are set high — closed, it should own the middle of the screen.
  * Open it is roughly twice as wide, so the widths open up to match.
  *
- * Below 640px this is the closed case only: an open console on a phone is
- * framed on its screen instead, by the early return in the hook.
+ * The turned case is its own row. An open console laid along a portrait phone's
+ * long axis is being held, not looked at, so it takes nearly the whole viewport:
+ * the flaps and every control on them have to be reachable, and there is nothing
+ * else on the page to leave room for.
  */
-function fillFor(width: number, isOpen: boolean) {
+function fillFor(width: number, isOpen: boolean, turned: boolean) {
+  if (turned) return {w: 0.92, h: 0.94}
   if (width < 640) return {w: 0.88, h: 0.62}
   if (width < 1024) return isOpen ? {w: 0.94, h: 0.74} : {w: 0.8, h: 0.78}
   return isOpen ? {w: 0.86, h: 0.78} : {w: 0.62, h: 0.82}
@@ -26,9 +29,10 @@ function fillFor(width: number, isOpen: boolean) {
  *
  * R3F sets an orthographic frustum to the canvas pixel size, so at zoom 1 one
  * world unit is one CSS pixel — the zoom is therefore just pixels-per-unit.
- * That is what makes SPEC §6's mobile framing one division: the glass is
- * `screen.width` units across, so filling 92% of the viewport with it is
- * `width * 0.92 / screen.width` and nothing else.
+ *
+ * When the console has rolled a quarter turn to lie along a portrait phone, its
+ * footprint on the viewport is its own box with the sides swapped. That is the
+ * whole of the turned framing: same fit, transposed.
  */
 export function useConsoleZoom(isOpen: boolean): number {
   const {dimensions} = useSpec()
@@ -37,20 +41,11 @@ export function useConsoleZoom(isOpen: boolean): number {
   const width = useThree((state) => state.size.width)
   const height = useThree((state) => state.size.height)
 
-  const wide = width >= MOBILE_MAX_WIDTH
-
-  /*
-    SPEC §6: open on a phone, the camera frames the screen rather than the
-    object, and the flaps are allowed to clip out of the frustum. The DOM layer
-    that mounts over the glass is sized from the same `SCREEN_FILL`, so the two
-    cannot disagree — which is also why `zoomScaleOpen` is deliberately not
-    applied here. A tuning multiplier would slide the panel off the glass.
-  */
-  if (isOpen && !wide) return (width * SCREEN_FILL) / dimensions.screen.width
-
-  const framed = isOpen && wide ? dimensions.open : dimensions.closed
-  const fill = fillFor(width, isOpen)
-  const scale = isOpen && wide ? scaleOpen : scaleClosed
+  const turned = isOpen && isPortraitPhone(width, height)
+  const box = isOpen ? dimensions.open : dimensions.closed
+  const framed = turned ? {width: box.height, height: box.width} : box
+  const fill = fillFor(width, isOpen, turned)
+  const scale = isOpen ? scaleOpen : scaleClosed
 
   return Math.min((width * fill.w) / framed.width, (height * fill.h) / framed.height) * scale
 }

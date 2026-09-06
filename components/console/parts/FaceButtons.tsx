@@ -10,7 +10,7 @@ import {
   type ButtonSlot,
   type ConsoleContent,
 } from '@/components/console/content'
-import {GLYPH_FOR_PLATFORM, useGlyphGeometry, type GlyphName} from '@/components/console/glyphs'
+import {useGlyphGeometry, type GlyphName} from '@/components/console/glyphs'
 import {useInput} from '@/components/console/input'
 import {useSpec} from '@/components/console/spec'
 import {useConsole} from '@/components/console/store'
@@ -31,6 +31,14 @@ const LAYOUT: Record<ButtonSlot, [number, number]> = {
 }
 
 const SLOTS = Object.keys(LAYOUT) as ButtonSlot[]
+
+/** The mark on the cap is the platform's, so an unbound slot has no glyph. */
+const GLYPH_FOR: Record<string, GlyphName> = {
+  github: 'github',
+  itch: 'itch',
+  linkedin: 'linkedin',
+  twitter: 'twitter',
+}
 
 function FaceButton({
   slot,
@@ -140,7 +148,7 @@ export function FaceButtons({socialLinks}: {socialLinks: ConsoleContent['socialL
     <group position={[0, d.abxy.y, d.faceZ]} rotation={[0, Math.PI, 0]}>
       {SLOTS.map((slot) => {
         const link = linkForSlot(socialLinks, slot)
-        const glyph = link?.platform ? (GLYPH_FOR_PLATFORM[link.platform] ?? null) : null
+        const glyph = link?.platform ? (GLYPH_FOR[link.platform] ?? null) : null
 
         return <FaceButton key={slot} slot={slot} url={link?.url ?? null} glyph={glyph} />
       })}

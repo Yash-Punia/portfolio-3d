@@ -13,7 +13,7 @@ import {
   type ConsoleContent,
 } from '@/components/console/content'
 import {useInput, type Direction} from '@/components/console/input'
-import {useIsMobile} from '@/components/console/mobile'
+import {isPortraitPhone, useIsMobile} from '@/components/console/mobile'
 import {Skeleton} from '@/components/console/Skeleton'
 import {useConsole, useTheme} from '@/components/console/store'
 
@@ -37,17 +37,6 @@ const Scene = dynamic(() => import('@/components/console/Scene'), {
  */
 const TuningPanel = dynamic(
   () => import('@/components/console/TuningPanel').then((module) => module.TuningPanel),
-  {ssr: false},
-)
-
-/**
- * SPEC §6/§7's second firmware mount, and the control overlay that replaces the
- * flap furniture on a phone. It is ordinary DOM — no three.js — but it is only
- * ever mounted on mobile, so it ships in its own chunk rather than in everyone's
- * page bundle.
- */
-const MobileConsole = dynamic(
-  () => import('@/components/console/MobileConsole').then((module) => module.MobileConsole),
   {ssr: false},
 )
 
@@ -294,10 +283,10 @@ const SWIPE_PX = 44
  * so swiping left brings the next project in from the right. The opposite
  * convention is one sign flip if it reads wrong on a real device.
  *
- * A gesture that starts on the control overlay is dropped, so dragging off the
- * D-pad cannot also move the rail. Nothing here calls `preventDefault`, so the
- * taps the firmware already handles — a tile to select, a tile again to drill
- * in, `BACK` to come out — keep working, and the detail view stays scrollable.
+ * Nothing here calls `preventDefault`, so the taps the firmware already handles
+ * — a tile to select, a tile again to drill in, `BACK` to come out — and the
+ * taps on the flap's own controls all keep working, and the detail view stays
+ * scrollable.
  */
 function useTouchRail(content: ConsoleContent, enabled: boolean) {
   useEffect(() => {
@@ -306,12 +295,7 @@ function useTouchRail(content: ConsoleContent, enabled: boolean) {
     let start: {x: number; y: number} | null = null
 
     function onPointerDown(event: PointerEvent) {
-      const target = event.target
-      start =
-        event.pointerType === 'mouse' ||
-        (target instanceof Element && target.closest('[data-console-overlay]'))
-          ? null
-          : {x: event.clientX, y: event.clientY}
+      start = event.pointerType === 'mouse' ? null : {x: event.clientX, y: event.clientY}
     }
 
     function onPointerUp(event: PointerEvent) {
@@ -323,8 +307,21 @@ function useTouchRail(content: ConsoleContent, enabled: boolean) {
       const {isOpen, isDetailOpen} = useConsole.getState()
       if (!isOpen || isDetailOpen) return
 
-      const x = event.clientX - from.x
-      const y = event.clientY - from.y
+      const dx = event.clientX - from.x
+      const dy = event.clientY - from.y
+
+      /*
+        On an upright phone the open console has rolled a quarter turn
+        counter-clockwise, so the visitor's fingers and the console's axes no
+        longer agree: the console's right is up the screen. Turning the deltas
+        by the same quarter turn puts them back in the console's frame, and the
+        rest of this function never learns the difference.
+
+        The rotation must match `Console`'s roll. If one sign flips, both do.
+      */
+      const turned = isPortraitPhone(window.innerWidth, window.innerHeight)
+      const x = turned ? -dy : dx
+      const y = turned ? dx : dy
 
       // The dominant axis wins outright: a diagonal drag should do one thing.
       if (Math.abs(x) > Math.abs(y)) {
@@ -414,14 +411,12 @@ export function ConsoleStage({content}: {content: ConsoleContent}) {
   const tuning = useTuningFlag()
   const announcement = useAnnouncement(content)
   const mobile = useIsMobile()
-  const isOpen = useConsole((state) => state.isOpen)
 
   useTouchRail(content, mobile)
 
   return (
     <div className="fixed inset-0">
       <Scene content={content} />
-      {mobile && isOpen ? <MobileConsole content={content} /> : null}
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>

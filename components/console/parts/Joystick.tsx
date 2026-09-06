@@ -6,6 +6,7 @@ import {useEffect, useRef, useState} from 'react'
 
 import {useSpec} from '@/components/console/spec'
 import {useInput, type Direction} from '@/components/console/input'
+import {isPortraitPhone} from '@/components/console/mobile'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
 
@@ -47,6 +48,7 @@ export function Joystick() {
   const isOpen = useConsole((state) => state.isOpen)
   const reducedMotion = useReducedMotion()
   const camera = useThree((state) => state.camera)
+  const size = useThree((state) => state.size)
 
   const held = useInput((state) => state.held)
   const hold = useInput((state) => state.hold)
@@ -81,8 +83,22 @@ export function Joystick() {
         return
       }
 
-      if (Math.abs(dx) > Math.abs(dy)) hold(dx > 0 ? 'right' : 'left')
-      else hold(dy > 0 ? 'down' : 'up')
+      /*
+        Turned onto a phone's long axis, the stick's own right points up the
+        screen — so a drag has to be turned by the same quarter turn before it
+        is named, or pushing the stick right would emit `up`. The lean needs no
+        such correction: it is rendered in the console's own space, which the
+        roll has already rotated.
+
+        The same transform as `useTouchRail`'s, and it must match `Console`'s
+        roll. If one sign flips, all three do.
+      */
+      const turned = isPortraitPhone(size.width, size.height)
+      const x = turned ? -dy : dx
+      const y = turned ? dx : dy
+
+      if (Math.abs(x) > Math.abs(y)) hold(x > 0 ? 'right' : 'left')
+      else hold(y > 0 ? 'down' : 'up')
     }
 
     function end() {
@@ -99,7 +115,7 @@ export function Joystick() {
       window.removeEventListener('pointerup', end)
       window.removeEventListener('pointercancel', end)
     }
-  }, [dragging, camera, d.joystick.capRadius, d.joystick.deadzone, hold])
+  }, [dragging, camera, size, d.joystick.capRadius, d.joystick.deadzone, hold])
 
   const hover = (on: boolean) => {
     document.body.style.cursor = on && isOpen ? 'grab' : ''

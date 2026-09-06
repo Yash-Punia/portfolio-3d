@@ -6,7 +6,7 @@ import {useEffect, useRef, useState} from 'react'
 import {MathUtils, type Group} from 'three'
 
 import type {ConsoleContent} from '@/components/console/content'
-import {MOBILE_MAX_WIDTH} from '@/components/console/mobile'
+import {isPortraitPhone, MOBILE_MAX_WIDTH} from '@/components/console/mobile'
 import {Body} from '@/components/console/parts/Body'
 import {Flap} from '@/components/console/parts/Flap'
 import {Hinge} from '@/components/console/parts/Hinge'
@@ -35,8 +35,34 @@ export function Console({content}: {content: ConsoleContent}) {
   const isOpen = useConsole((state) => state.isOpen)
   const reducedMotion = useReducedMotion()
   // The canvas size rather than a media query: this is inside the canvas, where
-  // `state.size` is the same number `useConsoleZoom` frames the screen from.
-  const narrow = useThree((state) => state.size.width) < MOBILE_MAX_WIDTH
+  // `state.size` is the same number `useConsoleZoom` frames the console from.
+  const size = useThree((state) => state.size)
+  const narrow = size.width < MOBILE_MAX_WIDTH
+  const turned = isOpen && isPortraitPhone(size.width, size.height)
+
+  /**
+   * The quarter turn onto a phone's long axis (SPEC §6).
+   *
+   * Opened on an upright phone, the console rolls to landscape and the visitor
+   * turns the phone to meet it — the turn is the instruction. It is a handheld;
+   * held sideways it is the size of a real one, with both flaps and every
+   * control on them in frame, which is what the DOM overlay used to stand in
+   * for.
+   *
+   * Counter-clockwise, so the phone is turned clockwise to follow it: the top
+   * edge goes right, which is the way a right hand turns a phone. The opposite
+   * is one sign.
+   *
+   * A phone that auto-rotated to landscape does not roll — the viewport is
+   * already wide, `isPortraitPhone` is false, and the browser has done the
+   * turning. Which is also why closing rolls it back: shut, it stands upright
+   * on the page again.
+   */
+  const {roll} = useSpring({
+    roll: turned ? Math.PI / 2 : 0,
+    config: {tension: 130, friction: 21},
+    immediate: reducedMotion,
+  })
   // Amplitude rather than angle, so opening eases the drift out instead of
   // snapping the object straight while the flaps are still swinging.
   const amplitude = useRef(1)
@@ -105,6 +131,7 @@ export function Console({content}: {content: ConsoleContent}) {
     <animated.group
       rotation-x={pose.pitch}
       rotation-y={pose.yaw}
+      rotation-z={roll}
       /*
         Chassis meshes reach this by bubbling. The interactive ones — buttons,
         the joystick, the toggle, the screen — stop their pointerdown here
@@ -113,10 +140,10 @@ export function Console({content}: {content: ConsoleContent}) {
         it, which is the flap's own 6px threshold, not a veto on dragging.
       */
       onPointerDown={(event) => {
-        // SPEC §6: not on a phone with the console open. The object is framed
-        // off the sides there, so rotating it is meaningless — and it would
-        // steal the touches the screen and the control overlay want. Closed, it
-        // still rotates at every width.
+        // SPEC §6: not on a phone with the console open. Every control is a
+        // fingertip wide there, and a drag would fight the taps aimed at them —
+        // the console is being held, not turned over. Closed, it still rotates
+        // at every width.
         if (isOpen && narrow) return
 
         from.current = {
