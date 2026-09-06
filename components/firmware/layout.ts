@@ -2,6 +2,7 @@
 
 import {useMemo} from 'react'
 
+import {useIsMobile} from '@/components/console/mobile'
 import {useTuning, type Tuning} from '@/components/console/tuning'
 
 /**
@@ -41,7 +42,44 @@ export interface FirmwareLayout {
   entryGap: number
 }
 
-export function deriveFirmwareLayout(t: Tuning): FirmwareLayout {
+/**
+ * The panel's own values on a phone (SPEC §6).
+ *
+ * The desktop panel is authored at 900px and lands on a ~560px glass; the
+ * mobile one lands on ~350px. Shrinking the desktop numbers by a single factor
+ * would put body text at 6px — and raising the factor to fix that clips the
+ * stack, because the panel's height follows the screen's aspect and does not
+ * grow with it. The ratios have to differ per value: type shrinks by about a
+ * fifth, whitespace by four fifths. So the mobile panel is re-authored rather
+ * than scaled, and it is a table because that is all it is.
+ *
+ * ponytail: a const, dialled by editing at 390px with the dev server hot
+ * reloading. It moves into the tuning store the day it needs live knobs.
+ */
+const MOBILE: Partial<Tuning> = {
+  fwPanelWidth: 360,
+  fwStatusHeight: 30,
+  fwStatusFont: 10,
+  fwRailX: 20,
+  fwRailTop: 16,
+  fwTileWidth: 170,
+  fwTileHeight: 96,
+  fwTileGap: 20,
+  fwBlockGap: 18,
+  fwTextGap: 8,
+  fwTitleFont: 22,
+  fwMetaFont: 10,
+  fwBodyFont: 13,
+  fwDetailCoverHeight: 96,
+  fwAxisTop: 40,
+  fwDotGap: 90,
+  fwDotSize: 10,
+  fwEntryGap: 24,
+}
+
+export function deriveFirmwareLayout(tuning: Tuning, mobile = false): FirmwareLayout {
+  const t = mobile ? {...tuning, ...MOBILE} : tuning
+
   return {
     panelWidth: t.fwPanelWidth,
     panelHeight: Math.round((t.fwPanelWidth * t.screenHeight) / t.screenWidth),
@@ -68,7 +106,12 @@ export function deriveFirmwareLayout(t: Tuning): FirmwareLayout {
   }
 }
 
+/**
+ * Every firmware component reads its sizes from here, so the mobile table
+ * reaches all of them — both mounts, no component changed.
+ */
 export function useFirmwareLayout(): FirmwareLayout {
   const values = useTuning((state) => state.values)
-  return useMemo(() => deriveFirmwareLayout(values), [values])
+  const mobile = useIsMobile()
+  return useMemo(() => deriveFirmwareLayout(values, mobile), [values, mobile])
 }

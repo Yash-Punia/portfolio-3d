@@ -1,6 +1,7 @@
 'use client'
 
 import {openLink, type Project} from '@/components/console/content'
+import {useIsMobile} from '@/components/console/mobile'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
 import {useFirmwareLayout} from '@/components/firmware/layout'
@@ -66,6 +67,7 @@ export function Detail({project}: {project: Project}) {
   const closeDetail = useConsole((state) => state.closeDetail)
   const reducedMotion = useReducedMotion()
   const layout = useFirmwareLayout()
+  const mobile = useIsMobile()
 
   const cover = project.cover?.asset
     ? urlFor(project.cover).width(1100).height(440).fit('crop').auto('format').url()
@@ -193,7 +195,8 @@ export function Detail({project}: {project: Project}) {
             letterSpacing: '0.16em',
           }}
         >
-          ESC — BACK
+          {/* A phone has no Escape key; the tap is the whole affordance there. */}
+          {mobile ? 'BACK' : 'ESC — BACK'}
         </p>
       </div>
     </div>

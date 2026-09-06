@@ -13,6 +13,7 @@ import {
   type ConsoleContent,
 } from '@/components/console/content'
 import {useInput, type Direction} from '@/components/console/input'
+import {useIsMobile} from '@/components/console/mobile'
 import {Skeleton} from '@/components/console/Skeleton'
 import {useConsole, useTheme} from '@/components/console/store'
 
@@ -36,6 +37,17 @@ const Scene = dynamic(() => import('@/components/console/Scene'), {
  */
 const TuningPanel = dynamic(
   () => import('@/components/console/TuningPanel').then((module) => module.TuningPanel),
+  {ssr: false},
+)
+
+/**
+ * SPEC §6/§7's second firmware mount, and the control overlay that replaces the
+ * flap furniture on a phone. It is ordinary DOM — no three.js — but it is only
+ * ever mounted on mobile, so it ships in its own chunk rather than in everyone's
+ * page bundle.
+ */
+const MobileConsole = dynamic(
+  () => import('@/components/console/MobileConsole').then((module) => module.MobileConsole),
   {ssr: false},
 )
 
@@ -339,10 +351,13 @@ export function ConsoleStage({content}: {content: ConsoleContent}) {
   useWheelRail(content)
   const tuning = useTuningFlag()
   const announcement = useAnnouncement(content)
+  const mobile = useIsMobile()
+  const isOpen = useConsole((state) => state.isOpen)
 
   return (
     <div className="fixed inset-0">
       <Scene content={content} />
+      {mobile && isOpen ? <MobileConsole content={content} /> : null}
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>

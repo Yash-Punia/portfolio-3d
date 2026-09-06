@@ -1,4 +1,4 @@
-import type {Metadata} from 'next'
+import type {Metadata, Viewport} from 'next'
 import {Archivo, Martian_Mono} from 'next/font/google'
 
 import {client} from '@/sanity/lib/client'
@@ -24,6 +24,20 @@ const martianMono = Martian_Mono({
   variable: '--font-martian-mono',
   display: 'swap',
 })
+
+/**
+ * `viewportFit: 'cover'` is what makes `env(safe-area-inset-*)` report anything
+ * other than zero — the mobile control overlay pads itself off the notch and the
+ * home indicator with it (SPEC §6).
+ *
+ * No `maximumScale` and no `userScalable: false`: the page does not scroll, but
+ * blocking pinch-zoom is an accessibility failure (SPEC §11).
+ */
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await client.fetch(

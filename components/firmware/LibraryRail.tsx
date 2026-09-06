@@ -3,6 +3,7 @@
 import type {CSSProperties, ReactNode} from 'react'
 
 import type {ConsoleContent, Project} from '@/components/console/content'
+import {useIsMobile} from '@/components/console/mobile'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
 import {useFirmwareLayout} from '@/components/firmware/layout'
@@ -131,6 +132,7 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
   const openDetail = useConsole((state) => state.openDetail)
   const reducedMotion = useReducedMotion()
   const layout = useFirmwareLayout()
+  const mobile = useIsMobile()
 
   const {projects} = content
   const selected = projects[index] ?? null
@@ -231,7 +233,8 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
               letterSpacing: '0.16em',
             }}
           >
-            ENTER — DETAILS
+            {/* A phone has no Enter key; there the tile itself is the control. */}
+            {mobile ? 'TAP — DETAILS' : 'ENTER — DETAILS'}
           </p>
         </div>
       ) : null}

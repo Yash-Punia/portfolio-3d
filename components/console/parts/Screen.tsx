@@ -4,6 +4,7 @@ import {Html} from '@react-three/drei'
 
 import type {ConsoleContent} from '@/components/console/content'
 import {htmlScale} from '@/components/console/htmlScale'
+import {useIsMobile} from '@/components/console/mobile'
 import {useSpec} from '@/components/console/spec'
 import {useConsole} from '@/components/console/store'
 import {Firmware} from '@/components/firmware/Firmware'
@@ -16,6 +17,10 @@ import {useFirmwareLayout} from '@/components/firmware/layout'
  * It is mounted only while the console is open, for the same reason the info
  * monitor is: DOM in 3D has no depth test, so a closed door would not hide it.
  *
+ * And not at all on a phone: SPEC §7's second mount puts the same tree in a
+ * fixed DOM layer over the glass instead (`<MobileConsole />`). Sharper text, no
+ * per-frame matrix, and no DOM-in-3D to render the off-frame flaps through.
+ *
  * `occlude="blending"` is deliberately not used. It writes the panel into the
  * depth buffer through a hidden mesh, which under this scene's orthographic,
  * dead-on camera buys nothing — nothing ever passes in front of the screen —
@@ -26,8 +31,9 @@ export function Screen({content}: {content: ConsoleContent}) {
   const {dimensions: d} = useSpec()
   const {panelWidth} = useFirmwareLayout()
   const isOpen = useConsole((state) => state.isOpen)
+  const mobile = useIsMobile()
 
-  if (!isOpen) return null
+  if (!isOpen || mobile) return null
 
   return (
     <Html

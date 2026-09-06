@@ -5,6 +5,7 @@ import {useState} from 'react'
 
 import {isLocalHref, RESUME_FILENAME, type ConsoleContent} from '@/components/console/content'
 import {htmlScale} from '@/components/console/htmlScale'
+import {useIsMobile} from '@/components/console/mobile'
 import {useSpec} from '@/components/console/spec'
 import {useConsole} from '@/components/console/store'
 import {useScreenTheme} from '@/components/firmware/theme'
@@ -43,6 +44,7 @@ export function InfoMonitor({
 }) {
   const {dimensions: d, materials: m} = useSpec()
   const isOpen = useConsole((state) => state.isOpen)
+  const mobile = useIsMobile()
   const {palette} = useScreenTheme()
   const [hovered, setHovered] = useState(false)
 
@@ -87,8 +89,14 @@ export function InfoMonitor({
       {/*
         Mounted only while the console is open: closed, this panel faces into
         the body, and DOM in 3D space has no depth test to hide it there.
+
+        And never on a phone (SPEC §6). The flap is off-frame there, but DOM in
+        3D has no frustum either — the panel would render over the screen,
+        mirrored, with drei recomputing its matrix every frame for something
+        nobody can read. The screen's own mount comes off on mobile for the same
+        reason, which leaves no DOM in 3D there at all.
       */}
-      {isOpen && (name || title || status || href) ? (
+      {isOpen && !mobile && (name || title || status || href) ? (
         <Html
           aria-hidden
           center
