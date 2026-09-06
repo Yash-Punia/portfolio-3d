@@ -1,11 +1,12 @@
 'use client'
 
 import {animated, useSpring} from '@react-spring/three'
-import {useFrame} from '@react-three/fiber'
+import {useFrame, useThree} from '@react-three/fiber'
 import {useEffect, useRef, useState} from 'react'
 import {MathUtils, type Group} from 'three'
 
 import type {ConsoleContent} from '@/components/console/content'
+import {MOBILE_MAX_WIDTH} from '@/components/console/mobile'
 import {Body} from '@/components/console/parts/Body'
 import {Flap} from '@/components/console/parts/Flap'
 import {Hinge} from '@/components/console/parts/Hinge'
@@ -33,6 +34,9 @@ export function Console({content}: {content: ConsoleContent}) {
   const drift = useRef<Group>(null)
   const isOpen = useConsole((state) => state.isOpen)
   const reducedMotion = useReducedMotion()
+  // The canvas size rather than a media query: this is inside the canvas, where
+  // `state.size` is the same number `useConsoleZoom` frames the screen from.
+  const narrow = useThree((state) => state.size.width) < MOBILE_MAX_WIDTH
   // Amplitude rather than angle, so opening eases the drift out instead of
   // snapping the object straight while the flaps are still swinging.
   const amplitude = useRef(1)
@@ -109,6 +113,12 @@ export function Console({content}: {content: ConsoleContent}) {
         it, which is the flap's own 6px threshold, not a veto on dragging.
       */
       onPointerDown={(event) => {
+        // SPEC §6: not on a phone with the console open. The object is framed
+        // off the sides there, so rotating it is meaningless — and it would
+        // steal the touches the screen and the control overlay want. Closed, it
+        // still rotates at every width.
+        if (isOpen && narrow) return
+
         from.current = {
           x: event.clientX,
           y: event.clientY,
