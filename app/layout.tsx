@@ -55,9 +55,27 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
+/**
+ * The stored theme, applied before the first paint.
+ *
+ * The stage is painted from `--stage` in CSS and `ConsoleStage` sets
+ * `data-stage` from the store — but that is a hydration away, so a returning
+ * visitor who chose light used to see one dark frame first. This reads the same
+ * key the store persists to and stamps the attribute while the parser is still
+ * in the head.
+ *
+ * Only the stage. The screen's palette lives inside the canvas, which does not
+ * exist before hydration, and `useTheme()` remains the source of truth for it.
+ */
+const THEME_SCRIPT = `try{var t=JSON.parse(localStorage.getItem('console')).state.theme;if(t==='dark'||t==='light')document.documentElement.dataset.stage=t}catch(e){}`
+
 export default function RootLayout({children}: LayoutProps<'/'>) {
   return (
     <html lang="en" className={`${archivo.variable} ${martianMono.variable} h-full antialiased`}>
+      <head>
+        {/* Blocking on purpose: after the first paint it would be too late. */}
+        <script dangerouslySetInnerHTML={{__html: THEME_SCRIPT}} />
+      </head>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   )
