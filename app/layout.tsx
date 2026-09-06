@@ -71,9 +71,23 @@ const THEME_SCRIPT = `try{var t=JSON.parse(localStorage.getItem('console')).stat
 
 export default function RootLayout({children}: LayoutProps<'/'>) {
   return (
-    <html lang="en" className={`${archivo.variable} ${martianMono.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      className={`${archivo.variable} ${martianMono.variable} h-full antialiased`}
+      /*
+        The script below writes `data-stage` before React hydrates, so the
+        server's markup and the client's necessarily differ here — the server
+        cannot know what is in someone's `localStorage`. That difference is the
+        whole point of the script, not a bug to be patched up.
+      */
+      suppressHydrationWarning
+    >
       <head>
-        {/* Blocking on purpose: after the first paint it would be too late. */}
+        {/*
+          Inside an explicit `<head>` so React treats it as part of the document
+          and keeps it synchronous. It has to be: after the first paint it would
+          be too late, which is the flash it exists to remove.
+        */}
         <script dangerouslySetInnerHTML={{__html: THEME_SCRIPT}} />
       </head>
       <body className="flex min-h-full flex-col">{children}</body>
