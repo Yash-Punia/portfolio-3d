@@ -14,7 +14,7 @@ import {
 } from '@/components/console/content'
 import {useInput, type Direction} from '@/components/console/input'
 import {Skeleton} from '@/components/console/Skeleton'
-import {useConsole} from '@/components/console/store'
+import {useConsole, useTheme} from '@/components/console/store'
 
 /**
  * The client boundary for the 3D scene.
@@ -270,6 +270,22 @@ function useWheelRail(content: ConsoleContent) {
   }, [content])
 }
 
+/**
+ * The stage behind the console follows the screen's theme.
+ *
+ * The chassis materials still do not (SPEC §5) — this is the page the object
+ * stands on, and a light screen on a near-black page reads as a lamp in a dark
+ * room. The two stage colours and the cross-fade between them live in
+ * `globals.css`; all this does is say which pair is in force.
+ */
+function useStageTheme() {
+  const theme = useTheme()
+
+  useEffect(() => {
+    document.documentElement.dataset.stage = theme
+  }, [theme])
+}
+
 /** The URL is an external source the server render cannot see. */
 const subscribeToNothing = () => () => {}
 
@@ -318,6 +334,7 @@ function useAnnouncement(content: ConsoleContent): string {
 export function ConsoleStage({content}: {content: ConsoleContent}) {
   useConsoleKeys(content)
   useSocialFocus()
+  useStageTheme()
   useRailInput(content)
   useWheelRail(content)
   const tuning = useTuningFlag()

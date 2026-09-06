@@ -948,3 +948,35 @@ the top of the right flap as a physical control, so `PowerSlider.tsx` is gone an
   take that slot, so the count of accent surfaces on the object is unchanged.
 - **The target is smaller than the capsule was** — an ABXY cap rather than a 0.6-wide switch. Fine
   with a mouse; Phase 6's mobile overlay gets its own DOM-sized control anyway.
+
+### Phase 5c — The stage follows the theme
+
+The theme button now flips the page behind the console as well as the screen: near-black in dark,
+a warm off-white in light.
+
+- **The chassis still does not change** (SPEC §5). What changed is the stage — the gradient
+  `globals.css` paints on the body — because a light screen inside a near-black page reads as a
+  lamp in a dark room rather than as a display with its backlight up.
+- **`--stage` and `--stage-glow` are registered with `@property` as `<color>`.** Without that they
+  are strings to the animation engine and the gradient built from them jumps; registered, the pair
+  cross-fades over 320ms. Reduced motion drops the transition and swaps outright.
+- **`ConsoleStage` sets `data-stage` on `<html>` and nothing else.** The colours and the fade live
+  in CSS; the component only says which pair is in force, from the same `useTheme()` the screen and
+  the info monitor read.
+- The light stage is `#e4e0d7` with a `#f5f2eb` lift in the middle — a shade off the screen's own
+  `#edeae2`, so the glass still reads as a lit panel set into the object rather than a hole in the
+  page.
+
+### Verified
+
+Clicked the theme button in a real browser, both ways: the page fades between the two stages, the
+screen, the info monitor and the firmware flip with it, and the chassis is the same object in both.
+One frame caught the stage mid-fade, which is what confirms the registered properties interpolate
+rather than switch. `pnpm typecheck`, `pnpm lint`, `pnpm build` and `prettier --check` clean.
+
+### Known issues / open risks
+
+- **A stored light theme flashes.** The stage is dark until `ConsoleStage` hydrates and sets
+  `data-stage`, so a returning visitor who chose light sees one dark frame first. The usual fix is a
+  blocking inline script in `<head>` that reads `localStorage` before first paint; it is worth doing
+  when the theme's first paint is looked at properly in Phase 7, not before.
