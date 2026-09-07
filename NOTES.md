@@ -1436,3 +1436,75 @@ per theme (`#4be12d` dark, `#236a15` light).
 - The `THREE.Clock` deprecation warning, the bundle budget, `frameloop="always"` while open, and
   Lighthouse: all still Phase 8.
 - Everything still open from Phase 0 stays open: the logged-in Studio verification is Yash's to do.
+
+### Phase 7a — A box that scrolls keeps its own gesture
+
+Yash asked for swipe navigation on a phone and for the scrolling panels to scroll the way a finger
+normally scrolls. The first half was already built (Phase 6's `useTouchRail`, verified again here);
+the second half was the bug hiding behind it.
+
+**A phone-sized panel overflows constantly.** Measured at 390×844 against the live dataset: **five of
+the seven timeline entries** overflow their panel (209 against 167 CSS px, 210/167, 189/162,
+168/157, 167/157), and every project's detail view does (503 against 283). Before this, a finger
+dragged up inside one of those panels changed section instead of scrolling it — and inside the
+detail view, which `useTouchRail` already refused to navigate from, it did nothing at all.
+
+- **The gesture belongs to the innermost box that can use it.** A vertical drag that begins inside
+  `[data-console-scroll]` scrolls that box and never navigates, which is what a nested scroller does
+  everywhere else on the web. A drag that begins anywhere else still changes section, and a box with
+  nothing hidden below its fold is not a scroller — so a swipe on a short timeline entry still moves
+  between sections. No chaining at the end of the scroll: reaching the bottom of an entry and
+  swiping once more does not jump to another screen, because overscroll is not a second gesture.
+- **A sideways drag inside a scrolling box still moves the rail.** There is nothing to scroll along
+  x, and it keeps the rail reachable from anywhere on the screen.
+- **The scrolling is done here rather than left to the browser.** The panel is a rotated, scaled
+  subtree of a `<Html transform>` — on a phone the console has rolled a quarter turn — and what a
+  browser makes of a touch on a box turned through 90° is not something to find out on someone's
+  phone. `scrollBox()` marks those boxes `touch-action: none` so there is exactly one thing moving
+  them: the same handler, through the same quarter turn the swipe uses, so a scroll and a swipe can
+  never disagree about which way is up.
+- **Only on a phone.** `touch-action: none` is applied at the mobile breakpoint alone, because that
+  is the only width `useTouchRail` runs at. A tablet is not turned and has no swipe gestures, so its
+  finger scrolling is the ordinary axis-aligned case and stays the browser's. The wheel and the
+  scrollbar are untouched everywhere — `touch-action` only speaks to touch.
+- **The finger and the content move together.** The panel is authored at a fixed width and scaled
+  onto the glass, so a screen delta is divided by that scale before it becomes a scroll delta
+  (`panelScale()`); rolled a quarter turn, the box's local height runs along the screen's x, which is
+  why the bounding rect's width is what gets measured there. On a phone the scale is near 1 by
+  design — Phase 6a set `fwPanelWidth` to 320 for the ~315px glass — so this mostly reads as 1:1,
+  and stays 1:1 if the panel is ever retuned.
+- **`inConsoleFrame()` is now one function.** The quarter turn was inline in the swipe handler; the
+  scroll needs the same rotation, and two copies of it would be two chances for one sign to flip.
+  It still has to match `Console`'s roll.
+- ponytail: **no fling.** The content tracks the finger and stops when it lifts. Momentum is a
+  spring and a rAF loop away if it is missed on a real device.
+
+#### Verified
+
+Chrome DevTools MCP with a real device viewport (`390x844x3,mobile,touch`), against `pnpm dev` and
+then against `pnpm build && pnpm start`. Console clean apart from the known `THREE.Clock` warning.
+
+- **Section swipes still work**: Library → Timeline and back, which is what was asked for and what
+  was already there.
+- **An overflowing timeline entry scrolls instead of navigating** — `scrollTop` 0 → 42, which is
+  exactly its overflow (209 − 167), with the section unchanged; the reverse drag returns it to 0.
+- **The detail view scrolls** — one 160px drag moved it 0 → 158.7 of the 220 available, so the
+  content tracked the finger at very nearly 1:1, with the section unchanged.
+- **A sideways drag inside the same box still moves the rail** — "Summer Analyst" →
+  "Unity Developer Intern", `scrollTop` unchanged.
+- **A vertical drag that starts on the dots row still changes section** — Timeline → Library.
+- **A panel with nothing to scroll still passes the swipe through** — on the entry that does not
+  overflow, Timeline → Library.
+- **Tablet (834×1112, touch)**: the same box reports `touch-action: auto`, so the browser still owns
+  finger scrolling where the handler does not run.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build`, `prettier --check .` — all clean.
+
+#### Known issues / open risks
+
+- **Still synthetic.** The gestures are dispatched `PointerEvent`s with `pointerType: 'touch'` under
+  device emulation, not a finger. The thresholds, the 1:1 feel and the absence of fling all want a
+  real device — the same caveat Phase 6 recorded for the swipes themselves.
+- **A long entry cannot be swiped out of.** With the panel filling the screen and scrolling, the way
+  off it is the joystick, the arrow keys, the on-screen section arrow, or a swipe that starts on the
+  axis above. That is the cost of giving the scroller the gesture, and it is what every nested
+  scroller does.

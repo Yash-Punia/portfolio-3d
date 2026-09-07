@@ -3,9 +3,10 @@
 import {useState} from 'react'
 
 import {entryDates, type ConsoleContent, type TimelineEntry} from '@/components/console/content'
+import {useIsMobile} from '@/components/console/mobile'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
-import {edgeMask, scrollFade} from '@/components/firmware/edges'
+import {edgeMask, scrollBox, scrollFade} from '@/components/firmware/edges'
 import {useFirmwareLayout} from '@/components/firmware/layout'
 import {transition} from '@/components/firmware/LibraryRail'
 
@@ -71,13 +72,11 @@ function Dot({
       {/*
         The box keeps its size whatever the dot inside it does, so the axis line
         stays put and nothing reflows as the selection moves.
-      */}
-      {/*
-        The dot itself is the only thing here that goes quiet when it is not
-        selected. Phase 5 dimmed the whole group, labels included, which put
-        muted text at half opacity and under SPEC §9's 4.5:1 — the dot is a
-        graphic and may be dimmed; the two labels are text and stay at a colour
-        that has been measured.
+
+        It is also the only thing here that goes quiet when it is not selected.
+        Phase 5 dimmed the whole group, labels included, which put muted text at
+        half opacity and under SPEC §9's 4.5:1 — a dot is a graphic and may be
+        dimmed; the two labels are text and stay at a colour that was measured.
       */}
       <div
         style={{
@@ -129,6 +128,7 @@ function Dot({
  */
 function Entry({entry, projects}: {entry: TimelineEntry; projects: ConsoleContent['projects']}) {
   const layout = useFirmwareLayout()
+  const mobile = useIsMobile()
   const setLibraryIndex = useConsole((state) => state.setLibraryIndex)
   const setSection = useConsole((state) => state.setSection)
 
@@ -143,11 +143,12 @@ function Entry({entry, projects}: {entry: TimelineEntry; projects: ConsoleConten
 
   return (
     <div
+      data-console-scroll
       style={{
+        ...scrollBox(mobile),
         padding: `${layout.entryGap}px ${layout.railX}px ${layout.entryGap}px`,
         maxWidth: '68ch',
         minHeight: 0,
-        overflowY: 'auto',
       }}
     >
       <h2

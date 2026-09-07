@@ -20,6 +20,25 @@ export function edgeMask(px: number): CSSProperties {
 }
 
 /**
+ * A box the visitor can drag with a finger. Pair it with `data-console-scroll`,
+ * which is the attribute `ConsoleStage`'s touch handler looks for.
+ *
+ * On a phone `touch-action: none` hands the gesture to that handler rather than
+ * to the browser. The panel is a rotated, scaled subtree of a `<Html transform>`
+ * there, so what a browser makes of a touch on a box turned through 90° is not
+ * something to discover on someone's phone — and one owner means a scroll and a
+ * swipe cannot disagree about which way is up.
+ *
+ * Only on a phone, because that is the only width the handler runs at. A tablet
+ * is not turned and has no swipe gestures, so its finger scrolling is the
+ * ordinary axis-aligned case and belongs to the browser. The wheel and the
+ * scrollbar are untouched everywhere: `touch-action` only speaks to touch.
+ */
+export function scrollBox(mobile: boolean): CSSProperties {
+  return {overflowY: 'auto', touchAction: mobile ? 'none' : 'auto'}
+}
+
+/**
  * The bottom of a scrolling box: content fading out under the edge, which is
  * the only thing saying there is more of it. A phone has no scrollbar at rest
  * and the panel has no chrome to hang one on.

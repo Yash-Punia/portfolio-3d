@@ -275,6 +275,39 @@ function useWheelRail(content: ConsoleContent) {
 const SWIPE_PX = 44
 
 /**
+ * A screen delta, turned into the console's own frame.
+ *
+ * On an upright phone the open console has rolled a quarter turn, so the
+ * visitor's fingers and the console's axes no longer agree: the console's right
+ * is down the screen. Turning the deltas by the same quarter turn puts them
+ * back in the console's frame, and everything downstream — a swipe, a scroll —
+ * never learns the difference.
+ *
+ * The rotation must match `Console`'s roll. If one sign flips, they all do.
+ */
+function inConsoleFrame(dx: number, dy: number): {x: number; y: number} {
+  const turned = isPortraitPhone(window.innerWidth, window.innerHeight)
+  return turned ? {x: dy, y: -dx} : {x: dx, y: dy}
+}
+
+/**
+ * How many screen pixels one pixel of a panel box measures.
+ *
+ * The firmware is authored at a fixed width and then scaled onto the glass by
+ * `<Html transform>`, so a finger that has travelled 100 screen pixels has to
+ * scroll more or fewer than 100 of the panel's own. Rolled a quarter turn, the
+ * box's local height runs along the screen's x, which is why the bounding
+ * rect's width is what is measured there.
+ */
+function panelScale(box: HTMLElement): number {
+  const rect = box.getBoundingClientRect()
+  const turned = isPortraitPhone(window.innerWidth, window.innerHeight)
+  const onScreen = turned ? rect.width : rect.height
+  const scale = box.offsetHeight > 0 ? onScreen / box.offsetHeight : 1
+  return scale > 0 ? scale : 1
+}
+
+/**
  * SPEC §8's touch mappings: swipe left/right to move within the rail, up/down
  * to change section. The same `move()` the keys, the stick and the wheel go
  * through — a swipe is only another way of naming a direction.
@@ -283,45 +316,80 @@ const SWIPE_PX = 44
  * so swiping left brings the next project in from the right. The opposite
  * convention is one sign flip if it reads wrong on a real device.
  *
+ * **A box that scrolls keeps its own gesture.** A phone-sized panel overflows
+ * often — most timeline entries do, and every project's detail view does — and
+ * a finger dragged up inside one has to scroll it, not jump to another section.
+ * So a vertical drag that begins inside `[data-console-scroll]` scrolls that box
+ * and never navigates, which is what a nested scroller does everywhere else.
+ *
+ * The scrolling is done here rather than left to the browser because the panel
+ * is a rotated, scaled subtree of a `<Html transform>`: what the browser would
+ * do with a touch on a box turned through 90° is not something to find out on
+ * someone's phone. The box is marked `touch-action: none` so there is exactly
+ * one thing moving it — this handler, through the same quarter turn the swipe
+ * uses, so a scroll and a swipe can never disagree about which way is up.
+ *
+ * A sideways drag inside a scrolling box still moves the rail: there is nothing
+ * to scroll along x, and it keeps the rail reachable from anywhere on screen.
+ *
  * Nothing here calls `preventDefault`, so the taps the firmware already handles
  * — a tile to select, a tile again to drill in, `BACK` to come out — and the
- * taps on the flap's own controls all keep working, and the detail view stays
- * scrollable.
+ * taps on the flap's own controls all keep working.
+ *
+ * ponytail: no fling. The content tracks the finger and stops when it lifts;
+ * momentum is a spring and a rAF loop away if it is missed on a real device.
  */
 function useTouchRail(content: ConsoleContent, enabled: boolean) {
   useEffect(() => {
     if (!enabled) return
 
     let start: {x: number; y: number} | null = null
+    let scroller: {box: HTMLElement; top: number; scale: number} | null = null
+    let scrolling = false
 
     function onPointerDown(event: PointerEvent) {
-      start = event.pointerType === 'mouse' ? null : {x: event.clientX, y: event.clientY}
+      if (event.pointerType === 'mouse') {
+        start = null
+        return
+      }
+      start = {x: event.clientX, y: event.clientY}
+      scrolling = false
+
+      const box =
+        event.target instanceof HTMLElement ? event.target.closest('[data-console-scroll]') : null
+      // A box with nothing hidden below the fold is not a scroller, so a swipe
+      // that starts on a short entry still changes section.
+      scroller =
+        box instanceof HTMLElement && box.scrollHeight > box.clientHeight
+          ? {box, top: box.scrollTop, scale: panelScale(box)}
+          : null
+    }
+
+    function onPointerMove(event: PointerEvent) {
+      if (!start || !scroller) return
+
+      const {x, y} = inConsoleFrame(event.clientX - start.x, event.clientY - start.y)
+      // The dominant axis wins outright, the same rule the swipe follows.
+      if (Math.abs(y) <= Math.abs(x)) return
+
+      scrolling = true
+      scroller.box.scrollTop = scroller.top - y / scroller.scale
     }
 
     function onPointerUp(event: PointerEvent) {
       const from = start
+      const scrolled = scrolling
       start = null
-      if (!from) return
+      scroller = null
+      scrolling = false
+      // A gesture that scrolled a box has already done its job.
+      if (!from || scrolled) return
 
       // A detail view is not a rail, and neither is a closed console.
       const {isOpen, isDetailOpen} = useConsole.getState()
       if (!isOpen || isDetailOpen) return
 
-      const dx = event.clientX - from.x
-      const dy = event.clientY - from.y
-
-      /*
-        On an upright phone the open console has rolled a quarter turn
-        clockwise, so the visitor's fingers and the console's axes no longer
-        agree: the console's right is down the screen. Turning the deltas by the
-        same quarter turn puts them back in the console's frame, and the rest of
-        this function never learns the difference.
-
-        The rotation must match `Console`'s roll. If one sign flips, both do.
-      */
-      const turned = isPortraitPhone(window.innerWidth, window.innerHeight)
-      const x = turned ? dy : dx
-      const y = turned ? -dx : dy
+      const {x, y} = inConsoleFrame(event.clientX - from.x, event.clientY - from.y)
 
       // The dominant axis wins outright: a diagonal drag should do one thing.
       if (Math.abs(x) > Math.abs(y)) {
@@ -332,10 +400,12 @@ function useTouchRail(content: ConsoleContent, enabled: boolean) {
     }
 
     window.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', onPointerUp)
 
     return () => {
       window.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerup', onPointerUp)
     }
   }, [content, enabled])

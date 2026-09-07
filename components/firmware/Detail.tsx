@@ -4,7 +4,7 @@ import {openLink, type Project} from '@/components/console/content'
 import {useIsMobile} from '@/components/console/mobile'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
-import {scrollFade} from '@/components/firmware/edges'
+import {scrollBox, scrollFade} from '@/components/firmware/edges'
 import {useFirmwareLayout} from '@/components/firmware/layout'
 import {urlFor} from '@/sanity/lib/image'
 
@@ -87,7 +87,7 @@ export function Detail({project}: {project: Project}) {
         animation: reducedMotion ? undefined : 'firmware-fade 200ms ease-out',
       }}
     >
-      <div style={{overflowY: 'auto', padding: `0 ${layout.railX}px 48px`}}>
+      <div data-console-scroll style={{...scrollBox(mobile), padding: `0 ${layout.railX}px 48px`}}>
         {cover ? (
           /* eslint-disable-next-line @next/next/no-img-element -- inside a drei
              <Html> subtree; Sanity's CDN already sizes and re-formats it. */
