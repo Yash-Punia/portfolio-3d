@@ -1,7 +1,7 @@
 'use client'
 
 import {animated, useSpring} from '@react-spring/three'
-import {useEffect} from 'react'
+import {useEffect, useState} from 'react'
 import {DoubleSide} from 'three'
 
 import {useGlyphGeometry} from '@/components/console/glyphs'
@@ -11,6 +11,9 @@ import {useReducedMotion} from '@/components/console/useReducedMotion'
 
 /** Cylinders are built around Y; the cap's axis is Z. */
 const FACING: [number, number, number] = [Math.PI / 2, 0, 0]
+
+/** How long a press reads as pressed, matching the face buttons' (SPEC §5). */
+const PRESS_MS = 140
 
 /**
  * The theme toggle at the top of the right flap (SPEC §5's power slider, moved
@@ -44,11 +47,38 @@ export function ThemeToggle() {
 
   const light = theme === 'light'
 
+  /*
+    This is the one cap on the object that is black where every other one is
+    off-white, so it is the one that does not announce itself as pressable by
+    its colour alone. It gets what the face buttons have instead: the collar
+    flashes accent for the length of a press and the cap sinks into it, which
+    is the object's own vocabulary for "this is a button" (SPEC §5).
+
+    Local state rather than `input.ts`'s `pressedSlot` — that is keyed by ABXY
+    slot, and this control has no slot and no keyboard twin to stay in step
+    with.
+  */
+  const [pressed, setPressed] = useState(false)
+
+  useEffect(() => {
+    if (!pressed) return
+    const id = setTimeout(() => setPressed(false), PRESS_MS)
+    return () => clearTimeout(id)
+  }, [pressed])
+
   const {spin} = useSpring({
     // Negative, so the face on show leaves to the left rather than the right.
     spin: light ? -Math.PI : 0,
     // Smooth rather than snappy: this one turns over, it does not click across.
     config: {tension: 210, friction: 26},
+    immediate: reducedMotion,
+  })
+
+  const restZ = d.toggle.housingDepth + d.toggle.capHeight / 2
+  // The same travel and the same fast spring the face buttons depress on.
+  const {capZ} = useSpring({
+    capZ: pressed ? restZ - d.abxy.travel : restZ,
+    config: {tension: 900, friction: 28},
     immediate: reducedMotion,
   })
 
@@ -71,10 +101,15 @@ export function ThemeToggle() {
       rotation={[0, Math.PI, 0]}
       onClick={(event) => {
         event.stopPropagation()
-        if (isOpen) setTheme(light ? 'dark' : 'light')
+        if (!isOpen) return
+        setPressed(true)
+        setTheme(light ? 'dark' : 'light')
       }}
       // Swallowed so a press on the button cannot also drag the console round.
-      onPointerDown={(event) => event.stopPropagation()}
+      onPointerDown={(event) => {
+        event.stopPropagation()
+        if (isOpen) setPressed(true)
+      }}
       onPointerOver={() => hover(true)}
       onPointerOut={() => hover(false)}
     >
@@ -83,10 +118,15 @@ export function ThemeToggle() {
         <cylinderGeometry
           args={[d.toggle.housingRadius, d.toggle.housingRadius, d.toggle.housingDepth, 40]}
         />
-        <meshStandardMaterial {...m.bezel} />
+        {/* The rim flashes accent-coloured for the length of a press. */}
+        <meshStandardMaterial
+          {...m.bezel}
+          emissive={m.accent.color}
+          emissiveIntensity={pressed ? 0.85 : 0}
+        />
       </mesh>
 
-      <animated.group position-z={d.toggle.housingDepth + d.toggle.capHeight / 2} rotation-y={spin}>
+      <animated.group position-z={capZ} rotation-y={spin}>
         <mesh rotation={FACING}>
           <cylinderGeometry
             args={[d.toggle.capRadius, d.toggle.capRadius, d.toggle.capHeight, 40]}

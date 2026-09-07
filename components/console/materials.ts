@@ -22,10 +22,11 @@ export interface Materials {
     thickness: number
     clearcoat: number
     clearcoatRoughness: number
-    emissiveIntensity: number
   }
   /** The screen's powered emissive colour per theme, and its unpowered one. */
   screenOn: {dark: string; light: string}
+  /** How hard the glass is driven, per theme — see `Tuning`. */
+  screenEmissive: {dark: number; light: number}
   screenOff: string
 }
 
@@ -58,11 +59,16 @@ export function deriveMaterials(t: Tuning): Materials {
       thickness: 0.02,
       clearcoat: 1,
       clearcoatRoughness: 0.18,
-      // The powered colour is SPEC §9's screen background, a near-black that
-      // tone mapping then eats, so the emissive is scaled up to read as lit.
-      emissiveIntensity: t.screenEmissiveIntensity,
     },
     screenOn: {dark: t.screenColor, light: t.screenLightColor},
+    /*
+      The powered colour is SPEC §9's screen background, a near-black that tone
+      mapping then eats, so the dark theme's emissive is scaled well up to read
+      as lit. The light theme's is not: driving a warm paper-white that hard
+      renders it as flat white rather than as a backlit panel, which is why
+      this is a pair rather than the single value Phase 3 shipped.
+    */
+    screenEmissive: {dark: t.screenEmissiveIntensity, light: t.screenEmissiveIntensityLight},
     screenOff: '#000000',
   }
 }

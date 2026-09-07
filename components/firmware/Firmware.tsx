@@ -1,11 +1,14 @@
 'use client'
 
+import {useState} from 'react'
+
 import {neighbours, SECTION_LABELS, type ConsoleContent} from '@/components/console/content'
 import {useConsole} from '@/components/console/store'
+import {useReducedMotion} from '@/components/console/useReducedMotion'
 import {Boot} from '@/components/firmware/Boot'
 import {Detail} from '@/components/firmware/Detail'
 import {useFirmwareLayout} from '@/components/firmware/layout'
-import {LibraryRail} from '@/components/firmware/LibraryRail'
+import {LibraryRail, transition} from '@/components/firmware/LibraryRail'
 import {Menu} from '@/components/firmware/Menu'
 import {StatusBar} from '@/components/firmware/StatusBar'
 import {Timeline} from '@/components/firmware/Timeline'
@@ -39,10 +42,14 @@ function SectionArrow({
   onSwitch: () => void
 }) {
   const layout = useFirmwareLayout()
+  const reducedMotion = useReducedMotion()
+  const [hovered, setHovered] = useState(false)
 
   return (
     <div
       onClick={onSwitch}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
       style={{
         flex: '0 0 auto',
         display: 'flex',
@@ -51,7 +58,9 @@ function SectionArrow({
         gap: `${Math.round(layout.railX * 0.3)}px`,
         cursor: 'pointer',
         padding: `${Math.round(layout.railX * 0.2)}px 0`,
-        color: 'var(--screen-muted)',
+        // Under the pointer it comes forward, the same step the tiles take.
+        color: hovered ? 'var(--screen-fg)' : 'var(--screen-muted)',
+        ...transition(reducedMotion, 'color'),
       }}
     >
       <span

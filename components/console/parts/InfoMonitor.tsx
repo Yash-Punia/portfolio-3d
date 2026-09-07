@@ -3,7 +3,12 @@
 import {Html} from '@react-three/drei'
 import {useState} from 'react'
 
-import {isLocalHref, RESUME_FILENAME, type ConsoleContent} from '@/components/console/content'
+import {
+  isLocalHref,
+  RESUME_FILENAME,
+  RESUME_LABEL,
+  type ConsoleContent,
+} from '@/components/console/content'
 import {htmlScale} from '@/components/console/htmlScale'
 import {useSpec} from '@/components/console/spec'
 import {useConsole} from '@/components/console/store'
@@ -181,7 +186,7 @@ export function InfoMonitor({
                     transition: 'color 120ms ease',
                   }}
                 >
-                  Download Resume
+                  {settings?.resumeLabel ?? RESUME_LABEL}
                 </span>
               </p>
             ) : null}

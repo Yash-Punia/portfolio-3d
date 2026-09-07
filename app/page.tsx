@@ -1,5 +1,11 @@
 import {ConsoleStage} from '@/components/console/ConsoleStage'
-import {entryDates, isLocalHref, RESUME_FILENAME, resumeHref} from '@/components/console/content'
+import {
+  entryDates,
+  isLocalHref,
+  RESUME_FILENAME,
+  RESUME_LABEL,
+  resumeHref,
+} from '@/components/console/content'
 import {client} from '@/sanity/lib/client'
 import {
   projectsQuery,
@@ -7,9 +13,6 @@ import {
   socialLinksQuery,
   timelineQuery,
 } from '@/sanity/lib/queries'
-
-/** SPEC §3's own default for `resumeLabel`, used when the field is empty. */
-const RESUME_LABEL = 'Download CV'
 
 /**
  * The page is the object: the console is the entire visible interface, and the

@@ -1,6 +1,7 @@
 import {create} from 'zustand'
 import {persist} from 'zustand/middleware'
 
+import {play, type Cue} from '@/components/console/audio'
 import {useMediaQuery} from '@/components/console/useMediaQuery'
 
 /**
@@ -25,6 +26,22 @@ export type Section = 'menu' | 'library' | 'timeline'
 /** No wrap and no bounce: with one item in a rail, left and right are no-ops. */
 function clamp(index: number, count: number): number {
   return Math.min(Math.max(index, 0), Math.max(count - 1, 0))
+}
+
+/** A cue, unless the visitor has muted the console (SPEC §16.2). */
+function cue(name: Cue) {
+  if (!useConsole.getState().muted) play(name)
+}
+
+/**
+ * A clamped move that is audible only when it actually moved. At the end of a
+ * rail there is no wrap and no bounce (SPEC §3.2), so there is nothing to hear
+ * either — a tick there would claim something happened.
+ */
+function moved(index: number, delta: number, count: number): number {
+  const next = clamp(index + delta, count)
+  if (next !== index) cue('move')
+  return next
 }
 
 interface ConsoleState {
@@ -68,16 +85,31 @@ interface ConsoleState {
    */
   theme: Theme | null
   setTheme: (theme: Theme) => void
+  /**
+   * The console's sounds (SPEC §16.2). Audible by default — a handheld that
+   * makes no noise is a screenshot — and the choice persists like the theme's.
+   */
+  muted: boolean
+  toggleMuted: () => void
 }
 
 export const useConsole = create<ConsoleState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
+      /*
+        Every cue goes through here, and every cue is fired from inside a store
+        action rather than from the control that caused it. That is what makes
+        the arrow keys, the joystick, the wheel, a swipe and a click on a tile
+        all sound the same: they already share these actions, the way they
+        share `move()` in `ConsoleStage`.
+      */
       isOpen: false,
       // Every open starts the firmware from the top: booting, then the menu,
       // with no detail view (SPEC §7). A console reopened into someone else's
       // half-finished navigation would read as a page that never closed.
-      open: () =>
+      open: () => {
+        if (get().isOpen) return
+        cue('open')
         set({
           isOpen: true,
           isBooting: true,
@@ -86,37 +118,50 @@ export const useConsole = create<ConsoleState>()(
           libraryIndex: 0,
           timelineIndex: 0,
           isDetailOpen: false,
-        }),
-      close: () => set({isOpen: false, isBooting: false, isDetailOpen: false}),
+        })
+      },
+      close: () => {
+        if (get().isOpen) cue('close')
+        set({isOpen: false, isBooting: false, isDetailOpen: false})
+      },
       isBooting: false,
       hasBooted: false,
-      endBoot: () => set({isBooting: false, hasBooted: true}),
+      endBoot: () => {
+        cue('boot')
+        set({isBooting: false, hasBooted: true})
+      },
       section: 'menu',
       setSection: (section) => set({section}),
       menuIndex: 0,
-      moveMenu: (delta, count) =>
-        set((state) => ({menuIndex: clamp(state.menuIndex + delta, count)})),
+      moveMenu: (delta, count) => set({menuIndex: moved(get().menuIndex, delta, count)}),
       setMenuIndex: (menuIndex) => set({menuIndex}),
       libraryIndex: 0,
-      moveLibrary: (delta, count) =>
-        set((state) => ({libraryIndex: clamp(state.libraryIndex + delta, count)})),
+      moveLibrary: (delta, count) => set({libraryIndex: moved(get().libraryIndex, delta, count)}),
       setLibraryIndex: (libraryIndex) => set({libraryIndex}),
       timelineIndex: 0,
       moveTimeline: (delta, count) =>
-        set((state) => ({timelineIndex: clamp(state.timelineIndex + delta, count)})),
+        set({timelineIndex: moved(get().timelineIndex, delta, count)}),
       setTimelineIndex: (timelineIndex) => set({timelineIndex}),
       isDetailOpen: false,
       openDetail: () => set({isDetailOpen: true}),
       closeDetail: () => set({isDetailOpen: false}),
       theme: null,
       setTheme: (theme) => set({theme}),
+      muted: false,
+      toggleMuted: () => {
+        const muted = !get().muted
+        set({muted})
+        // Unmuting says so out loud: the control is inside the firmware, and a
+        // toggle whose only feedback is a struck-through glyph is a guess.
+        if (!muted) play('press')
+      },
     }),
     {
       name: 'console',
       version: 1,
-      // Only the theme survives a reload. Whether the console was open is a
-      // property of a visit, not of the visitor.
-      partialize: (state) => ({theme: state.theme}),
+      // The theme and the mute survive a reload; whether the console was open
+      // is a property of a visit, not of the visitor.
+      partialize: (state) => ({theme: state.theme, muted: state.muted}),
     },
   ),
 )

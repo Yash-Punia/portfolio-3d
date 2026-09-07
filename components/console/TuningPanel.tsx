@@ -43,7 +43,8 @@ const CONSOLE_GROUPS: Group[] = [
       {key: 'screenHeight', label: 'Screen height', min: 1, max: 7.5, step: 0.05},
       {key: 'bezelPadding', label: 'Bezel around glass', min: 0, max: 0.6, step: 0.01},
       {key: 'faceDepth', label: 'Face frame depth', min: 0.01, max: 0.3, step: 0.005},
-      {key: 'screenEmissiveIntensity', label: 'Screen brightness', min: 0, max: 8, step: 0.1},
+      {key: 'screenEmissiveIntensity', label: 'Brightness, dark', min: 0, max: 8, step: 0.1},
+      {key: 'screenEmissiveIntensityLight', label: 'Brightness, light', min: 0, max: 8, step: 0.1},
     ],
   },
   {

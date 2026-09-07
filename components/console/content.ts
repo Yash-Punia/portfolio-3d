@@ -70,6 +70,15 @@ export type TimelineEntry = TimelineQueryResult[number]
 export const RESUME_FILENAME = 'Yash-Punia-Gameplay-Programmer.pdf'
 
 /**
+ * SPEC §3's own default for `resumeLabel`, used when the field is empty.
+ *
+ * The words on the link are content, not chrome — the field exists in Sanity
+ * and Yash owns what it says — so the info monitor and the hidden landmark both
+ * read `settings.resumeLabel` and fall back to this one definition.
+ */
+export const RESUME_LABEL = 'Download CV'
+
+/**
  * The committed fallback resume (SPEC §3.2). Set this to `null` and the CV
  * button disappears rather than linking to a 404 — which is also how the
  * "neither exists" branch is verified.

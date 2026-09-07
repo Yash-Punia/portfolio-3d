@@ -1,8 +1,11 @@
 'use client'
 
+import {useState} from 'react'
+
 import {entryDates, type ConsoleContent, type TimelineEntry} from '@/components/console/content'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
+import {edgeMask, scrollFade} from '@/components/firmware/edges'
 import {useFirmwareLayout} from '@/components/firmware/layout'
 import {transition} from '@/components/firmware/LibraryRail'
 
@@ -39,6 +42,7 @@ function Dot({
   onSelect: () => void
 }) {
   const layout = useFirmwareLayout()
+  const [hovered, setHovered] = useState(false)
 
   // Work is filled, education is ringed — the two kinds read apart without a
   // caps label under every dot (SPEC §10). The selected one fills with accent
@@ -48,12 +52,9 @@ function Dot({
   return (
     <div
       onClick={onSelect}
-      style={{
-        flex: `0 0 ${layout.dotGap}px`,
-        cursor: 'pointer',
-        opacity: selected ? 1 : layout.unselectedOpacity,
-        ...transition(reducedMotion, 'opacity'),
-      }}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
+      style={{flex: `0 0 ${layout.dotGap}px`, cursor: 'pointer'}}
     >
       <p
         style={{
@@ -71,12 +72,21 @@ function Dot({
         The box keeps its size whatever the dot inside it does, so the axis line
         stays put and nothing reflows as the selection moves.
       */}
+      {/*
+        The dot itself is the only thing here that goes quiet when it is not
+        selected. Phase 5 dimmed the whole group, labels included, which put
+        muted text at half opacity and under SPEC §9's 4.5:1 — the dot is a
+        graphic and may be dimmed; the two labels are text and stay at a colour
+        that has been measured.
+      */}
       <div
         style={{
           height: `${layout.dotSize}px`,
           width: `${layout.dotSize}px`,
           display: 'grid',
           placeItems: 'center',
+          opacity: selected || hovered ? 1 : layout.unselectedOpacity,
+          ...transition(reducedMotion, 'opacity'),
         }}
       >
         <div
@@ -134,8 +144,9 @@ function Entry({entry, projects}: {entry: TimelineEntry; projects: ConsoleConten
   return (
     <div
       style={{
-        padding: `${layout.entryGap}px ${layout.railX}px 0`,
+        padding: `${layout.entryGap}px ${layout.railX}px ${layout.entryGap}px`,
         maxWidth: '68ch',
+        minHeight: 0,
         overflowY: 'auto',
       }}
     >
@@ -253,7 +264,15 @@ export function Timeline({content}: {content: ConsoleContent}) {
 
   return (
     <div style={{display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0}}>
-      <div style={{position: 'relative', overflow: 'hidden', paddingTop: `${layout.axisTop}px`}}>
+      <div
+        style={{
+          position: 'relative',
+          overflow: 'hidden',
+          paddingTop: `${layout.axisTop}px`,
+          // The rail carries words, so its ends are faded rather than cut.
+          ...edgeMask(Math.round(layout.railX * 1.3)),
+        }}
+      >
         {/*
           The axis itself, behind the dots and across the whole panel: it runs
           off both edges because the line continues past what is in frame.
@@ -295,11 +314,16 @@ export function Timeline({content}: {content: ConsoleContent}) {
         <div
           key={selected._id}
           style={{
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
             minHeight: 0,
             animation: reducedMotion ? undefined : 'firmware-fade 240ms ease-out',
           }}
         >
           <Entry entry={selected} projects={projects} />
+          {/* A long summary runs under the bottom edge; this is what says so. */}
+          <div style={scrollFade(Math.round(layout.entryGap * 0.75))} />
         </div>
       ) : null}
     </div>

@@ -61,7 +61,14 @@ export interface Tuning {
   screenColor: string
   /** Screen background in the light theme — SPEC §9's warm paper-white. */
   screenLightColor: string
+  /**
+   * How hard the glass is driven, per theme. The dark screen's background is a
+   * near-black that tone mapping eats, so it needs a lot; the light theme's
+   * warm paper-white already reads as lit, and the same value on it renders as
+   * flat white rather than a backlit LCD.
+   */
   screenEmissiveIntensity: number
+  screenEmissiveIntensityLight: number
 
   /*
     The firmware UI on the screen (SPEC §7, §8). These are CSS pixels in the
@@ -136,6 +143,7 @@ export const DEFAULT_TUNING: Tuning = {
   screenColor: '#0a0f12',
   screenLightColor: '#edeae2',
   screenEmissiveIntensity: 2.6,
+  screenEmissiveIntensityLight: 1,
   fwPanelWidth: 900,
   fwStatusHeight: 60,
   fwStatusFont: 16,
@@ -144,7 +152,7 @@ export const DEFAULT_TUNING: Tuning = {
   fwTileWidth: 250,
   fwTileHeight: 140,
   fwTileGap: 54,
-  fwSelectedScale: 1,
+  fwSelectedScale: 1.12,
   fwUnselectedOpacity: 0.5,
   fwBlockGap: 60,
   fwTextGap: 17,

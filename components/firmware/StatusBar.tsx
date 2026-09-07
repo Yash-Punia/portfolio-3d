@@ -2,6 +2,7 @@
 
 import {useSyncExternalStore} from 'react'
 
+import {useConsole} from '@/components/console/store'
 import {useFirmwareLayout} from '@/components/firmware/layout'
 
 /** SPEC §16.4, confirmed: the firmware's version string. */
@@ -45,6 +46,8 @@ function useClock(): string | null {
 export function StatusBar({section}: {section: string}) {
   const time = useClock()
   const layout = useFirmwareLayout()
+  const muted = useConsole((state) => state.muted)
+  const toggleMuted = useConsole((state) => state.toggleMuted)
 
   return (
     <header
@@ -63,7 +66,30 @@ export function StatusBar({section}: {section: string}) {
       }}
     >
       <span style={{color: 'var(--screen-fg)'}}>{section}</span>
-      <span>{VERSION}</span>
+
+      <span style={{display: 'flex', alignItems: 'center', gap: '1.1ch'}}>
+        {VERSION}
+        {/*
+          The mute (SPEC §16.2). A span, not a button: this tree is
+          `aria-hidden`, and a focusable element inside one is a trap — the
+          accessible twin is a real button in the page's landmark, the same
+          arrangement the resume link has had since Phase 3.
+
+          U+266A is a text-default character, so it does not arrive as a
+          colour emoji the way a speaker glyph would.
+        */}
+        <span
+          onClick={toggleMuted}
+          style={{
+            color: muted ? 'var(--screen-muted)' : 'var(--screen-accent)',
+            cursor: 'pointer',
+            textDecoration: muted ? 'line-through' : 'none',
+          }}
+        >
+          ♪
+        </span>
+      </span>
+
       {/* Reserves its own width so the bar does not reflow when the clock lands. */}
       <span style={{minWidth: '5ch', textAlign: 'right'}}>{time ?? ''}</span>
     </header>

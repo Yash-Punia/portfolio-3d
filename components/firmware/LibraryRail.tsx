@@ -1,6 +1,6 @@
 'use client'
 
-import type {CSSProperties, ReactNode} from 'react'
+import {useState, type CSSProperties, type ReactNode} from 'react'
 
 import type {ConsoleContent, Project} from '@/components/console/content'
 import {useIsMobile} from '@/components/console/mobile'
@@ -48,13 +48,28 @@ function Tile({
   selected: boolean
   reducedMotion: boolean
   onSelect: () => void
-  children: ReactNode
+  children: (hovered: boolean) => ReactNode
 }) {
   const layout = useFirmwareLayout()
+  const [hovered, setHovered] = useState(false)
+
+  /*
+    The tile carries the geometry — the scale, the lift and the selection
+    outline — and its face carries the dimming, because SPEC §8's reduced
+    opacity on an unselected tile is right for a cover image and wrong for the
+    title on a tile that has no cover: text under it lands beneath §9's 4.5:1.
+
+    Hovering an unselected tile lifts it a little. It is the same idea wherever
+    a hover state appears on this screen — what is under the pointer comes
+    forward slightly, and no further. This is a menu (SPEC §10).
+  */
+  const lift = selected ? 6 : hovered ? 3 : 0
 
   return (
     <div
       onClick={onSelect}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
       style={{
         flex: '0 0 auto',
         width: `${layout.tileWidth}px`,
@@ -64,15 +79,13 @@ function Tile({
         overflow: 'hidden',
         position: 'relative',
         transformOrigin: 'center bottom',
-        transform: selected ? `scale(${layout.selectedScale}) translateY(-6px)` : 'scale(1)',
-        opacity: selected ? 1 : layout.unselectedOpacity,
-        filter: selected ? 'none' : 'saturate(0.35)',
+        transform: `scale(${selected ? layout.selectedScale : 1}) translateY(${-lift}px)`,
         outline: selected ? '2px solid var(--screen-accent)' : '1px solid transparent',
         outlineOffset: '3px',
-        ...transition(reducedMotion, 'transform, opacity, filter, outline-color'),
+        ...transition(reducedMotion, 'transform, outline-color'),
       }}
     >
-      {children}
+      {children(hovered)}
     </div>
   )
 }
@@ -82,9 +95,20 @@ function Tile({
  * with the title set in Archivo Expanded. Deliberate, not a broken image
  * (SPEC §3.2).
  */
-function ProjectFace({project}: {project: Project}) {
+function ProjectFace({
+  project,
+  selected,
+  hovered,
+  reducedMotion,
+}: {
+  project: Project
+  selected: boolean
+  hovered: boolean
+  reducedMotion: boolean
+}) {
   const layout = useFirmwareLayout()
   const cover = coverUrl(project)
+  const quiet = !selected && !hovered
 
   if (!cover) {
     return (
@@ -95,7 +119,9 @@ function ProjectFace({project}: {project: Project}) {
           boxSizing: 'border-box',
           display: 'flex',
           alignItems: 'flex-end',
-          background: 'color-mix(in srgb, var(--screen-accent) 24%, var(--screen-bg))',
+          // The tint goes quiet where a cover would dim; the title does not.
+          background: `color-mix(in srgb, var(--screen-accent) ${quiet ? 12 : 24}%, var(--screen-bg))`,
+          ...transition(reducedMotion, 'background-color'),
         }}
       >
         <p
@@ -121,7 +147,15 @@ function ProjectFace({project}: {project: Project}) {
     <img
       alt=""
       src={cover}
-      style={{display: 'block', width: '100%', height: '100%', objectFit: 'cover'}}
+      style={{
+        display: 'block',
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        opacity: quiet ? layout.unselectedOpacity : 1,
+        filter: quiet ? 'saturate(0.35)' : 'none',
+        ...transition(reducedMotion, 'opacity, filter'),
+      }}
     />
   )
 }
@@ -148,8 +182,8 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
 
   return (
     <div style={{display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0}}>
-      {/* The bottom padding is the headroom the selected tile's scale needs. */}
-      <div style={{overflow: 'hidden', padding: `${layout.railTop}px 0 10px`}}>
+      {/* The padding is the headroom the selected tile's scale and lift need. */}
+      <div style={{overflow: 'hidden', padding: `${layout.railTop}px 0 14px`}}>
         <div
           style={{
             display: 'flex',
@@ -166,7 +200,14 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
               reducedMotion={reducedMotion}
               onSelect={() => select(position)}
             >
-              <ProjectFace project={project} />
+              {(hovered) => (
+                <ProjectFace
+                  project={project}
+                  selected={index === position}
+                  hovered={hovered}
+                  reducedMotion={reducedMotion}
+                />
+              )}
             </Tile>
           ))}
         </div>

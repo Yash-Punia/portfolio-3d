@@ -411,6 +411,8 @@ export function ConsoleStage({content}: {content: ConsoleContent}) {
   const tuning = useTuningFlag()
   const announcement = useAnnouncement(content)
   const mobile = useIsMobile()
+  const muted = useConsole((state) => state.muted)
+  const toggleMuted = useConsole((state) => state.toggleMuted)
 
   useTouchRail(content, mobile)
 
@@ -420,6 +422,15 @@ export function ConsoleStage({content}: {content: ConsoleContent}) {
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>
+      {/*
+        The mute's accessible twin (SPEC §16.2). The glyph in the status bar is
+        inside the firmware's `aria-hidden` tree and cannot be focusable, and
+        the sounds have no other control — so, like Phase 6's close and theme
+        buttons, the real one is a labelled button out here in the page.
+      */}
+      <button className="sr-only" onClick={toggleMuted} type="button">
+        {muted ? 'Unmute the console' : 'Mute the console'}
+      </button>
       {tuning ? <TuningPanel /> : null}
     </div>
   )

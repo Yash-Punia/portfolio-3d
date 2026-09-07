@@ -1,6 +1,8 @@
 import {create} from 'zustand'
 
+import {play} from '@/components/console/audio'
 import type {ButtonSlot} from '@/components/console/content'
+import {useConsole} from '@/components/console/store'
 
 /**
  * The console's directional input, from either the joystick or the arrow keys.
@@ -63,6 +65,8 @@ export const useInput = create<InputState>()((set, get) => ({
   pressedSlot: null,
   pressSlot: (slot) => {
     if (release !== null) clearTimeout(release)
+    // The cap's click, wherever the press came from — the mesh or the key.
+    if (!useConsole.getState().muted) play('press')
     set({pressedSlot: slot})
     release = setTimeout(() => set({pressedSlot: null}), PRESS_MS)
   },

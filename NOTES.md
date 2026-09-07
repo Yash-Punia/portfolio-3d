@@ -1280,3 +1280,159 @@ right goes back, up enters the Timeline, down returns to the Library. `pnpm type
 `pnpm build` and `prettier --check` clean.
 
 The joystick's drag mapping is still unverified by driving the stick, for the reason recorded in 6a.
+
+## Phase 7 — Themes and polish
+
+SPEC §13 names this phase "both screen themes, contrast audit, persistence, scanlines, all
+micro-interactions, sound design hooks". Half of it was already standing — both palettes, the
+`readableAccent()` correction, `localStorage` persistence with Phase 6's no-flash head script, the
+scanline and vignette overlays, the stage cross-fade. So this phase is the **polish ledger** the
+earlier phases each deferred here, plus the two decisions that were parked.
+
+### Versions installed
+
+None. The sounds are Web Audio oscillators; everything else is CSS and React state that was already
+in the tree.
+
+### The two parked decisions, answered
+
+1. **Sound (SPEC §16.2).** Built, **audible**, with a mute in the status bar. The SPEC's own default
+   was "hooks, shipped muted, with a mute toggle", which is dead code for everyone who never finds
+   the toggle. A handheld that makes no noise is a screenshot.
+2. **Hard-coded chrome strings vs SPEC §15.** §15 is **amended in place** rather than worked around:
+   content comes from Sanity, the firmware's diegetic chrome does not. The amendment names which
+   strings it covers and why, so the question is closed rather than carried forward a fourth time.
+
+### Decisions
+
+- **The screen's emissive is a pair, not a number.** `screenEmissiveIntensity` was dialled against a
+  near-black dark screen; on the light theme's warm paper-white the same 2.6 rendered flat.
+  `screenEmissiveIntensityLight` joins it, `Materials` carries `screenEmissive: {dark, light}` beside
+  the `screenOn` colours it already had, and `Body` — which already read `useTheme()` — picks one.
+  Measured on the glass at 1440×900 in the light theme: **2.6 gives a mean of rgb(243,242,241)**
+  against **1.0's rgb(219,218,215)**, and the 2.6 frame washes the accent-tinted menu highlight out
+  to a pale sage. 1.0 is a look call, not a spec value — but it is a `?tune` knob now.
+- **Opacity came off the text, not off the graphic.** Phase 5 dimmed a whole timeline `Dot` group to
+  `fwUnselectedOpacity` (0.5), which took the date and the organisation name with it and put muted
+  text under SPEC §9's 4.5:1. The dot itself still dims — it is a graphic. The same carve-out was
+  needed in the Library: a tile's dimming moved from the tile onto its **face**, because SPEC §8's
+  reduced opacity is right for a cover image and wrong for the title on a tile that has no cover. A
+  coverless tile goes quiet by dropping its accent tint from 24% to 12% and leaves the title at full
+  contrast.
+- **`edges.ts` holds the two places content runs out of the panel.** A left/right `mask-image` on the
+  timeline's axis, so an organisation name fades rather than being chopped mid-word ("ool" of "DAV
+  Public School"), and a bottom gradient on the two scrolling boxes. The fade is **not** conditional
+  on whether the box actually scrolls: with nothing to scroll it draws the background over the
+  background and no pixel changes, which is cheaper than measuring `scrollHeight` on every resize,
+  every theme change and every selection. It is a sibling of the scrolling box — inside it, it would
+  scroll away with the content.
+- **The selected tile scales again.** SPEC §8 asks for ~1.18×; `fwSelectedScale` had been dialled to
+  **1**, so the rail had no scale change at all. It is 1.12 now, with the rail's bottom padding
+  raised from 10 to 14 for the headroom. Verified not to clip in the mobile layout table either.
+- **One hover idea, used everywhere.** What is under the pointer comes forward slightly and no
+  further: a tile lifts 3px and un-dims, a timeline dot returns to full opacity, a section arrow's
+  label goes from muted to foreground. The menu already had a hover — it moves the highlight — so it
+  was left alone. This is a menu (SPEC §10); the screen stays quiet.
+- **The theme cap borrows the face buttons' press.** It is the one cap on the object that is black
+  where every other one is off-white, which was Phase 5b's open risk. Its collar now flashes accent
+  for 140ms and the cap sinks by `abxy.travel` on the same fast spring. Local state rather than
+  `input.ts`'s `pressedSlot`, which is keyed by ABXY slot — this control has no slot and no keyboard
+  twin to stay in step with.
+- **Every cue fires from inside a store action**, not from the control that caused it. The arrow
+  keys, the joystick, the wheel, a swipe and a click on a tile already share `moveLibrary` and its
+  siblings, so firing there is what makes all five sound the same — the argument `move()` in
+  `ConsoleStage` already runs on. `moved()` also makes a clamped no-op **silent**: at the end of a
+  rail there is no wrap and no bounce (SPEC §3.2), so there is nothing to hear.
+- **The sounds are synthesised, not sampled.** Four short cues do not justify four audio files — a
+  fetch, a decode and a licence question each — when an oscillator and a gain envelope are the whole
+  of what they are. `audio.ts` imports nothing (SPEC §12). The envelope matters more than the
+  waveform: a square wave cut off abruptly clicks, so every note ramps to a near-zero floor.
+- **The `AudioContext` is created on the first cue, never at module load.** A browser refuses one
+  before a gesture and logs a warning for the attempt, and every cue is downstream of a click, a key
+  or a tap.
+- **The mute glyph is a `<span>`; its accessible twin is a real button in the page.** The firmware
+  tree is `aria-hidden` and a focusable element inside one is a trap — the arrangement the resume
+  link has had since Phase 3 and Phase 6's close and theme buttons had. U+266A is a text-default
+  character, so it does not arrive as a colour emoji the way a speaker glyph would.
+- **`muted` persists beside `theme`.** Both are properties of the visitor; whether the console was
+  open is a property of the visit.
+- **`Download Resume` was content, not chrome.** `siteSettings.resumeLabel` already existed and the
+  hidden landmark already read it; only the info monitor was hard-coding the words. `RESUME_LABEL`
+  moved from `app/page.tsx` into `content.ts` and both surfaces read the one definition. Against the
+  live dataset the monitor now reads **"Resume"**.
+
+### Verified
+
+Chrome DevTools MCP against `pnpm dev`, then again against `pnpm build && pnpm start` on a clean
+port (SPEC §0 rule 2), with `console-tuning` and `console` cleared from `localStorage` first. Both
+`list_console_messages` runs returned exactly one message — Phase 1's upstream `THREE.Clock`
+deprecation. No errors.
+
+**Contrast, measured in the page (SPEC §9's checkpoint):**
+
+| Theme | Background | Foreground  | Muted      | Accent      | Scanline |
+| ----- | ---------- | ----------- | ---------- | ----------- | -------- |
+| Dark  | `#0a0f12`  | **16.7:1**  | **5.46:1** | **11.11:1** | 0.03     |
+| Light | `#edeae2`  | **14.87:1** | **4.56:1** | **5.56:1**  | 0.015    |
+
+Every body-text value clears AA's 4.5:1 on both themes — and the muted figure is now the figure the
+timeline's unselected labels actually render at, which was the point of taking the opacity off them.
+The accent is high because the tuned chassis accent is a green; `readableAccent()` still corrects it
+per theme (`#4be12d` dark, `#236a15` light).
+
+- **Light screen, not blown out** — screenshots at 1440×900 of the same frame at 1.0 and at 2.6, plus
+  the glass means quoted above. The 1.0 frame has a defined vignette and black type; the 2.6 frame is
+  a white bloom with pale-sage highlights.
+- **Selected tile** — `scale(1.12) translateY(-6px)` with the accent outline; the unselected one at
+  `scale(1) translateY(0px)` with its cover at 0.5 opacity and `saturate(0.35)`.
+- **Hover** — over an unselected tile the transform becomes `translateY(-3px)` and its cover goes to
+  opacity 1 and `filter: none`; leaving restores both.
+- **Theme cap press, caught in the pixels.** The collar region read rgb(18,23,16) at rest,
+  **rgb(48,75,34) 70ms into a press** — the accent flash — and rgb(16,20,15) once it released, with
+  `data-stage` flipped to `light`. Frames read off the WebGL canvas inside a `requestAnimationFrame`,
+  the technique Phase 2 established.
+- **Timeline** — the axis fades at both ends rather than cutting a word, and the labels render at
+  full `--screen-muted` while the dots keep the 0.5.
+- **The detail view scrolls, and says so** — on "Aurora Game Engine" the box measured 815px against
+  994px of content, with the bottom fade over it.
+- **Sound, counted rather than heard.** With `OscillatorNode.prototype.start` instrumented: a rail
+  move fires **1** note; a move clamped at the end of the rail fires **0**; a face-button press fires
+  **1**; muting is itself silent and a move while muted fires **0**; unmuting fires **1**. Opening
+  fires 1 and creates exactly **1** `AudioContext`; the boot handover fires **3** (the rising chime);
+  closing fires 1. On a freshly loaded page, before any gesture: **0 contexts, 0 notes**.
+- **The mute persists** — `localStorage.console` holds `{"theme":…,"muted":true}` while muted, and
+  the `.sr-only` button reads "Mute the console" / "Unmute the console".
+- **Reduced motion** (`matchMedia` overridden before load) — a tile's transition is
+  `opacity 100ms linear` rather than the 280ms transform, hover and press still change state, and the
+  sounds are unaffected: audio is not motion.
+- **Mobile** — the turned handheld, Library and detail both reading, the selected tile at 1.12 with
+  9.5px of headroom above it inside the `overflow: hidden` rail (nothing clipped in the mobile
+  table), and the ♪ glyph toggling the mute by tap.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build`, `prettier --check .` — all clean. `/` still
+  prerendered static.
+
+### Known issues / open risks
+
+- **`screenEmissiveIntensityLight: 1` is a look call**, dialled against the light stage on this
+  monitor. It is a `?tune` knob, so it moves without a code change.
+- **The timeline's entry-panel fade was not exercised by overflowing content** — no published entry
+  has enough copy to scroll that panel. The detail view's was, on a real project, and both come from
+  the same helper.
+- **The window on this machine will not resize below ~501px wide**, so the mobile pass ran at
+  501×845 rather than 390×844. That is still under the 640px breakpoint, so the MOBILE layout table
+  and the quarter turn were both in force; the glass is simply larger than a real phone's. The same
+  limitation Phase 3 recorded.
+- **The sounds have not been heard on a real device.** Counting oscillator starts proves the wiring
+  and the mute, not that the cues are pleasant. The frequencies and gains are one edit each in
+  `CUES`.
+- **The tick fires on every repeat while a direction is held**, 180ms apart. It is deliberately the
+  quietest cue (gain 0.022) for that reason, but a long hold is a run of ticks.
+- **The mute is only reachable while the console is open**, because the status bar is inside the
+  firmware. The `.sr-only` button is always there; a sighted visitor with a closed console has
+  nothing to mute yet, which is why this is recorded rather than fixed.
+- **`readableAccent()` never has to darken the dark theme's accent.** With a bright green tuned in,
+  the dark accent measures 11.11:1 — well past what it needs, and arguably louder than SPEC §9's red
+  intended. A tuning-value question, not a code one.
+- The `THREE.Clock` deprecation warning, the bundle budget, `frameloop="always"` while open, and
+  Lighthouse: all still Phase 8.
+- Everything still open from Phase 0 stays open: the logged-in Studio verification is Yash's to do.

@@ -4,6 +4,7 @@ import {openLink, type Project} from '@/components/console/content'
 import {useIsMobile} from '@/components/console/mobile'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
+import {scrollFade} from '@/components/firmware/edges'
 import {useFirmwareLayout} from '@/components/firmware/layout'
 import {urlFor} from '@/sanity/lib/image'
 
@@ -199,6 +200,13 @@ export function Detail({project}: {project: Project}) {
           {mobile ? 'BACK' : 'ESC — BACK'}
         </p>
       </div>
+
+      {/*
+        The panel scrolls whenever a project has more than a screen of copy, and
+        on a phone there is no scrollbar at rest to say so. A sibling of the
+        scrolling box, not a child — inside it, it would scroll away.
+      */}
+      <div style={scrollFade(Math.round(layout.blockGap * 0.8))} />
     </div>
   )
 }

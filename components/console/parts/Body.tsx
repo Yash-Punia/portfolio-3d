@@ -99,6 +99,7 @@ export function Body({content}: {content: ConsoleContent}) {
           ref={glass}
           {...m.screenGlass}
           emissive={reducedMotion && isOpen ? m.screenOn[theme] : m.screenOff}
+          emissiveIntensity={m.screenEmissive[theme]}
         />
       </mesh>
 

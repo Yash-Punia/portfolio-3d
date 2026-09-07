@@ -547,7 +547,7 @@ SANITY_REVALIDATE_SECRET=       # server-only, webhook signature
 ## 15. Definition of done
 
 - [ ] Zero TypeScript errors, zero ESLint errors, zero console warnings in the browser.
-- [ ] Every string on screen originates from Sanity (no hard-coded content).
+- [ ] Every string on screen originates from Sanity (no hard-coded content). **Amended in Phase 7:** this covers _content_ — names, titles, blurbs, dates, labels an editor owns, including the resume link's `resumeLabel`. It does not cover the firmware's own diegetic chrome: the version string, the section names in the status bar and on the menu, and the key prompts (`ENTER — DETAILS`, `ESC — BACK`, `TAP — DETAILS`, `BACK`, `RESULT —`). Those name the console's own parts and the keys on the visitor's keyboard, not Yash's portfolio; they belong to the object's design and live in code. Putting them in Sanity would add eight fields a non-technical editor should never touch, and eight more ways for the screen to render an empty string.
 - [ ] Works on Chrome, Safari, Firefox, iOS Safari, and Chrome Android.
 - [ ] Full keyboard traversal of every feature.
 - [ ] Screen reader reads the complete portfolio.
