@@ -1184,10 +1184,10 @@ first thing anyone sees is unchanged. The turn on open _is_ the instruction to t
 nothing tells the visitor to, because a thing rotating in your hand is a clearer instruction than a
 sentence.
 
-- **Counter-clockwise, so the phone is turned clockwise to follow it.** That puts the left flap —
-  the info monitor and the joystick — under the left hand and ABXY under the right, which is the
-  grip the object was drawn for. Turning the other way would hand you a console upside down. One
-  sign flip if it reads wrong on a real device.
+- **Clockwise, so the phone is turned anticlockwise to follow it** (flipped from the first cut in
+  6b). Either direction lands the left flap — the info monitor and the joystick — under the left
+  hand and ABXY under the right; the turn only decides which way the wrist goes to get there, and
+  Yash preferred this one.
 - **Auto-rotate needs no orientation API.** A phone that has already rotated to landscape has a
   viewport wider than it is tall, and `isPortraitPhone` is false there, so the console does not
   turn — the browser has done the turning. That is the whole of the handling: one comparison, no
@@ -1245,9 +1245,11 @@ At 390×844, 844×390 and 1440×900:
   that were tapped successfully. It still wants a real thumb on a real phone.
 - **The close cap was not tapped either**, for the same reason. It is the same tap path as the
   theme and ABXY caps, both of which work.
-- **The turn direction is a guess about how people hold phones.** Clockwise is the right-handed
-  motion, but a left-handed visitor may turn the other way and get the console upside down. There
-  is no fix short of `DeviceOrientation`, which needs a permission prompt on iOS.
+- **The turn direction commits everyone to one wrist.** A visitor who turns the phone the other way
+  gets the console upside down, and nothing catches that: with auto-rotate off there is no way to
+  know which way the phone actually went, short of `DeviceOrientation` and its iOS permission
+  prompt. Auto-rotate on is the case that always comes out right, because the browser reports the
+  orientation and the console does not turn at all.
 - **The turn is not announced.** A visitor with reduced motion set gets the console already turned,
   with no rotation to read as an instruction. The `.sr-only` landmark carries the whole portfolio
   regardless, so nothing is unreachable, but the hint is gone.
@@ -1256,3 +1258,25 @@ At 390×844, 844×390 and 1440×900:
   the real object, and it wants a device test before it is called fine.
 - `env(safe-area-inset-*)` is now unused. `viewportFit: 'cover'` is kept, because the canvas fills
   the viewport and the stage gradient should reach under the notch.
+
+### Phase 6b — The turn goes the other way
+
+Yash asked for the opposite rotation, so `Console`'s roll is `-Math.PI / 2` and the visitor turns
+the phone anticlockwise to follow it. The grip is unchanged either way — the joystick still lands
+under the left hand and ABXY under the right — because turning the console one way and the phone
+the other cancel out. It is a preference about the wrist, not about the layout.
+
+Three signs move together or not at all: the roll in `Console`, and the quarter-turn each of
+`useTouchRail` and `Joystick` applies to a drag before naming a direction. Turned this way the
+console's own right points **down** the screen rather than up, so the transform is `(dy, -dx)`
+where it was `(-dy, dx)`.
+
+#### Verified
+
+At 390×844: the console rolls the other way and settles with the joystick flap at the top of the
+portrait screen — which becomes the left hand once the phone is turned anticlockwise. All four
+swipes still map correctly in the turned frame: what the visitor feels as left advances the rail,
+right goes back, up enters the Timeline, down returns to the Library. `pnpm typecheck`, `pnpm lint`,
+`pnpm build` and `prettier --check` clean.
+
+The joystick's drag mapping is still unverified by driving the stick, for the reason recorded in 6a.

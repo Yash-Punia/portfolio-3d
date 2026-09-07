@@ -312,16 +312,16 @@ function useTouchRail(content: ConsoleContent, enabled: boolean) {
 
       /*
         On an upright phone the open console has rolled a quarter turn
-        counter-clockwise, so the visitor's fingers and the console's axes no
-        longer agree: the console's right is up the screen. Turning the deltas
-        by the same quarter turn puts them back in the console's frame, and the
-        rest of this function never learns the difference.
+        clockwise, so the visitor's fingers and the console's axes no longer
+        agree: the console's right is down the screen. Turning the deltas by the
+        same quarter turn puts them back in the console's frame, and the rest of
+        this function never learns the difference.
 
         The rotation must match `Console`'s roll. If one sign flips, both do.
       */
       const turned = isPortraitPhone(window.innerWidth, window.innerHeight)
-      const x = turned ? -dy : dx
-      const y = turned ? dx : dy
+      const x = turned ? dy : dx
+      const y = turned ? -dx : dy
 
       // The dominant axis wins outright: a diagonal drag should do one thing.
       if (Math.abs(x) > Math.abs(y)) {

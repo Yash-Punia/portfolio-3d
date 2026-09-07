@@ -49,9 +49,9 @@ export function Console({content}: {content: ConsoleContent}) {
    * control on them in frame, which is what the DOM overlay used to stand in
    * for.
    *
-   * Counter-clockwise, so the phone is turned clockwise to follow it: the top
-   * edge goes right, which is the way a right hand turns a phone. The opposite
-   * is one sign.
+   * Clockwise, so the phone is turned anticlockwise to follow it: the top edge
+   * goes left. Either way lands the joystick under the left hand and ABXY under
+   * the right — the turn only decides which way the wrist goes to get there.
    *
    * A phone that auto-rotated to landscape does not roll — the viewport is
    * already wide, `isPortraitPhone` is false, and the browser has done the
@@ -59,7 +59,7 @@ export function Console({content}: {content: ConsoleContent}) {
    * on the page again.
    */
   const {roll} = useSpring({
-    roll: turned ? Math.PI / 2 : 0,
+    roll: turned ? -Math.PI / 2 : 0,
     config: {tension: 130, friction: 21},
     immediate: reducedMotion,
   })

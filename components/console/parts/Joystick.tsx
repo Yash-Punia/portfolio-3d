@@ -84,18 +84,18 @@ export function Joystick() {
       }
 
       /*
-        Turned onto a phone's long axis, the stick's own right points up the
+        Turned onto a phone's long axis, the stick's own right points down the
         screen — so a drag has to be turned by the same quarter turn before it
-        is named, or pushing the stick right would emit `up`. The lean needs no
-        such correction: it is rendered in the console's own space, which the
+        is named, or pushing the stick right would emit `down`. The lean needs
+        no such correction: it is rendered in the console's own space, which the
         roll has already rotated.
 
         The same transform as `useTouchRail`'s, and it must match `Console`'s
         roll. If one sign flips, all three do.
       */
       const turned = isPortraitPhone(size.width, size.height)
-      const x = turned ? -dy : dx
-      const y = turned ? dx : dy
+      const x = turned ? dy : dx
+      const y = turned ? -dx : dy
 
       if (Math.abs(x) > Math.abs(y)) hold(x > 0 ? 'right' : 'left')
       else hold(y > 0 ? 'down' : 'up')
