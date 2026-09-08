@@ -109,6 +109,26 @@ canvas {
 }
 
 /*
+  The draft-mode banner (SPEC §3). Deliberately unlike everything else on the
+  page: this is not part of the object, it is a note stuck to the front of it,
+  and it is only ever seen by whoever holds the preview cookie.
+*/
+.draft-banner {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: 50%;
+  translate: -50% 0;
+  z-index: 30;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: #ffcf3d;
+  color: #141416;
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+/*
   The same controls when there is no console to press: with WebGL unavailable
   the firmware is mounted as plain DOM (SPEC §11.3), so these are the only theme
   and mute controls on the page and they are simply on it.

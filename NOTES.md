@@ -1800,3 +1800,116 @@ Bundle, from the chunks the page actually requests on load, gzipped at level 9:
   `Timer`.
 - **The bundle numbers are from this build, not a budget check in CI.** Nothing fails if the next
   dependency pushes 149.9KB past 200KB. `pnpm analyze` is the way to look, and looking is manual.
+
+---
+
+## Phase 9 — Deploy
+
+SPEC §13's last phase: "Vercel, env vars, Sanity webhook revalidation, draft mode, custom domain, OG
+image", with the checkpoint "live URL, and a demonstrated content edit in Sanity appearing on the
+live site without a redeploy".
+
+**The deploy itself is Yash's to run, and this phase does not claim it.** Creating the Vercel
+project, setting the environment variables, adding the CORS origin, creating the webhook and
+pointing a domain at it are all account actions behind a login this machine does not have — the
+Vercel CLI is not installed, and its login and the Vercel and GitHub MCP servers all need an
+interactive OAuth this session cannot run. What this phase does is build and verify everything the
+deploy needs, so that the runbook in `README.md` is six steps of clicking rather than six steps of
+finding out.
+
+### Versions installed
+
+`@sanity/webhook` 4.0.4, for one function: `isValidSignature`.
+
+### Decisions
+
+- **The webhook revalidates by tag, and rebuilds nothing.** Every fetch in `app/page.tsx` is tagged
+  with its document type, so `/api/revalidate` turns "a `project` changed" into
+  `revalidateTag('project')` and stops. The next request for the page rebuilds it; everyone else
+  keeps the cached copy until then.
+- **The body is read as text, never as JSON.** The signature is computed over the exact bytes Sanity
+  sent, and `await request.json()` would re-serialise them — every signature would fail, and the
+  failure would look like a wrong secret rather than a wrong parse.
+- **`revalidateTag(tag, {expire: 0})`, not the recommended `"max"`.** Next 16's second argument is
+  how long stale content may still be served; `max` serves stale for a year while the rebuild runs
+  in the background, which for most sites is right. Here it would mean an editor who hits Publish,
+  reloads, and sees the old copy. On a one-page portfolio with four small queries, blocking the next
+  single request is cheaper than making the author distrust the button.
+- **An unknown document type is answered, not swallowed.** The route replies
+  `{revalidated: false, message: "Unknown document type: …"}` with a 200 — the webhook fired
+  correctly, the filter has simply drifted wider than the four tags this site caches. A 500 there
+  would put a red mark in the Sanity dashboard for something that is not broken.
+- **Draft mode entered at `/api/draft?secret=…`, not SPEC §3's `/?preview`.** Draft mode is a cookie,
+  and only a Route Handler can set one — a bare `?preview` on the page cannot. It also has to be
+  authenticated: an unauthenticated preview URL hands unpublished work to anyone who guesses it. The
+  secret is the same `SANITY_REVALIDATE_SECRET` the webhook signs with, so there is one secret
+  between this site and this Studio rather than two to rotate.
+- **Sanity is a "separate draft endpoint" CMS, so the fetch changes, not just the cache.** Drafts
+  live on another perspective and need a token, so a preview request swaps in
+  `client.withConfig({token})` on `perspective: 'drafts'` with `cache: 'no-store'`. Published
+  rendering is byte-for-byte what it was: `isEnabled` is false for every visitor.
+- **The preview says so, and the way out is the banner itself.** The cookie outlives the tab that
+  set it, so a preview with no exit is a trap — and unpublished copy that does not announce itself
+  is how a draft gets mistaken for the live site. The banner is deliberately unlike anything else on
+  the page: it is a note stuck to the front of the object, not part of it.
+- **The CSP is honest about its two loose directives.** `script-src` and `style-src` both carry
+  `'unsafe-inline'`. Next streams the RSC payload as inline `<script>` tags and the theme script has
+  to run before the first paint; the strict alternative is a per-request nonce from a proxy, which
+  makes `/` dynamic and trades the prerendered page — and the LCP that depends on it — for a defence
+  against injected script on a site with no user input, no search and no forms. The firmware is
+  authored in inline styles because one panel is scaled onto a screen in 3D. Everything else is shut:
+  `object-src 'none'`, images only from here and Sanity's CDN, `frame-ancestors 'self'` so the
+  Studio's own preview can frame the site and nothing else can.
+- **`'unsafe-eval'` is added in development only**, where Turbopack's HMR needs it. Production never
+  sees it.
+- **The two secrets are read, not `required()`.** `sanity/env.ts` throws at import time for the three
+  public Sanity variables, because without them there is no site. Without the secrets there is still
+  a site — just no previews and no webhook — so the routes that need one refuse individually rather
+  than taking the page down with them.
+
+### Verified
+
+Against `pnpm build && pnpm start` on port 3100, with the secret set in the environment.
+
+- **Headers, on the wire**: `Content-Security-Policy` (the full policy above),
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`,
+  `Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()`.
+- **The CSP does not break anything.** The console opens and boots with the policy in force and the
+  console log holds one message — the known `THREE.Clock` deprecation. `/studio` renders its
+  connect screen with 46 scripts loaded and **zero CSP violations**; its only errors are Sanity CORS
+  rejections for `localhost:3100`, which is a project setting, not a policy problem, and is step 3 of
+  the README's runbook.
+- **The webhook, four ways**: a valid signature returns
+  `{"revalidated":true,"tag":"project"}`; a signature with one character changed returns **401
+  Invalid signature**; no signature header at all returns **401**; a valid signature for
+  `{_type:"nope"}` returns `{"revalidated":false,"message":"Unknown document type: nope"}`.
+- **Draft mode, end to end**: `?secret=wrong` → **401**. The right secret → **307** to `/` with a
+  `__prerender_bypass` cookie. The page with that cookie renders the banner —
+  "Draft mode — showing unpublished edits. Leave preview." — and is served
+  `Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate`. The same page without the
+  cookie has no banner and is served `s-maxage=31536000`. `/api/draft/disable` → **307**, cookie
+  cleared.
+- **`/` is still prerendered static** with `draftMode()` read in it; only the three API routes are
+  dynamic.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build`, `prettier --check .` — all clean.
+
+### Known issues / open risks
+
+- **Nothing is deployed.** No Vercel project, no live URL, no domain, no webhook — all six README
+  steps are Yash's, and SPEC §13's checkpoint ("a content edit in Sanity appearing on the live site")
+  can only be demonstrated after them.
+- **The drafts perspective has never fetched a real draft.** `SANITY_API_READ_TOKEN` is empty here,
+  so the verified path is: cookie set, banner shown, cache bypassed, published content rendered.
+  With a token the same code asks for `perspective: 'drafts'`; that request has not been made.
+- **`NEXT_PUBLIC_SITE_URL` is baked in at build time.** Changing the domain needs a redeploy, not
+  just an environment edit. Recorded in the README beside the variable.
+- **The webhook secret and the preview secret are the same string.** One secret to rotate, and one
+  secret whose leak costs both. For a personal portfolio that is the right trade; for anything with
+  a team it is not.
+- **The CSP has not been tested against the Studio's Presentation tool**, which frames the site.
+  `frame-ancestors 'self'` and `frame-src 'self'` are set for exactly that case, but Presentation is
+  not configured on this project, so the check is theoretical.
+- **Lighthouse's Performance score and LCP are still unmeasured** (Phase 8b). The preview deploy is
+  where to take them: a real browser, a real URL, real network.
+- The `THREE.Clock` deprecation stays open upstream, and the two mistagged timeline entries stay
+  open in the dataset.

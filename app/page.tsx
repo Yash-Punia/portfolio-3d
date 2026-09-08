@@ -9,7 +9,11 @@ import {
   resumeHref,
   SECTION_LABELS,
 } from '@/components/console/content'
+import type {FilteredResponseQueryOptions} from 'next-sanity'
+import {draftMode} from 'next/headers'
+
 import {siteUrl} from '@/app/site'
+import {readToken, type CacheTag} from '@/sanity/env'
 import {client} from '@/sanity/lib/client'
 import {
   projectsQuery,
@@ -87,12 +91,34 @@ function personSchema(content: {
   }
 }
 
+/**
+ * How one query is read: from the cache and tagged for the webhook, or straight
+ * from Sanity's `drafts` perspective while an editor is previewing.
+ */
+function read(isDraft: boolean, tag: CacheTag): FilteredResponseQueryOptions {
+  return isDraft
+    ? {cache: 'no-store', perspective: 'drafts'}
+    : {cache: 'force-cache', next: {tags: [tag]}, perspective: 'published'}
+}
+
 export default async function Home() {
+  /*
+    Draft mode (SPEC §3). Sanity serves drafts from a different perspective and
+    only to a token, so unlike a CMS with one URL for both, the fetch itself has
+    to change: a token-bearing client on the `drafts` perspective, uncached,
+    because a preview that could be served from a cache is not a preview.
+
+    Published rendering is untouched — `isEnabled` is false for every visitor,
+    and the four tagged `force-cache` fetches are what the webhook invalidates.
+  */
+  const {isEnabled: isDraft} = await draftMode()
+  const reader = isDraft && readToken ? client.withConfig({token: readToken}) : client
+
   const [settings, socialLinks, projects, timeline] = await Promise.all([
-    client.fetch(siteSettingsQuery, {}, {cache: 'force-cache', next: {tags: ['siteSettings']}}),
-    client.fetch(socialLinksQuery, {}, {cache: 'force-cache', next: {tags: ['socialLink']}}),
-    client.fetch(projectsQuery, {}, {cache: 'force-cache', next: {tags: ['project']}}),
-    client.fetch(timelineQuery, {}, {cache: 'force-cache', next: {tags: ['timelineEntry']}}),
+    reader.fetch(siteSettingsQuery, {}, read(isDraft, 'siteSettings')),
+    reader.fetch(socialLinksQuery, {}, read(isDraft, 'socialLink')),
+    reader.fetch(projectsQuery, {}, read(isDraft, 'project')),
+    reader.fetch(timelineQuery, {}, read(isDraft, 'timelineEntry')),
   ])
 
   const resume = resumeHref(settings)
@@ -110,6 +136,18 @@ export default async function Home() {
           __html: JSON.stringify(personSchema({settings, socialLinks, projects})),
         }}
       />
+
+      {/*
+        The one thing on the page that is not the console. A preview that does
+        not say it is a preview is how unpublished copy gets mistaken for the
+        live site — and the way out has to be visible, because the cookie
+        outlives the tab that set it.
+      */}
+      {isDraft ? (
+        <a className="draft-banner" href="/api/draft/disable">
+          Draft mode — showing unpublished edits. Leave preview.
+        </a>
+      ) : null}
 
       <ConsoleStage content={{settings, socialLinks, projects, timeline}} />
 

@@ -31,3 +31,15 @@ export const apiVersion = required(
 export const CACHE_TAGS = ['siteSettings', 'socialLink', 'project', 'timelineEntry'] as const
 
 export type CacheTag = (typeof CACHE_TAGS)[number]
+
+/**
+ * The two server-only secrets (SPEC §14), read rather than required.
+ *
+ * They are deliberately not `required()`: the site renders published content
+ * without either of them, and a laptop with no `.env.local` should still run
+ * `pnpm dev` and `pnpm build`. The routes that need one refuse to work when it
+ * is missing, which is a 500 on a route nobody but Sanity calls rather than a
+ * blank site.
+ */
+export const readToken = process.env.SANITY_API_READ_TOKEN
+export const revalidateSecret = process.env.SANITY_REVALIDATE_SECRET
