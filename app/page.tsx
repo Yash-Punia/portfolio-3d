@@ -9,6 +9,7 @@ import {
   resumeHref,
   SECTION_LABELS,
 } from '@/components/console/content'
+import {siteUrl} from '@/app/site'
 import {client} from '@/sanity/lib/client'
 import {
   projectsQuery,
@@ -16,6 +17,11 @@ import {
   socialLinksQuery,
   timelineQuery,
 } from '@/sanity/lib/queries'
+import type {
+  ProjectsQueryResult,
+  SiteSettingsQueryResult,
+  SocialLinksQueryResult,
+} from '@/sanity.types'
 
 /**
  * The page is the object: the console is the entire visible interface, and the
@@ -41,6 +47,46 @@ const TIMELINE_GROUPS = [
   ['education', 'Education'],
 ] as const
 
+/**
+ * SPEC §11.7's `Person` schema.
+ *
+ * `knowsAbout` is not a field anyone has to maintain: it is the union of every
+ * engine and every technology across the published projects, in rail order. A
+ * project added in the Studio widens it; nothing goes stale.
+ */
+function personSchema(content: {
+  settings: SiteSettingsQueryResult
+  socialLinks: SocialLinksQueryResult
+  projects: ProjectsQueryResult
+}) {
+  const {settings, socialLinks, projects} = content
+  // `Custom` and `Other` are the engine list's escape hatches, not subjects:
+  // "knows about Custom" says nothing to a search engine.
+  const engines = projects
+    .map((project) => project.engine)
+    .filter((engine) => engine !== 'Custom' && engine !== 'Other')
+  const knowsAbout = [
+    ...new Set([...engines, ...projects.flatMap((project) => project.tech ?? [])]),
+  ].filter((value): value is string => Boolean(value))
+
+  const sameAs = socialLinks
+    .map((link) => link.url)
+    .filter((url): url is string => Boolean(url))
+    .sort()
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: settings?.fullName ?? undefined,
+    jobTitle: settings?.title ?? undefined,
+    description: settings?.seo?.metaDescription ?? settings?.aboutBody ?? undefined,
+    url: siteUrl(),
+    image: settings?.avatarUrl ?? undefined,
+    sameAs: sameAs.length > 0 ? sameAs : undefined,
+    knowsAbout: knowsAbout.length > 0 ? knowsAbout : undefined,
+  }
+}
+
 export default async function Home() {
   const [settings, socialLinks, projects, timeline] = await Promise.all([
     client.fetch(siteSettingsQuery, {}, {cache: 'force-cache', next: {tags: ['siteSettings']}}),
@@ -53,6 +99,18 @@ export default async function Home() {
 
   return (
     <>
+      {/*
+        Structured data, not markup a visitor ever sees — a `<script>` of type
+        `application/ld+json` is inert to the parser and invisible to a screen
+        reader (SPEC §11.7).
+      */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(personSchema({settings, socialLinks, projects})),
+        }}
+      />
+
       <ConsoleStage content={{settings, socialLinks, projects, timeline}} />
 
       <main className="sr-only">

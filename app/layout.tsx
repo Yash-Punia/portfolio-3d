@@ -1,6 +1,7 @@
 import type {Metadata, Viewport} from 'next'
 import {Archivo, Martian_Mono} from 'next/font/google'
 
+import {siteUrl} from '@/app/site'
 import {client} from '@/sanity/lib/client'
 import {siteSettingsQuery} from '@/sanity/lib/queries'
 
@@ -39,6 +40,15 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
+/**
+ * SPEC §11.7. Everything an editor owns comes from `siteSettings`; the shape of
+ * the card around it is code.
+ *
+ * `images` is only set when Yash has uploaded a sharing image in the Studio.
+ * Left undefined, Next fills it from `app/opengraph-image.tsx` — so the site
+ * always has a card, and a real screenshot replaces the generated one the moment
+ * one is published. Twitter inherits the same image for the same reason.
+ */
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await client.fetch(
     siteSettingsQuery,
@@ -48,10 +58,40 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const name = settings?.fullName
   const role = settings?.title
+  const title =
+    settings?.seo?.metaTitle ?? (name && role ? `${name} — ${role}` : (name ?? undefined))
+  const description = settings?.seo?.metaDescription ?? settings?.aboutBody ?? undefined
+  const ogImage = settings?.ogImage?.url
+    ? [
+        {
+          url: settings.ogImage.url,
+          width: settings.ogImage.width ?? undefined,
+          height: settings.ogImage.height ?? undefined,
+          alt: title ?? '',
+        },
+      ]
+    : undefined
 
   return {
-    title: settings?.seo?.metaTitle ?? (name && role ? `${name} — ${role}` : (name ?? undefined)),
-    description: settings?.seo?.metaDescription ?? settings?.aboutBody ?? undefined,
+    metadataBase: new URL(siteUrl()),
+    title,
+    description,
+    alternates: {canonical: '/'},
+    openGraph: {
+      type: 'profile',
+      url: '/',
+      siteName: name ?? undefined,
+      title,
+      description,
+      locale: 'en_GB',
+      images: ogImage,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ogImage,
+    },
   }
 }
 

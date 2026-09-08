@@ -13,7 +13,13 @@ export const siteSettingsQuery = defineQuery(`*[_type == "siteSettings"][0]{
   aboutBody,
   resumeLabel,
   "resumeUrl": resumeFile.asset->url,
-  seo
+  seo,
+  "avatarUrl": avatar.asset->url,
+  "ogImage": seo.ogImage.asset->{
+    url,
+    "width": metadata.dimensions.width,
+    "height": metadata.dimensions.height
+  }
 }`)
 
 export const socialLinksQuery = defineQuery(`*[_type == "socialLink"] | order(buttonSlot asc){

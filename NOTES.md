@@ -1634,3 +1634,86 @@ deprecation. No errors.
   live region's text, not of what NVDA or VoiceOver actually say. SPEC §15 wants the latter.
 - The `THREE.Clock` deprecation, the bundle budget, `frameloop="always"` while open, and Lighthouse:
   all Phase 8b.
+
+### Phase 8a — Search and sharing
+
+SPEC §11.7 and §11.8. The page had a title and a description and nothing else: no canonical, no Open
+Graph, no card, no structured data, no sitemap, no `robots.txt`. A portfolio nobody can find is a
+portfolio nobody reads.
+
+#### Decisions
+
+- **The site's own origin is configuration, not content.** `app/site.ts` reads
+  `NEXT_PUBLIC_SITE_URL`, falls back to Vercel's `VERCEL_PROJECT_PRODUCTION_URL`, then to
+  `http://localhost:3000`. Yash owns what the site says; he does not own what it is deployed at, so
+  this is the one string that lives in the environment (SPEC §14) and Phase 9 sets it in Vercel with
+  no code change. It is deliberately not `required()` like the Sanity variables: a missing domain is
+  a wrong `<link rel="canonical">`, not a broken page.
+- **The sharing image is Sanity's if it exists, and generated if it does not.**
+  `siteSettings.seo.ogImage` had been in the schema since Phase 0 and was never queried; it is now,
+  with its dimensions. When it is empty `generateMetadata` leaves `openGraph.images` undefined, which
+  is what lets Next fall through to `app/opengraph-image.tsx` — so the site always has a card, and a
+  real screenshot replaces the drawn one the moment Yash publishes one. Twitter inherits the same
+  image rather than naming a second.
+- **The generated card draws the screen, not the console.** SPEC §11.7 asks for an OG image "showing
+  the open console", and `ImageResponse` cannot render one: Satori lays out flat elements with no
+  canvas and no three.js. So the card is the firmware's own screen — the status bar, `YP-OS 1.0`, the
+  accent ▶ and the dark palette — with the name and title on it. Refusing to draw anything would have
+  been worse than drawing the half that is drawable.
+- ponytail: **no font in the card.** Loading Archivo would mean fetching a woff at request time for a
+  picture that never appears on the site itself. The card leans on the palette and the layout
+  instead.
+- **`alt` describes the picture rather than naming anyone.** It is a module export Next reads without
+  running the component, so it cannot read Sanity — and a hard-coded "Yash Punia — Gameplay
+  Programmer" would be content in code (SPEC §15). The name is in the card, the title and the
+  description beside it.
+- **`knowsAbout` is derived, not authored.** It is the union of every engine and every technology
+  across the published projects, so a project added in the Studio widens it and nothing goes stale —
+  no ninth field for a non-technical editor to maintain. `Custom` and `Other` are filtered out: they
+  are the engine list's escape hatches, and "knows about Custom" says nothing to a search engine.
+  `sameAs` is the four social URLs, sorted so the markup does not churn when the Studio reorders
+  them.
+- **The sitemap has one entry, because the site has one page.** Every project and every timeline
+  entry lives inside the console with no URL of its own. Listing routes that do not exist is how a
+  sitemap starts costing crawl budget instead of saving it.
+- **The Studio says `noindex` twice.** `robots.ts` disallows `/studio`, and the route's own metadata
+  sets `robots: {index: false, follow: false}` — a `Disallow` is a request, and the meta tag is what a
+  crawler that ignores one still has to honour.
+
+#### Verified
+
+Against `pnpm build && pnpm start` on port 3100.
+
+- **`<head>`**: `<link rel="canonical">`, `og:title`, `og:description`, `og:url`, `og:site_name`,
+  `og:locale`, `og:type=profile`, `og:image` with `type`, `width=1200`, `height=630` and `alt`, and
+  `twitter:card=summary_large_image` with the same title, description and image.
+- **JSON-LD**, as served:
+  `{"@context":"https://schema.org","@type":"Person","name":"Yash Punia","jobTitle":"Game Programmer","description":"Developing games and learning novel methods to improve my skills.","url":"…","sameAs":["https://github.com/Yash-Punia","https://www.linkedin.com/in/yash-punia/","https://x.com/zeldariomon","https://yashpunia.itch.io/"],"knowsAbout":["C++","OpenGL","SDL","Raylib"]}`
+- **The card renders**: `/opengraph-image` returns `200 image/png`, 33.9KB, 1200×630 — status bar,
+  the name at 92px behind the accent ▶, the job title under it, the accent strip along the bottom.
+  With no `statusLine` published that line collapses, which is the empty-state behaviour SPEC §3.2
+  asks for.
+- **`robots.txt`**: `Allow: /`, `Disallow: /studio`, and the sitemap URL. **`sitemap.xml`**: one
+  `<loc>`, monthly, priority 1. **`/studio`** serves `<meta name="robots" content="noindex, nofollow">`.
+- **`NEXT_PUBLIC_SITE_URL` propagates**: a build with it set to `https://yashpunia.example` moved the
+  canonical, `og:url`, `og:image`, the `Sitemap:` line and the sitemap's `<loc>` to that origin. The
+  committed build has it unset and falls back to localhost, as designed.
+- **Lighthouse, mobile, against the production build: Accessibility 100, Best Practices 100, SEO
+  100** — 52 audits passed, 0 failed. That run rendered the WebGL fallback, because the Chrome the
+  DevTools MCP drives has no GPU; that is the harder surface to audit, since the canvas path has no
+  DOM for Lighthouse to look at at all.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build`, `prettier --check .` — all clean. `/`,
+  `/opengraph-image`, `/robots.txt` and `/sitemap.xml` all prerendered static.
+
+#### Known issues / open risks
+
+- **The desktop Lighthouse run fails with `NO_FCP`** — "the page did not paint any content… keep the
+  browser window in the foreground". The mobile run of the same URL scores 100 across the board, and
+  the message names the backgrounded window, so this reads as the automation rather than the site.
+  Phase 8b needs a good desktop trace anyway and will settle it.
+- **The Sanity sharing image path has never run against a real asset**, because no `ogImage` is
+  published. The query, the dimensions and the fallthrough are verified; the picture is not.
+- **`en_GB` is hard-coded** as the OG locale, as is `@type: Person`. Both are structural, not
+  content — but they are assumptions, written down here so they can be argued with.
+- **Nothing is submitted anywhere.** Search Console, the sitemap ping and the social cards' own
+  validators are Phase 9, after there is a domain to give them.
