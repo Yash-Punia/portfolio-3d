@@ -51,15 +51,20 @@ Publish to make a change live. Nothing needs a redeploy.
 
 ## Deploy
 
-Vercel, from GitHub. Every push to `main` becomes production; every pull request gets its own
-preview URL.
+**Live: https://portfolio-3d-five-inky.vercel.app**
 
-### 1. Create the Vercel project
+Vercel, from GitHub, as the project `yashpunias-projects/portfolio-3d`. Every push to `main` becomes
+production; every pull request gets its own preview URL.
+
+Steps 1, 2 and part of 4 are already done — they are written down because a project gets rebuilt,
+moved or handed over, and because steps 3, 5 and 6 are still open.
+
+### 1. Create the Vercel project — done
 
 Import `Yash-Punia/portfolio-3d` at [vercel.com/new](https://vercel.com/new). The framework, the
 build command and the output are all detected — nothing to configure.
 
-### 2. Set the environment variables
+### 2. Set the environment variables — the four below are set
 
 In **Settings → Environment Variables**, add every key from `.env.example` to **Production**,
 **Preview** and **Development**:
@@ -74,35 +79,40 @@ In **Settings → Environment Variables**, add every key from `.env.example` to 
 | `SANITY_REVALIDATE_SECRET`       | A long random string you invent; used by the webhook and by previews |
 
 `NEXT_PUBLIC_SITE_URL` is baked in at build time, so changing it needs a redeploy. The two
-server-only secrets are read at request time and do not.
+server-only secrets are read at request time, but an environment change only reaches a **new**
+deployment, so they need one too.
 
-### 3. Let the Studio talk to Sanity
+`NEXT_PUBLIC_SITE_URL` is deliberately **not** set: with it empty the site falls back to Vercel's own
+production URL, which is correct until there is a custom domain (step 6). `SANITY_API_READ_TOKEN` is
+not set either — only draft previews need it.
+
+### 3. Let the Studio talk to Sanity — still to do
 
 In [sanity.io/manage](https://sanity.io/manage) → your project → **API → CORS origins**, add your
 production domain with **Allow credentials** ticked. Without it `/studio` loads but cannot sign in.
 Add preview domains the same way if you want to edit from a preview deploy.
 
-### 4. Publishing without a redeploy
+### 4. Publishing without a redeploy — secret set, webhook still to create
 
 In sanity.io/manage → **API → Webhooks**, create a webhook:
 
-- **URL** — `https://<your-domain>/api/revalidate`
+- **URL** — `https://portfolio-3d-five-inky.vercel.app/api/revalidate`
 - **Dataset** — `production`
 - **Trigger on** — Create, Update, Delete
 - **Filter** — `_type in ["siteSettings", "socialLink", "project", "timelineEntry"]`
 - **Projection** — `{_type}`
 - **HTTP method** — `POST`
-- **Secret** — the same `SANITY_REVALIDATE_SECRET`
+- **Secret** — the value of `SANITY_REVALIDATE_SECRET`, revealed in Vercel → Settings → Environment Variables
 
 Publish anything in the Studio and the change is live on the next page load. Nothing rebuilds.
 
-### 5. Previewing unpublished work
+### 5. Previewing unpublished work — works now
 
-Open `https://<your-domain>/api/draft?secret=<SANITY_REVALIDATE_SECRET>`. The site then shows your
+Open `https://portfolio-3d-five-inky.vercel.app/api/draft?secret=<SANITY_REVALIDATE_SECRET>`. The site then shows your
 unpublished edits, with a yellow banner saying so; the banner is also the way out. The preview lives
 in a cookie in your browser and nobody else sees it.
 
-### 6. Custom domain
+### 6. Custom domain — still to do
 
 **Settings → Domains** in Vercel, then follow its DNS instructions. Afterwards update
 `NEXT_PUBLIC_SITE_URL` and redeploy, add the domain as a Sanity CORS origin, and point the webhook

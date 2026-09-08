@@ -1913,3 +1913,72 @@ Against `pnpm build && pnpm start` on port 3100, with the secret set in the envi
   where to take them: a real browser, a real URL, real network.
 - The `THREE.Clock` deprecation stays open upstream, and the two mistagged timeline entries stay
   open in the dataset.
+
+### Phase 9a — The deploy itself
+
+Yash logged the Vercel CLI in, which is the part this machine could not do, and the rest ran from
+here.
+
+**Live: https://portfolio-3d-five-inky.vercel.app** — project `yashpunias-projects/portfolio-3d`,
+connected to `github.com/Yash-Punia/portfolio-3d`, so pushes to `main` deploy themselves from now on.
+
+#### What was run
+
+- `vercel link` — created the project and connected the GitHub repository.
+- Nine environment variables: the three `NEXT_PUBLIC_SANITY_*` values from `.env.local`, into
+  Production, Preview and Development.
+- `vercel deploy` — which Vercel routed to **production**, not preview: a project's first deployment
+  always is. Later ones are previews unless `--prod` says otherwise.
+- A generated 43-character `SANITY_REVALIDATE_SECRET` into all three environments, then
+  `vercel deploy --prod` to give a running deployment an environment that contains it. The value was
+  not printed anywhere; it is read from the Vercel dashboard when the Sanity webhook is created.
+
+#### Decisions
+
+- **`NEXT_PUBLIC_SITE_URL` was deliberately left unset.** `siteUrl()`'s second fallback is Vercel's
+  own `VERCEL_PROJECT_PRODUCTION_URL`, which is exactly right until a custom domain exists — and
+  verified to be: the canonical link, `og:url`, `og:image`, the `Sitemap:` line and the sitemap's
+  `<loc>` all name `portfolio-3d-five-inky.vercel.app` with the variable empty. Setting it now would
+  mean setting it twice.
+- **The secret was generated here rather than invented by hand**, 32 random bytes as base64url, and
+  never printed to the terminal or to this file. Vercel holds it; the Sanity webhook form is where it
+  gets pasted from there.
+- **`vercel link` appended `.vercel` and `.env*` to `.gitignore`, and both were removed.** Both
+  patterns were already in the file — and the appended `.env*` sat _after_ the deliberate
+  `!.env.example` negation, which silently re-ignored the committed template. Nothing broke, because
+  a tracked file stays tracked, but the file no longer says the opposite of what it means.
+
+#### Verified, on the live site
+
+- **200**, with all four security headers on the wire: the full CSP, `X-Content-Type-Options`,
+  `Referrer-Policy` and `Permissions-Policy`. `X-Vercel-Cache: HIT` — the page is served from the
+  edge cache, prerendered.
+- **The console runs**: opened by its keyboard control, booted, and rendered the menu with the real
+  dataset behind it. Screenshotted at 1440×900. No fallback layer — WebGL is live, the canvas is the
+  interface.
+- **`robots.txt` and `sitemap.xml`** serve the production origin; `/studio` returns its own page.
+- **Draft mode**: `?secret=wrong` → **401**; the real secret → **307** to `/` with the bypass cookie.
+- **The webhook, against production**: a payload signed with the real secret returns
+  `{"revalidated":true,"tag":"project"}`; the same payload with one character of the signature
+  changed returns **401 Invalid signature**. The revalidation half of SPEC §13's checkpoint is
+  therefore proven on the live site — what is left is Sanity's side of it.
+- **Lighthouse, live, snapshot mode: Accessibility 100, Best Practices 100, SEO 100**, 32 audits
+  passed, 0 failed. A performance trace of the live URL again measured **CLS 0.00**.
+
+#### Known issues / open risks
+
+- **Still no Performance score and no LCP.** A navigation-mode Lighthouse run against the live URL
+  fails with the same `NO_FCP` the local runs did — the harness's browser window is backgrounded, so
+  Chrome records no paint timings — and PageSpeed Insights, which would have measured it from
+  Google's side now that the site is public, returned **429: keyless daily quota exhausted**. The
+  number needs either a foreground Chrome (Yash's own, one Lighthouse run) or PSI tomorrow. It is the
+  last unmeasured line of SPEC §12 and §15.
+- **Three runbook steps remain, all of them account work**: the Sanity CORS origin for the deployed
+  domain, without which `/studio` loads but cannot sign in; the webhook itself; and the custom
+  domain, after which `NEXT_PUBLIC_SITE_URL` wants setting and a redeploy.
+- **`SANITY_API_READ_TOKEN` is still unset**, so a preview shows published content with the banner
+  over it rather than actual drafts. The route, the cookie and the cache bypass are all verified; the
+  drafts perspective is not.
+- **The production URL is a generated one.** Every canonical link, OG tag and sitemap entry currently
+  points at `portfolio-3d-five-inky.vercel.app`, and a search engine that indexes it before the
+  custom domain exists will have to be told to move.
