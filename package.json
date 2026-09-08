@@ -10,6 +10,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
+    "analyze": "next experimental-analyze -o",
     "typegen": "sanity schema extract --force && sanity typegen generate"
   },
   "dependencies": {

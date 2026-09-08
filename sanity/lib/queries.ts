@@ -42,7 +42,16 @@ export const projectsQuery = defineQuery(`*[_type == "project"] | order(order as
   engine,
   tech,
   platforms,
-  cover,
+  // The cover carries its own placeholder and its own aspect: lqip is the tiny
+  // data URI Sanity generates for every asset, painted under the image while it
+  // loads, and the dimensions are the intrinsic size the element declares
+  // (SPEC §12).
+  cover{
+    ...,
+    "lqip": asset->metadata.lqip,
+    "width": asset->metadata.dimensions.width,
+    "height": asset->metadata.dimensions.height
+  },
   gallery,
   videoUrl,
   links[]{label, url},

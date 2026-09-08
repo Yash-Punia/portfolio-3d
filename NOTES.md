@@ -1717,3 +1717,86 @@ Against `pnpm build && pnpm start` on port 3100.
   content — but they are assumptions, written down here so they can be argued with.
 - **Nothing is submitted anywhere.** Search Console, the sitemap ping and the social cards' own
   validators are Phase 9, after there is a domain to give them.
+
+### Phase 8b — Performance
+
+SPEC §12. Most of the budget was already met by earlier phases — the scene is dynamically imported
+behind a skeleton, `dpr` is capped at 2, three is imported by name and never as a namespace,
+geometries are disposed, the environment is built in-scene rather than fetched from a CDN. What was
+missing was the covers' placeholders, a bundle report, and any measurement at all.
+
+#### Decisions
+
+- **The covers keep their raw `<img>`, and gain what `next/image` was there for.** The Phase 4
+  reasoning stands: these elements live inside a drei `<Html>` subtree and Sanity's CDN already
+  handles resizing and format negotiation, so a second optimiser in front of the first buys an
+  `images.remotePatterns` entry and a redeploy-scoped cache. What §12 actually asks for beyond that
+  is the LQIP placeholder, an explicit intrinsic size and deferred loading below the fold, and all
+  three are now there without the optimiser.
+- **`cover.ts` is one definition for two views.** The rail and the detail view had grown separate
+  copies of the same three `urlFor()` calls that differed only in their dimensions. `cover(project,
+w, h)` returns the URL, the LQIP and the size; `placeholder(lqip)` returns the style that paints
+  it.
+- **The placeholder goes on the `<img>`, not on a wrapper.** An image's own background shows through
+  exactly until its pixels arrive, which is the whole of what a blur-up is. No extra element, no
+  state, nothing to unmount.
+- **The first two tiles load eagerly and the rest are lazy.** SPEC §12 says `priority` on the first
+  two; a plain `<img>` spells that `loading="eager"`. Only the first two are on the glass when the
+  Library opens — the rest sit off the right-hand edge waiting for a move that may never come. The
+  detail view's cover is never deferred: it exists only because someone asked for it.
+- **`@next/bundle-analyzer` was installed and then removed.** It prints "not compatible with
+  Turbopack builds, no report will be generated" — Next 16 builds with Turbopack, so the package is
+  dead weight here. `pnpm analyze` runs Next's own `next experimental-analyze -o` instead: no
+  dependency, no `next.config.ts` wrapper, no `cross-env`.
+- **`frameloop` is left as it is, and the reason is recorded rather than guessed.** SPEC §12 asks for
+  `"demand"` when the console is closed and the idle animation is off, which is exactly what
+  `Scene.tsx` does — the drift runs the whole time the console is closed, so reduced motion is the
+  only state with nothing to animate. The open-and-settled case still renders every frame, and
+  whether that costs anything on a phone could not be measured here (below). Changing it would mean
+  threading `invalidate()` through four springs and a damp on the strength of a guess.
+
+#### Measured
+
+Bundle, from the chunks the page actually requests on load, gzipped at level 9:
+
+| Chunk          | gzip    | raw      | Contents                               |
+| -------------- | ------- | -------- | -------------------------------------- |
+| 15htmib1fr-z4  | 284.4KB | 1026.0KB | three, drei, react-three-fiber, spring |
+| 11uaf2x43ai-q  | 63.0KB  | 199.8KB  | react-dom                              |
+| 3if0scefvkq1u  | 46.1KB  | 174.4KB  | Next client runtime                    |
+| 2kr-d6kuquula  | 9.6KB   | 30.0KB   | @sanity/image-url and app code         |
+| 091awwb1-\_o1g | 8.8KB   | 23.5KB   | zustand and `ConsoleStage`             |
+
+- **Initial JS excluding the three.js chunk: 149.9KB gzipped, against SPEC §12's 200KB budget.**
+  Total with three: 434.3KB. The five above plus five smaller chunks are the whole of it.
+- **CLS: 0.00**, twice — once at 1440×900 unthrottled, once at 390×844 under Slow 4G and 4× CPU.
+  Against a budget of 0.05.
+- **Lighthouse (mobile, production build): Accessibility 100, Best Practices 100, SEO 100**, 52
+  audits passed and 0 failed (the run recorded in Phase 8a).
+- **The covers, in the DOM**: rail tiles at `width=720 height=405` with `loading="eager"` on the
+  first two, `decoding="async"` and a base64 LQIP painted underneath; the detail view's at
+  `width=1100 height=440` with its own placeholder and no `loading` attribute. The LQIP costs about
+  1.1KB of base64 per project in the document, before gzip.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build`, `prettier --check .` — all clean.
+
+#### Known issues / open risks
+
+- **LCP was not measured, and no Performance score was taken.** Neither browser available on this
+  machine could produce one: the automation's browser pane never paints while it is hidden — no
+  paint entries, no `requestAnimationFrame`, so the canvas never even mounts its `<Html>` — and in
+  the other Chrome the performance trace reports CLS but no LCP, while a desktop Lighthouse run
+  fails outright with `NO_FCP` ("keep the browser window in the foreground"). Both are the harness,
+  not the site: the same URL scores 100 on three categories in a mobile Lighthouse run. **SPEC §12's
+  LCP < 2.0s and §15's Performance ≥ 90 are therefore still unverified** and should be taken against
+  the Vercel preview in Phase 9, where a real browser loads a real URL.
+- **`frameloop="always"` while the console is open** still renders every frame with nothing moving.
+  Unmeasured for the reason above; it is the one budget line where the code knowingly does more than
+  it might need to.
+- **`THREE.Clock` is closed as upstream.** three 0.185.1 deprecated `Clock` in r183 and
+  `@react-three/fiber` 9.7.0 — the latest published version, checked against the registry — still
+  constructs one. It cannot be fixed without patching a dependency, and it is a `console.warn`, so
+  Lighthouse's Best Practices score is unaffected (it scores 100 with the warning present). SPEC §15
+  wants zero console warnings; this is the one, and it is not ours. Revisit when R3F moves to
+  `Timer`.
+- **The bundle numbers are from this build, not a budget check in CI.** Nothing fails if the next
+  dependency pushes 149.9KB past 200KB. `pnpm analyze` is the way to look, and looking is manual.

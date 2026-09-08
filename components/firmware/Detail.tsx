@@ -9,9 +9,9 @@ import {
 import {useIsMobile} from '@/components/console/mobile'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
+import {cover, placeholder} from '@/components/firmware/cover'
 import {scrollBox, scrollFade} from '@/components/firmware/edges'
 import {useFirmwareLayout} from '@/components/firmware/layout'
-import {urlFor} from '@/sanity/lib/image'
 
 /**
  * The expanded project view (SPEC §16.3, confirmed): `Enter` on a tile opens it
@@ -55,9 +55,7 @@ export function Detail({project}: {project: Project}) {
   const layout = useFirmwareLayout()
   const mobile = useIsMobile()
 
-  const cover = project.cover?.asset
-    ? urlFor(project.cover).width(1100).height(440).fit('crop').auto('format').url()
-    : null
+  const art = cover(project, 1100, 440)
   const links = project.links?.filter((link) => link.url) ?? []
 
   return (
@@ -73,12 +71,18 @@ export function Detail({project}: {project: Project}) {
       }}
     >
       <div data-console-scroll style={{...scrollBox(mobile), padding: `0 ${layout.railX}px 48px`}}>
-        {cover ? (
-          /* eslint-disable-next-line @next/next/no-img-element -- inside a drei
-             <Html> subtree; Sanity's CDN already sizes and re-formats it. */
+        {art ? (
+          /* eslint-disable-next-line @next/next/no-img-element -- see cover.ts:
+             inside a drei <Html> subtree; Sanity's CDN already sizes and
+             re-formats it. */
           <img
             alt=""
-            src={cover}
+            src={art.src}
+            width={art.width}
+            height={art.height}
+            // The detail view only exists once someone has asked for it, so its
+            // cover is never a deferred load — it is the thing they asked for.
+            decoding="async"
             style={{
               display: 'block',
               width: '100%',
@@ -86,6 +90,7 @@ export function Detail({project}: {project: Project}) {
               objectFit: 'cover',
               marginTop: `${layout.railTop}px`,
               borderRadius: '4px',
+              ...placeholder(art.lqip),
             }}
           />
         ) : null}

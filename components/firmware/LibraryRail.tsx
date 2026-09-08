@@ -6,8 +6,8 @@ import type {ConsoleContent, Project} from '@/components/console/content'
 import {useIsMobile} from '@/components/console/mobile'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
+import {cover, placeholder} from '@/components/firmware/cover'
 import {useFirmwareLayout} from '@/components/firmware/layout'
-import {urlFor} from '@/sanity/lib/image'
 
 /**
  * The Library rail (SPEC §8). One horizontal row of projects in `order`.
@@ -34,9 +34,9 @@ export function transition(reducedMotion: boolean, properties: string): CSSPrope
   }
 }
 
-function coverUrl(project: Project): string | null {
-  if (!project.cover?.asset) return null
-  return urlFor(project.cover).width(720).height(405).fit('crop').auto('format').url()
+/** The tile's cover, at the size a tile draws it. */
+function tileCover(project: Project) {
+  return cover(project, 720, 405)
 }
 
 function Tile({
@@ -100,17 +100,20 @@ function ProjectFace({
   selected,
   hovered,
   reducedMotion,
+  eager,
 }: {
   project: Project
   selected: boolean
   hovered: boolean
   reducedMotion: boolean
+  /** The first two tiles, which are the ones on the glass when it opens. */
+  eager: boolean
 }) {
   const layout = useFirmwareLayout()
-  const cover = coverUrl(project)
+  const art = tileCover(project)
   const quiet = !selected && !hovered
 
-  if (!cover) {
+  if (!art) {
     return (
       <div
         style={{
@@ -141,12 +144,19 @@ function ProjectFace({
   }
 
   return (
-    /* eslint-disable-next-line @next/next/no-img-element -- this element lives
-       inside a drei <Html> subtree in the canvas, and Sanity's CDN already does
-       the resizing and format negotiation next/image would add. */
+    /* eslint-disable-next-line @next/next/no-img-element -- see cover.ts: this
+       lives inside a drei <Html> subtree and Sanity's CDN already sizes and
+       re-formats it. */
     <img
       alt=""
-      src={cover}
+      src={art.src}
+      width={art.width}
+      height={art.height}
+      // SPEC §12 wants the first two rail items eager and the rest deferred.
+      // Only the first two are on the glass when the Library opens; the rest are
+      // off the right-hand edge, waiting for a move that may never come.
+      loading={eager ? 'eager' : 'lazy'}
+      decoding="async"
       style={{
         display: 'block',
         width: '100%',
@@ -154,6 +164,7 @@ function ProjectFace({
         objectFit: 'cover',
         opacity: quiet ? layout.unselectedOpacity : 1,
         filter: quiet ? 'saturate(0.35)' : 'none',
+        ...placeholder(art.lqip),
         ...transition(reducedMotion, 'opacity, filter'),
       }}
     />
@@ -206,6 +217,7 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
                   selected={index === position}
                   hovered={hovered}
                   reducedMotion={reducedMotion}
+                  eager={position < 2}
                 />
               )}
             </Tile>
