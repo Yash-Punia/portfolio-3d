@@ -5,6 +5,7 @@ import {useEffect, useState} from 'react'
 import {DoubleSide} from 'three'
 
 import {useGlyphGeometry} from '@/components/console/glyphs'
+import {useInput} from '@/components/console/input'
 import {useSpec} from '@/components/console/spec'
 import {useConsole, useTheme} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
@@ -38,6 +39,7 @@ export function ThemeToggle() {
   const setTheme = useConsole((state) => state.setTheme)
   const isOpen = useConsole((state) => state.isOpen)
   const reducedMotion = useReducedMotion()
+  const focused = useInput((state) => state.focusedSlot === 'theme')
 
   const moon = useGlyphGeometry('moon', d.toggle.glyphSize)
   // The sun's rays inflate its bounding box, and every glyph is normalised to
@@ -113,6 +115,18 @@ export function ThemeToggle() {
       onPointerOver={() => hover(true)}
       onPointerOut={() => hover(false)}
     >
+      {/*
+        SPEC §11.4, and the reason this control now has a keyboard path at all:
+        the "Switch to the light screen" button in the page focuses here, and
+        the ring says which cap it will press.
+      */}
+      {focused ? (
+        <mesh position={[0, 0, d.toggle.housingDepth]}>
+          <torusGeometry args={[d.toggle.capRadius * 1.72, d.abxy.ringTube, 10, 40]} />
+          <meshStandardMaterial {...m.accent} emissive={m.accent.color} emissiveIntensity={0.6} />
+        </mesh>
+      ) : null}
+
       {/* The same recessed collar the other buttons sit in. */}
       <mesh position={[0, 0, d.toggle.housingDepth / 2]} rotation={FACING}>
         <cylinderGeometry

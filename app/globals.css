@@ -64,6 +64,82 @@ canvas {
 }
 
 /*
+  A hidden control, while it has focus, is on screen (SPEC §11.4).
+
+  The console's own controls are meshes and its screen is an `aria-hidden`
+  subtree, so the focusable copy of each one is a `.sr-only` button in the page.
+  Clipped to a pixel, they give a keyboard visitor a focus ring they cannot see
+  and a label they cannot read — the same problem a skip link has, with the same
+  answer: while focused, the control steps out of the clip and says what it is.
+
+  The 3D control it stands for lights its own red ring at the same moment; this
+  is the label beside it.
+
+  The second selector is the landmark's own contents — the project buttons, the
+  resume link, the project and social links. `position: fixed` carries the
+  focused one out of the 1px box, and the rule below lifts the one thing that
+  would still hold it: `.sr-only`'s `clip-path`, which unlike `overflow` clips a
+  fixed descendant too. The box stays a pixel wide and `overflow: hidden`, so
+  everything that is not the focused control stays hidden.
+*/
+.sr-only:has(:focus-visible) {
+  clip-path: none;
+}
+.sr-only:focus-visible,
+.sr-only :focus-visible {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  translate: -50% 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 8px 14px;
+  clip: auto;
+  clip-path: none;
+  white-space: nowrap;
+  z-index: 20;
+  border-radius: 8px;
+  background: #141416;
+  color: #f4f2ee;
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  font-size: 14px;
+  outline: 2px solid #ff4d3d;
+  outline-offset: 2px;
+}
+
+/*
+  The same controls when there is no console to press: with WebGL unavailable
+  the firmware is mounted as plain DOM (SPEC §11.3), so these are the only theme
+  and mute controls on the page and they are simply on it.
+*/
+.console-controls {
+  position: fixed;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+/*
+  The chassis is #141416 under either theme, so the buttons that stand in for
+  its caps are too: one appearance to keep legible on both stages, rather than a
+  pair to check contrast on twice.
+*/
+.console-controls button {
+  padding: 8px 14px;
+  border: 1px solid #33343a;
+  border-radius: 8px;
+  background: #141416;
+  color: #f4f2ee;
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/*
   The firmware's animations (SPEC §7). They live here rather than inline because
   keyframes cannot be expressed in a style attribute; the components that use
   them are otherwise self-contained. Reduced motion is handled in the components

@@ -12,6 +12,7 @@ import {
 import {htmlScale} from '@/components/console/htmlScale'
 import {useSpec} from '@/components/console/spec'
 import {useConsole} from '@/components/console/store'
+import {useReducedMotion} from '@/components/console/useReducedMotion'
 import {useScreenTheme} from '@/components/firmware/theme'
 
 /**
@@ -49,6 +50,7 @@ export function InfoMonitor({
   const {dimensions: d, materials: m} = useSpec()
   const isOpen = useConsole((state) => state.isOpen)
   const {palette} = useScreenTheme()
+  const reducedMotion = useReducedMotion()
   const [hovered, setHovered] = useState(false)
 
   const name = settings?.fullName
@@ -183,7 +185,10 @@ export function InfoMonitor({
                     pointerEvents: 'auto',
                     textUnderlineOffset: '4px',
                     textDecoration: 'underline',
-                    transition: 'color 120ms ease',
+                    // The one transition on the object that was unconditional
+                    // (SPEC §11.5). Colour is not motion, but a visitor who has
+                    // asked for none gets none here either.
+                    transition: reducedMotion ? 'none' : 'color 120ms ease',
                   }}
                 >
                   {settings?.resumeLabel ?? RESUME_LABEL}

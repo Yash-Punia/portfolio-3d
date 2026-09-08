@@ -18,6 +18,13 @@ import {useConsole} from '@/components/console/store'
  */
 export type Direction = 'up' | 'down' | 'left' | 'right'
 
+/**
+ * Every control on the object that has a hidden twin in the page, and so can
+ * take DOM focus. The four face buttons open social links; `close` and `theme`
+ * are the two caps that had no keyboard path at all before Phase 8.
+ */
+export type FocusTarget = ButtonSlot | 'close' | 'theme'
+
 const REPEAT_MS = 180
 
 interface InputState {
@@ -27,12 +34,12 @@ interface InputState {
   tick: number
   hold: (direction: Direction | null) => void
   /**
-   * The ABXY slot whose (visually hidden) link currently has DOM focus. The
-   * face buttons render their focus ring from it, so tabbing through the page
-   * lights the physical button (SPEC §11.4).
+   * The control whose (visually hidden) twin currently has DOM focus — an ABXY
+   * slot, the close button or the theme cap. Each renders its focus ring from
+   * this, so tabbing through the page lights the physical control (SPEC §11.4).
    */
-  focusedSlot: ButtonSlot | null
-  focusSlot: (slot: ButtonSlot | null) => void
+  focusedSlot: FocusTarget | null
+  focusSlot: (slot: FocusTarget | null) => void
   /**
    * The face button being pressed right now, whichever input pressed it — a
    * click on the cap or the matching letter key. The cap's depression and its

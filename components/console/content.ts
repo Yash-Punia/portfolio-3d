@@ -66,6 +66,54 @@ export type SocialLink = SocialLinksQueryResult[number]
 export type Project = ProjectsQueryResult[number]
 export type TimelineEntry = TimelineQueryResult[number]
 
+/**
+ * A project's specification, in the order the detail view lists it.
+ *
+ * One definition, two readers: the detail view on the screen and the page's
+ * hidden landmark (SPEC §11.1). A field added here appears in both, which is
+ * the point — the crawlable copy fell behind the visible one once already.
+ */
+const PROJECT_META: Array<[string, (project: Project) => string | null]> = [
+  ['ROLE', (project) => project.role],
+  ['YEAR', (project) => project.year],
+  ['ENGINE', (project) => project.engine],
+  ['TEAM', (project) => (project.teamSize ? `${project.teamSize}` : null)],
+  ['PLATFORMS', (project) => project.platforms?.join(', ') ?? null],
+  ['TECH', (project) => project.tech?.join(', ') ?? null],
+]
+
+/** The pairs a project actually has. An empty field is not a row (SPEC §3.2). */
+export function projectMeta(project: Project): Array<[string, string]> {
+  const rows: Array<[string, string]> = []
+  for (const [label, read] of PROJECT_META) {
+    const value = read(project)
+    if (value) rows.push([label, value])
+  }
+  return rows
+}
+
+/**
+ * Portable Text, flattened to paragraphs.
+ *
+ * `@portabletext/react` exists for this, but it is a dependency added for a
+ * field no published project fills in yet, and blocks with spans are the whole
+ * of what the schema's editor can produce here. If the field grows lists, links
+ * or marks that matter, swap this for the library rather than growing it.
+ */
+export function descriptionParagraphs(
+  blocks: Project['description'],
+): Array<{key: string; text: string; heading: boolean}> {
+  if (!blocks) return []
+
+  return blocks
+    .map((block) => ({
+      key: block._key,
+      text: block.children?.map((span) => span.text ?? '').join('') ?? '',
+      heading: Boolean(block.style && block.style !== 'normal' && block.style !== 'blockquote'),
+    }))
+    .filter((paragraph) => paragraph.text !== '')
+}
+
 /** SPEC §14: the CV downloads under a name a recruiter can file. */
 export const RESUME_FILENAME = 'Yash-Punia-Gameplay-Programmer.pdf'
 

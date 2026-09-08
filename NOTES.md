@@ -1508,3 +1508,129 @@ then against `pnpm build && pnpm start`. Console clean apart from the known `THR
   off it is the joystick, the arrow keys, the on-screen section arrow, or a swipe that starts on the
   axis above. That is the cost of giving the scroller the gesture, and it is what every nested
   scroller does.
+
+---
+
+## Phase 8 — Accessibility and fallbacks
+
+SPEC §13 names Phase 8 "everything in §11 and §12. Lighthouse run. Bundle analysis". That is two
+different jobs — one is making the site usable and findable, the other is measuring it — so it is
+split: this section is §11.1–§11.6, **8a** is the SEO half of §11 (metadata, OG, JSON-LD, sitemap,
+robots) and **8b** is §12 with the Lighthouse and bundle numbers.
+
+Half of §11 was already standing: the `.sr-only` landmark, the ABXY focus rings, the live region,
+the sr-only mute button, and full `prefers-reduced-motion` coverage. What was missing was a
+`<noscript>`, any WebGL fallback, `role="application"`, a keyboard path to the theme toggle, focus
+indicators for anything but the four face buttons, and half the content in the landmark.
+
+### Versions installed
+
+None. Every part of this is React, CSS and one class component.
+
+### Decisions
+
+- **The landmark and the detail view now read from one definition.** The crawlable copy had fallen
+  behind the visible one — the screen showed role, year, engine, team, platforms, tech and the
+  Portable Text description; the landmark showed a title, a blurb and some links. `projectMeta()`
+  and `descriptionParagraphs()` moved into `content.ts` and both surfaces read them, so a field
+  added to one appears in the other. That is the fix for the drift, not just for the gap.
+- **Project tiles are buttons in the page, not in the firmware (SPEC §11.6).** The rail is
+  `aria-hidden` DOM in 3D and nothing inside it may be focusable, so the button that names a project
+  is the one in the landmark. Focusing it selects that tile on the rail; activating it opens the
+  tile's detail view. The wiring is delegated from `document` — the same `focusin` listener the ABXY
+  rings already used — so `app/page.tsx` stays a Server Component with no handlers of its own.
+- **`data-social-slot` became `data-console-focus`**, because the close button and the theme cap now
+  use it too. `focusedSlot` widened from `ButtonSlot` to `FocusTarget = ButtonSlot | 'close' |
+'theme'`, and both caps render the torus `FaceButtons` already rendered. The close button names
+  itself unconditionally rather than only while the console is open: focus is read at the moment it
+  happens, and the visitor who opens the console _from that button_ would otherwise light nothing.
+- **The theme toggle had no keyboard path at all.** It was `onClick` on a 3D group with no twin
+  anywhere — the comment beside the mute button claimed close and theme buttons had existed since
+  Phase 6, which was stale. They exist now: open/close, theme and mute, in one `ConsoleControls`
+  block.
+- **A hidden control is visible while it has focus.** `.sr-only:focus-visible` un-clips it as a chip
+  at the top of the page, the skip-link pattern. The landmark's own contents needed one more rule:
+  `.sr-only`'s `clip-path: inset(50%)` clips a `position: fixed` descendant where `overflow: hidden`
+  does not — so `.sr-only:has(:focus-visible)` drops the clip path, while the 1px box and its
+  overflow keep everything that is not focused hidden.
+- **A notice is stamped with the selection it was raised against.** The theme and the mute change
+  something a screen reader cannot see, so they announce themselves; storing `{text, at}` and
+  rendering it only while `at` still matches means the next thing the rail says replaces it — no
+  timer, and nothing stale left in the region. `useAnnouncement` also speaks the console opening,
+  booting and closing now, which are state changes with nothing on screen to read.
+- **`<noscript>` un-hides what is already there.** The landmark is the whole portfolio in real
+  markup, so the fallback is one `<style>` that makes it visible, lets `body` scroll (it is
+  `overflow: hidden` for the console's sake) and hides the stage. No second copy of the site to keep
+  in step.
+- **WebGL is an external store, not component state.** Whether 3D can run is a property of the
+  machine: `webgl.tsx` probes once with a throwaway canvas — releasing the context again immediately
+  — caches the answer, and serves it through `useSyncExternalStore`, which is also what keeps the
+  server's markup and the first client render agreeing, since the server cannot probe. Three
+  failures land on one path: the probe, a `webglcontextlost` caught in the capture phase (it does not
+  bubble), and an error boundary around the scene, because R3F throws during render when it cannot
+  make a renderer and no listener sees that.
+- **The fallback is the same firmware, mounted as DOM.** `<Firmware>` has never known whether it is
+  in 3D, so `FallbackFirmware` is a scale-to-fit wrapper and an `open()` on mount — every tile, dot,
+  arrow and link inside it is already clickable, and the keyboard handlers were always on the DOM
+  side. Phase 6a had removed the mobile DOM mount, so this is new code, but it is eleven lines of
+  mounting rather than a second interface. It ships in its own chunk: a visitor whose browser runs
+  WebGL never downloads it.
+- **No close button in the fallback.** There is no object to close to, and closing would leave an
+  empty page. The theme and mute buttons are simply on screen there instead of visually hidden.
+- ponytail: **the fallback's scale is measured on resize, not per frame.** Both axes are measured and
+  the smaller wins, capped at 1.5 — on a desktop the height binds at about 0.98, so the cap only ever
+  applies on a phone, where the panel is authored at 320px and filling the width is what the mobile
+  layout table was written for.
+
+### Verified
+
+Chrome DevTools MCP and the in-app browser against `pnpm dev`, then against `pnpm build && pnpm
+start` on port 3100 with `localStorage.console` cleared first. The production run's
+`list_console_messages` returned **exactly one message** — Phase 1's upstream `THREE.Clock`
+deprecation. No errors.
+
+- **The landmark carries the whole portfolio**: `h1` name, title, status line, About, the resume
+  link, `Games / Projects` with both projects (title button, blurb, all spec rows, description,
+  links), `Work` and `Education` with all seven entries (dates, location, summary, highlights,
+  result, related projects), and `Links` with the four socials.
+- **Focus drives the rail**: tabbing to `Aurora Game Engine` announced "Library, Aurora Game Engine"
+  and switched the screen to the Library; tabbing on to `RayTracer` moved the rail to it. Activating
+  one opens its detail view ("RayTracer, details").
+- **Focus indicators, in the pixels**: the focused control computes to `position: fixed` with
+  `outline-color: rgb(255, 77, 61)` and renders as a chip at the top of the page — screenshotted for
+  the open/close button, the theme button and a project button. The theme cap and the close cap each
+  light a ring while their button has focus, and the ABXY rings still light after the attribute
+  rename (checked on `GitHub (B)`).
+- **Keyboard open**: `Tab` then `Enter` from a cold load opens the console and boots it —
+  "Menu, Games / Projects" — with real key events through the DevTools MCP.
+- **`<noscript>`**: the block is in the served HTML, and applying its own CSS to the live page
+  renders the portfolio as a plain scrolling document — name, title, section headings, projects with
+  their spec rows and links, both timeline groups — on a dark ground.
+- **The WebGL fallback, both ways in.** In a Chrome without a GPU the page rendered the DOM firmware
+  and its control bar with no canvas at all. On this machine, dispatching `webglcontextlost` on the
+  canvas removed the canvas and mounted the same firmware in its place with the rail's selection
+  intact. Checked at 1440×900 and at 375×812.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build`, `prettier --check .` — all clean. `/` still
+  prerendered static.
+
+### Known issues / open risks
+
+- **Two timeline entries are tagged `kind: "work"` in Sanity but are education** — `BTech` and
+  `Class 12th`. The landmark groups them under **Work** and the axis draws them as filled work dots,
+  because that is what the documents say. Content, not code (SPEC §0 rule 3): one field on each entry
+  in the Studio.
+- **The focus ring renders green, not red.** It uses `materials.accent`, the tuned chassis accent —
+  the same ring the face buttons have had since Phase 3. SPEC §11.4 says red; the tuning value says
+  green. A `?tune` question, not a code one.
+- **`ConsoleControls` puts three buttons at the top of the tab order.** A visitor tabs through open,
+  theme and mute before reaching the content. Deliberate — they are the console's controls and the
+  console is the site — but it is the kind of thing a screen-reader user might disagree with.
+- **The fallback has no close and no drag.** It is the firmware and nothing else: no chassis, no
+  joystick, no ABXY caps. The social links are still in the landmark, so nothing is unreachable.
+- **A shader-compile warning (`X4122`) appeared once in a dev run on this machine** — ANGLE reporting
+  float precision inside three's own shader. It did not appear in the production run and is not ours
+  to fix; recorded in case it returns during Phase 8b's Lighthouse pass.
+- **Not verified with a real screen reader.** Every check here is of the markup, the roles and the
+  live region's text, not of what NVDA or VoiceOver actually say. SPEC §15 wants the latter.
+- The `THREE.Clock` deprecation, the bundle budget, `frameloop="always"` while open, and Lighthouse:
+  all Phase 8b.

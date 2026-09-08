@@ -5,6 +5,7 @@ import {useEffect, useState} from 'react'
 import {DoubleSide} from 'three'
 
 import {useGlyphGeometry} from '@/components/console/glyphs'
+import {useInput} from '@/components/console/input'
 import {useSpec} from '@/components/console/spec'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
@@ -25,6 +26,7 @@ export function CloseButton() {
   const isOpen = useConsole((state) => state.isOpen)
   const reducedMotion = useReducedMotion()
   const [pressed, setPressed] = useState(false)
+  const focused = useInput((state) => state.focusedSlot === 'close')
   const glyph = useGlyphGeometry('close', d.closeButton.capRadius * 0.9)
 
   /** Inner surface of the flap; the button sits on it, facing the viewer. */
@@ -62,6 +64,18 @@ export function CloseButton() {
         />
         <meshStandardMaterial {...m.bezel} />
       </mesh>
+
+      {/*
+        SPEC §11.4: the same red ring the face buttons wear, on the cap whose
+        keyboard twin is the "Close the console" button in the page. It sits on
+        the housing's outer lip, which on this face is -Z.
+      */}
+      {focused ? (
+        <mesh position={[0, 0, surfaceZ - d.closeButton.housingDepth]}>
+          <torusGeometry args={[d.closeButton.capRadius * 1.5, d.abxy.ringTube, 10, 40]} />
+          <meshStandardMaterial {...m.accent} emissive={m.accent.color} emissiveIntensity={0.6} />
+        </mesh>
+      ) : null}
 
       <animated.group position-x={0} position-y={0} position-z={z}>
         <mesh

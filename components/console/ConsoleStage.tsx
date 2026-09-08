@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import {useEffect, useSyncExternalStore} from 'react'
+import {useEffect, useState, useSyncExternalStore} from 'react'
 
 import {
   linkForSlot,
@@ -12,10 +12,11 @@ import {
   type ButtonSlot,
   type ConsoleContent,
 } from '@/components/console/content'
-import {useInput, type Direction} from '@/components/console/input'
+import {useInput, type Direction, type FocusTarget} from '@/components/console/input'
 import {isPortraitPhone, useIsMobile} from '@/components/console/mobile'
 import {Skeleton} from '@/components/console/Skeleton'
 import {useConsole, useTheme} from '@/components/console/store'
+import {failWebgl, useWebgl, WebglBoundary} from '@/components/console/webgl'
 
 /**
  * The client boundary for the 3D scene.
@@ -39,6 +40,16 @@ const TuningPanel = dynamic(
   () => import('@/components/console/TuningPanel').then((module) => module.TuningPanel),
   {ssr: false},
 )
+
+/**
+ * The firmware without a canvas (SPEC §11.3), in its own chunk for the same
+ * reason the scene is in one: a visitor whose browser runs WebGL never
+ * downloads it, and importing it directly here would pull the whole firmware
+ * into the page bundle (SPEC §12).
+ */
+const FallbackFirmware = dynamic(() => import('@/components/console/FallbackFirmware'), {
+  ssr: false,
+})
 
 const ARROWS: Record<string, Direction> = {
   ArrowUp: 'up',
@@ -150,32 +161,74 @@ function useConsoleKeys(content: ConsoleContent) {
   }, [content])
 }
 
+const FOCUS_TARGETS: FocusTarget[] = ['A', 'B', 'X', 'Y', 'close', 'theme']
+
 /**
- * The face buttons' focus ring, driven by real DOM focus.
+ * The physical controls' focus rings, and the rail's selection, driven by real
+ * DOM focus in the page.
  *
- * The page's visually-hidden landmark already renders one anchor per social
- * link — they are server-rendered, they carry the accessible names, and they
- * are where `Tab` naturally lands. Mirroring their focus onto the 3D caps gives
- * SPEC §11.4's visible focus indicator without a second, duplicate set of links
- * for a screen reader to read through.
+ * The visually-hidden landmark already renders the anchors and buttons — they
+ * are server-rendered, they carry the accessible names, and they are where
+ * `Tab` naturally lands. Mirroring their focus onto the object gives SPEC
+ * §11.4's visible focus indicator without a second, duplicate set of controls
+ * for a screen reader to read through, and it is delegated from `document` so
+ * `app/page.tsx` stays a Server Component with no handlers of its own.
+ *
+ * Two attributes: `data-console-focus` names a control on the chassis, and
+ * `data-project-index` names a tile on the Library rail — focusing a project's
+ * button selects that tile, activating it opens the tile's detail view, which is
+ * SPEC §11.6's "project tiles are buttons" without leaving the rail behind.
  */
-function useSocialFocus() {
+function useLandmarkFocus() {
   useEffect(() => {
-    function slotOf(target: EventTarget | null): ButtonSlot | null {
+    function controlOf(target: EventTarget | null): FocusTarget | null {
       if (!(target instanceof HTMLElement)) return null
-      const slot = target.closest('[data-social-slot]')?.getAttribute('data-social-slot')
-      return slot === 'A' || slot === 'B' || slot === 'X' || slot === 'Y' ? slot : null
+      const value = target.closest('[data-console-focus]')?.getAttribute('data-console-focus')
+      return FOCUS_TARGETS.find((slot) => slot === value) ?? null
     }
 
-    const onFocus = (event: FocusEvent) => useInput.getState().focusSlot(slotOf(event.target))
+    function indexOf(target: EventTarget | null): number | null {
+      if (!(target instanceof HTMLElement)) return null
+      const value = target.closest('[data-project-index]')?.getAttribute('data-project-index')
+      if (value === null || value === undefined) return null
+      const index = Number(value)
+      return Number.isInteger(index) ? index : null
+    }
+
+    function onFocus(event: FocusEvent) {
+      useInput.getState().focusSlot(controlOf(event.target))
+
+      const index = indexOf(event.target)
+      if (index === null) return
+
+      const {isOpen, isDetailOpen, setSection, setLibraryIndex} = useConsole.getState()
+      setLibraryIndex(index)
+      if (isOpen && !isDetailOpen) setSection('library')
+    }
+
+    function onClick(event: MouseEvent) {
+      const index = indexOf(event.target)
+      if (index === null) return
+
+      // `open()` starts the firmware from the top, so it goes first and the
+      // destination is set after it.
+      const console = useConsole.getState()
+      if (!console.isOpen) console.open()
+      console.setSection('library')
+      console.setLibraryIndex(index)
+      console.openDetail()
+    }
+
     const onBlur = () => useInput.getState().focusSlot(null)
 
     document.addEventListener('focusin', onFocus)
     document.addEventListener('focusout', onBlur)
+    document.addEventListener('click', onClick)
 
     return () => {
       document.removeEventListener('focusin', onFocus)
       document.removeEventListener('focusout', onBlur)
+      document.removeEventListener('click', onClick)
     }
   }, [])
 }
@@ -448,13 +501,18 @@ function useTuningFlag() {
  */
 function useAnnouncement(content: ConsoleContent): string {
   const isOpen = useConsole((state) => state.isOpen)
+  const isBooting = useConsole((state) => state.isBooting)
   const section = useConsole((state) => state.section)
   const menuIndex = useConsole((state) => state.menuIndex)
   const index = useConsole((state) => state.libraryIndex)
   const timelineIndex = useConsole((state) => state.timelineIndex)
   const isDetailOpen = useConsole((state) => state.isDetailOpen)
 
-  if (!isOpen) return ''
+  // Opening, booting and closing are state changes with nothing on screen to
+  // read, so they say themselves. Closed is the first render's value, which a
+  // live region does not announce — it only speaks once this changes.
+  if (!isOpen) return 'Console closed'
+  if (isBooting) return 'Console on, booting'
 
   if (section === 'menu') {
     const option = menuOptions(content)[menuIndex]
@@ -474,34 +532,119 @@ function useAnnouncement(content: ConsoleContent): string {
 
 export function ConsoleStage({content}: {content: ConsoleContent}) {
   useConsoleKeys(content)
-  useSocialFocus()
+  useLandmarkFocus()
   useStageTheme()
   useRailInput(content)
   useWheelRail(content)
   const tuning = useTuningFlag()
-  const announcement = useAnnouncement(content)
+  const selection = useAnnouncement(content)
   const mobile = useIsMobile()
-  const muted = useConsole((state) => state.muted)
-  const toggleMuted = useConsole((state) => state.toggleMuted)
+  const webglOk = useWebgl()
+
+  /*
+    A control that changes something invisible says so — the theme and the mute
+    have no on-screen state a screen reader can reach. Each notice is stamped
+    with the selection it was raised against, so the next thing the rail says
+    replaces it on its own: no timer, and no stale "Light screen" left in the
+    region to be read out again on the way past.
+  */
+  const [notice, setNotice] = useState<{text: string; at: string} | null>(null)
+  const announcement = notice?.at === selection ? notice.text : selection
 
   useTouchRail(content, mobile)
 
   return (
-    <div className="fixed inset-0">
-      <Scene content={content} />
+    <div
+      // SPEC §11.6: inside this, the arrow keys and letters are the console's,
+      // not the screen reader's. The landmark in the page is the readable copy.
+      role="application"
+      aria-label="Yash Punia's portfolio, as a handheld console"
+      className="fixed inset-0"
+    >
+      {webglOk ? (
+        <WebglBoundary onError={failWebgl}>
+          <Scene content={content} />
+        </WebglBoundary>
+      ) : (
+        <FallbackFirmware content={content} />
+      )}
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>
-      {/*
-        The mute's accessible twin (SPEC §16.2). The glyph in the status bar is
-        inside the firmware's `aria-hidden` tree and cannot be focusable, and
-        the sounds have no other control — so, like Phase 6's close and theme
-        buttons, the real one is a labelled button out here in the page.
-      */}
-      <button className="sr-only" onClick={toggleMuted} type="button">
+      <ConsoleControls onNotice={(text) => setNotice({text, at: selection})} visible={!webglOk} />
+      {tuning ? <TuningPanel /> : null}
+    </div>
+  )
+}
+
+/**
+ * The accessible twins of the controls on the object (SPEC §11.4).
+ *
+ * Everything on the chassis is a mesh, and everything on the screen is inside
+ * the firmware's `aria-hidden` tree — so none of it can take focus, and without
+ * these the theme cap in particular had no keyboard path at all. Each button
+ * carries `data-console-focus`, which lights its physical twin's focus ring
+ * through `useLandmarkFocus`, so tabbing here is visible on the object.
+ *
+ * They are visually hidden until focused, in the manner of a skip link. With no
+ * WebGL there is no object to point at, so they are simply on screen — and
+ * `Close` is dropped there, because closing would leave an empty page.
+ */
+function ConsoleControls({
+  onNotice,
+  visible,
+}: {
+  onNotice: (notice: string) => void
+  visible: boolean
+}) {
+  const isOpen = useConsole((state) => state.isOpen)
+  const open = useConsole((state) => state.open)
+  const close = useConsole((state) => state.close)
+  const muted = useConsole((state) => state.muted)
+  const toggleMuted = useConsole((state) => state.toggleMuted)
+  const setTheme = useConsole((state) => state.setTheme)
+  const theme = useTheme()
+
+  const next = theme === 'dark' ? 'light' : 'dark'
+  const className = visible ? undefined : 'sr-only'
+
+  return (
+    <div className={visible ? 'console-controls' : undefined}>
+      {visible ? null : (
+        <button
+          className={className}
+          // Named unconditionally: focus is read when it happens, and a button
+          // that only claims the cap once the console is open would light
+          // nothing for the visitor who opened it from this very control. The
+          // cap it rings is behind a shut flap until then.
+          data-console-focus="close"
+          onClick={() => (isOpen ? close() : open())}
+          type="button"
+        >
+          {isOpen ? 'Close the console' : 'Open the console'}
+        </button>
+      )}
+      <button
+        className={className}
+        data-console-focus="theme"
+        onClick={() => {
+          setTheme(next)
+          onNotice(next === 'dark' ? 'Dark screen' : 'Light screen')
+        }}
+        type="button"
+      >
+        {next === 'dark' ? 'Switch to the dark screen' : 'Switch to the light screen'}
+      </button>
+      <button
+        className={className}
+        onClick={() => {
+          toggleMuted()
+          onNotice(muted ? 'Sound on' : 'Sound off')
+        }}
+        type="button"
+      >
         {muted ? 'Unmute the console' : 'Mute the console'}
       </button>
-      {tuning ? <TuningPanel /> : null}
     </div>
   )
 }

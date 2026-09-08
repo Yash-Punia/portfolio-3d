@@ -69,6 +69,33 @@ export async function generateMetadata(): Promise<Metadata> {
  */
 const THEME_SCRIPT = `try{var t=JSON.parse(localStorage.getItem('console')).state.theme;if(t==='dark'||t==='light')document.documentElement.dataset.stage=t}catch(e){}`
 
+/**
+ * The site without JavaScript (SPEC §11.2).
+ *
+ * The whole portfolio is already in the page — the `.sr-only` landmark carries
+ * every project, every timeline entry and every link as real markup, because a
+ * crawler and a screen reader need it there. So this is not a second copy of the
+ * site: it un-clips the one that is already rendered, lets the page scroll
+ * (`body` is `overflow: hidden` for the console's sake), and hides the stage,
+ * which without React is an empty gradient.
+ */
+const NOSCRIPT_CSS = `
+  body { overflow: auto; background: #0d0d10; }
+  [role='application'] { display: none; }
+  main.sr-only {
+    position: static; width: auto; height: auto; margin: 0 auto; padding: 48px 24px 96px;
+    max-width: 68ch; clip: auto; clip-path: none; overflow: visible; white-space: normal;
+    color: #f4f2ee; font-family: var(--font-archivo), system-ui, sans-serif; line-height: 1.6;
+  }
+  main.sr-only a { color: #ff7d70; }
+  main.sr-only button { all: unset; font-weight: 600; }
+  main.sr-only h1 { font-size: 2rem; margin: 0 0 4px; }
+  main.sr-only h2 { font-size: 1.25rem; margin: 40px 0 8px; }
+  main.sr-only h3 { font-size: 1rem; margin: 24px 0 4px; }
+  main.sr-only dt { color: #9aa0a6; font-size: 0.8rem; }
+  main.sr-only dd { margin: 0 0 4px; }
+`
+
 export default function RootLayout({children}: LayoutProps<'/'>) {
   return (
     <html
@@ -89,6 +116,9 @@ export default function RootLayout({children}: LayoutProps<'/'>) {
           be too late, which is the flash it exists to remove.
         */}
         <script dangerouslySetInnerHTML={{__html: THEME_SCRIPT}} />
+        <noscript>
+          <style dangerouslySetInnerHTML={{__html: NOSCRIPT_CSS}} />
+        </noscript>
       </head>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>

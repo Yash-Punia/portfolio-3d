@@ -1,6 +1,11 @@
 'use client'
 
-import {openLink, type Project} from '@/components/console/content'
+import {
+  descriptionParagraphs,
+  openLink,
+  projectMeta,
+  type Project,
+} from '@/components/console/content'
 import {useIsMobile} from '@/components/console/mobile'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
@@ -16,50 +21,30 @@ import {urlFor} from '@/sanity/lib/image'
  * Every optional field collapses on its own (SPEC §3.2) — most projects have no
  * `description`, `gallery` or `videoUrl`, and none of those may leave a heading
  * with nothing under it.
- */
-const META_LABELS: Array<[string, (project: Project) => string | null]> = [
-  ['ROLE', (project) => project.role],
-  ['YEAR', (project) => project.year],
-  ['ENGINE', (project) => project.engine],
-  ['TEAM', (project) => (project.teamSize ? `${project.teamSize}` : null)],
-  ['PLATFORMS', (project) => project.platforms?.join(', ') ?? null],
-  ['TECH', (project) => project.tech?.join(', ') ?? null],
-]
-
-/**
- * Portable Text, rendered as paragraphs and nothing else.
  *
- * `@portabletext/react` exists for this, but it is a dependency added for a
- * field no published project fills in yet, and blocks with spans are the whole
- * of what the schema's editor can produce here. If the field grows lists, links
- * or marks that matter, swap this for the library rather than growing it.
+ * The spec rows and the Portable Text flattening both live in `content.ts`, so
+ * this view and the page's hidden landmark render the same set of facts
+ * (SPEC §11.1).
  */
-function Description({blocks}: {blocks: NonNullable<Project['description']>}) {
+function Description({blocks}: {blocks: Project['description']}) {
   const layout = useFirmwareLayout()
 
   return (
     <>
-      {blocks.map((block) => {
-        const text = block.children?.map((span) => span.text ?? '').join('') ?? ''
-        if (!text) return null
-
-        const heading = block.style && block.style !== 'normal' && block.style !== 'blockquote'
-
-        return (
-          <p
-            key={block._key}
-            style={{
-              margin: `0 0 ${Math.round(layout.textGap * 0.85)}px`,
-              color: heading ? 'var(--screen-fg)' : 'var(--screen-muted)',
-              fontSize: `${heading ? layout.bodyFont + 3 : layout.bodyFont - 1}px`,
-              fontWeight: heading ? 600 : 400,
-              lineHeight: 1.55,
-            }}
-          >
-            {text}
-          </p>
-        )
-      })}
+      {descriptionParagraphs(blocks).map(({key, text, heading}) => (
+        <p
+          key={key}
+          style={{
+            margin: `0 0 ${Math.round(layout.textGap * 0.85)}px`,
+            color: heading ? 'var(--screen-fg)' : 'var(--screen-muted)',
+            fontSize: `${heading ? layout.bodyFont + 3 : layout.bodyFont - 1}px`,
+            fontWeight: heading ? 600 : 400,
+            lineHeight: 1.55,
+          }}
+        >
+          {text}
+        </p>
+      ))}
     </>
   )
 }
@@ -131,17 +116,12 @@ export function Detail({project}: {project: Project}) {
             lineHeight: 1.5,
           }}
         >
-          {META_LABELS.map(([label, read]) => {
-            const value = read(project)
-            if (!value) return null
-
-            return (
-              <div key={label} style={{display: 'contents'}}>
-                <dt style={{color: 'var(--screen-muted)', letterSpacing: '0.16em'}}>{label}</dt>
-                <dd style={{margin: 0, color: 'var(--screen-fg)'}}>{value}</dd>
-              </div>
-            )
-          })}
+          {projectMeta(project).map(([label, value]) => (
+            <div key={label} style={{display: 'contents'}}>
+              <dt style={{color: 'var(--screen-muted)', letterSpacing: '0.16em'}}>{label}</dt>
+              <dd style={{margin: 0, color: 'var(--screen-fg)'}}>{value}</dd>
+            </div>
+          ))}
         </dl>
 
         <div style={{margin: `${Math.round(layout.blockGap * 1.15)}px 0 0`, maxWidth: '62ch'}}>
