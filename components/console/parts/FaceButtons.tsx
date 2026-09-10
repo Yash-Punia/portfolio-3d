@@ -4,12 +4,8 @@ import {animated, useSpring} from '@react-spring/three'
 import {useEffect} from 'react'
 import {DoubleSide} from 'three'
 
-import {
-  linkForSlot,
-  openLink,
-  type ButtonSlot,
-  type ConsoleContent,
-} from '@/components/console/content'
+import {accept} from '@/components/console/actions'
+import type {ButtonSlot, ConsoleContent} from '@/components/console/content'
 import {useGlyphGeometry, type GlyphName} from '@/components/console/glyphs'
 import {useInput} from '@/components/console/input'
 import {useSpec} from '@/components/console/spec'
@@ -20,8 +16,8 @@ import {useReducedMotion} from '@/components/console/useReducedMotion'
 const FACING: [number, number, number] = [Math.PI / 2, 0, 0]
 
 /**
- * SPEC §5's Nintendo diamond, which §3.1's slot table already assumes: X top,
- * A right, B bottom, Y left. Offsets are in units of `abxy.spacing`.
+ * SPEC §5's Nintendo diamond: X top, A right, B bottom, Y left. Offsets are in
+ * units of `abxy.spacing`.
  */
 const LAYOUT: Record<ButtonSlot, [number, number]> = {
   X: [0, 1],
@@ -32,22 +28,29 @@ const LAYOUT: Record<ButtonSlot, [number, number]> = {
 
 const SLOTS = Object.keys(LAYOUT) as ButtonSlot[]
 
-/** The mark on the cap is the platform's, so an unbound slot has no glyph. */
-const GLYPH_FOR: Record<string, GlyphName> = {
-  github: 'github',
-  itch: 'itch',
-  linkedin: 'linkedin',
-  twitter: 'twitter',
+/**
+ * What is printed on each cap.
+ *
+ * These four used to be the social links. They are now the console's own verbs,
+ * which is what a handheld's face buttons are for: accept, back, and the two
+ * sections worth a button of their own. The links moved to the info monitor on
+ * the left flap, where a mark can be small and there is room for five.
+ */
+const GLYPH_FOR: Record<ButtonSlot, GlyphName> = {
+  A: 'letterA',
+  B: 'letterB',
+  X: 'gamepad',
+  Y: 'hourglass',
 }
 
 function FaceButton({
   slot,
-  url,
   glyph,
+  onPress,
 }: {
   slot: ButtonSlot
-  url: string | null
-  glyph: GlyphName | null
+  glyph: GlyphName
+  onPress: () => void
 }) {
   const {dimensions: d, materials: m} = useSpec()
   const isOpen = useConsole((state) => state.isOpen)
@@ -57,7 +60,7 @@ function FaceButton({
   const focused = useInput((state) => state.focusedSlot === slot)
   const pressSlot = useInput((state) => state.pressSlot)
 
-  const geometry = useGlyphGeometry(glyph ?? 'close', d.abxy.glyphSize)
+  const geometry = useGlyphGeometry(glyph, d.abxy.glyphSize)
   const [x, y] = LAYOUT[slot]
 
   const capZ = d.abxy.housingDepth + d.abxy.capHeight / 2
@@ -68,7 +71,7 @@ function FaceButton({
   })
 
   const hover = (on: boolean) => {
-    document.body.style.cursor = on && isOpen && url ? 'pointer' : ''
+    document.body.style.cursor = on && isOpen ? 'pointer' : ''
   }
 
   useEffect(() => {
@@ -103,13 +106,13 @@ function FaceButton({
           rotation={FACING}
           onClick={(event) => {
             event.stopPropagation()
-            if (!isOpen || !url) return
+            if (!isOpen) return
             pressSlot(slot)
-            openLink(url)
+            onPress()
           }}
           onPointerDown={(event) => {
             event.stopPropagation()
-            if (isOpen && url) pressSlot(slot)
+            if (isOpen) pressSlot(slot)
           }}
           onPointerOver={() => hover(true)}
           onPointerOut={() => hover(false)}
@@ -118,40 +121,43 @@ function FaceButton({
           <meshStandardMaterial {...m.button} />
         </mesh>
 
-        {/*
-          An unbound slot keeps its cap and loses its mark: a physical console
-          does not lose a button because a document has not been published.
-        */}
-        {glyph ? (
-          <mesh
-            geometry={geometry}
-            position={[0, 0, d.abxy.capHeight / 2 + 0.002]}
-            raycast={() => null}
-          >
-            <meshStandardMaterial {...m.bezel} side={DoubleSide} />
-          </mesh>
-        ) : null}
+        <mesh
+          geometry={geometry}
+          position={[0, 0, d.abxy.capHeight / 2 + 0.002]}
+          raycast={() => null}
+        >
+          <meshStandardMaterial {...m.bezel} side={DoubleSide} />
+        </mesh>
       </animated.group>
     </group>
   )
 }
 
 /**
- * The ABXY cluster on the right flap (SPEC §4, §5). Each cap is bound to a
- * `socialLink` document through its `buttonSlot` field, so the mapping is
- * CMS-driven rather than hard-coded here.
+ * The ABXY cluster on the right flap (SPEC §4, §5), sitting at the joystick's
+ * own height so the two hands are level.
+ *
+ * Every cap is bound, always: unlike the social links these stood for, a verb
+ * cannot be missing from the dataset. A closed console still ignores them —
+ * only `A` opens it, and it does that through `accept`.
  */
-export function FaceButtons({socialLinks}: {socialLinks: ConsoleContent['socialLinks']}) {
+export function FaceButtons({content}: {content: ConsoleContent}) {
   const {dimensions: d} = useSpec()
+  const back = useConsole((state) => state.back)
+  const jump = useConsole((state) => state.jump)
+
+  const press: Record<ButtonSlot, () => void> = {
+    A: () => accept(content),
+    B: back,
+    X: () => jump('library'),
+    Y: () => jump('timeline'),
+  }
 
   return (
     <group position={[0, d.abxy.y, d.faceZ]} rotation={[0, Math.PI, 0]}>
-      {SLOTS.map((slot) => {
-        const link = linkForSlot(socialLinks, slot)
-        const glyph = link?.platform ? (GLYPH_FOR[link.platform] ?? null) : null
-
-        return <FaceButton key={slot} slot={slot} url={link?.url ?? null} glyph={glyph} />
-      })}
+      {SLOTS.map((slot) => (
+        <FaceButton key={slot} slot={slot} glyph={GLYPH_FOR[slot]} onPress={press[slot]} />
+      ))}
     </group>
   )
 }

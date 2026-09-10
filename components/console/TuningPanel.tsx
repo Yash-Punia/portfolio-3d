@@ -60,13 +60,6 @@ const CONSOLE_GROUPS: Group[] = [
     ],
   },
   {
-    title: 'Close button',
-    controls: [
-      {key: 'closeButtonRadius', label: 'Cap radius', min: 0.05, max: 0.4, step: 0.005},
-      {key: 'closeButtonY', label: 'Height above edge', min: 0.1, max: 2, step: 0.02},
-    ],
-  },
-  {
     title: 'Info monitor',
     controls: [
       {key: 'monitorY', label: 'Monitor height', min: -2, max: 2, step: 0.01},

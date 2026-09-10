@@ -9,6 +9,7 @@ import {useReducedMotion} from '@/components/console/useReducedMotion'
 import {edgeMask, scrollBox, scrollFade} from '@/components/firmware/edges'
 import {useFirmwareLayout} from '@/components/firmware/layout'
 import {transition} from '@/components/firmware/LibraryRail'
+import {useRailDrag} from '@/components/firmware/useRailDrag'
 
 /**
  * The Timeline section (SPEC §8): one horizontal line of dots, most recent on
@@ -263,13 +264,24 @@ export function Timeline({content}: {content: ConsoleContent}) {
   const {timeline, projects} = content
   const selected = timeline[index] ?? null
 
+  const drag = useRailDrag({
+    step: layout.dotGap,
+    index,
+    count: timeline.length,
+    setIndex: setTimelineIndex,
+  })
+
   return (
     <div style={{display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0}}>
       <div
+        {...drag.handlers}
         style={{
           position: 'relative',
           overflow: 'hidden',
           paddingTop: `${layout.axisTop}px`,
+          // The axis owns the sideways gesture, the way the Library rail does.
+          touchAction: 'none',
+          cursor: drag.dragging ? 'grabbing' : 'grab',
           // The rail carries words, so its ends are faded rather than cut.
           ...edgeMask(Math.round(layout.railX * 1.3)),
         }}
@@ -294,8 +306,8 @@ export function Timeline({content}: {content: ConsoleContent}) {
             position: 'relative',
             display: 'flex',
             paddingLeft: `${layout.railX}px`,
-            transform: `translateX(${-index * layout.dotGap}px)`,
-            ...transition(reducedMotion, 'transform'),
+            transform: `translateX(${-index * layout.dotGap + drag.offset}px)`,
+            ...(drag.dragging ? undefined : transition(reducedMotion, 'transform')),
           }}
         >
           {timeline.map((entry, position) => (
@@ -304,7 +316,11 @@ export function Timeline({content}: {content: ConsoleContent}) {
               entry={entry}
               selected={position === index}
               reducedMotion={reducedMotion}
-              onSelect={() => setTimelineIndex(position)}
+              onSelect={() => {
+                // The end of a drag is not a tap on the dot it stopped over.
+                if (drag.moved()) return
+                setTimelineIndex(position)
+              }}
             />
           ))}
         </div>

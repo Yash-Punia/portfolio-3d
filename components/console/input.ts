@@ -27,12 +27,25 @@ export type FocusTarget = ButtonSlot | 'close' | 'theme'
 
 const REPEAT_MS = 180
 
+/** How long a pushed stick reads as pushed before it springs back to centre. */
+const LEAN_MS = 200
+
 interface InputState {
   /** The direction currently held, or null. Drives the joystick's tilt. */
   held: Direction | null
   /** Advances once per emitted move. */
   tick: number
   hold: (direction: Direction | null) => void
+  /**
+   * One move, and only one — the joystick's push.
+   *
+   * A thumbstick is not a key: a visitor pushes it, reads the screen and pushes
+   * again, and a stream of repeats out of a finger that simply has not lifted
+   * yet is the bug this replaces. So no interval is started, and the lean
+   * clears itself after `LEAN_MS` whether or not a `pointerup` ever arrives —
+   * which is what makes a stuck stick impossible rather than merely unlikely.
+   */
+  nudge: (direction: Direction) => void
   /**
    * The control whose (visually hidden) twin currently has DOM focus — an ABXY
    * slot, the close button or the theme cap. Each renders its focus ring from
@@ -57,8 +70,13 @@ let release: ReturnType<typeof setTimeout> | null = null
 // ponytail: one console, one stick, so one module-level timer. If a second
 // directional control ever exists, this moves into the store's own state.
 let repeat: ReturnType<typeof setInterval> | null = null
+let settle: ReturnType<typeof setTimeout> | null = null
 
 function stop() {
+  if (settle !== null) {
+    clearTimeout(settle)
+    settle = null
+  }
   if (repeat === null) return
   clearInterval(repeat)
   repeat = null
@@ -80,7 +98,9 @@ export const useInput = create<InputState>()((set, get) => ({
   hold: (direction) => {
     // Re-entering the same direction must not restart the repeat, or holding a
     // key that autorepeats at the OS level would fire far faster than 180ms.
-    if (get().held === direction) return
+    // A lean left over from a stick push is not a hold, though: it is about to
+    // clear itself, and taking it as one would leave the key doing nothing.
+    if (get().held === direction && settle === null) return
 
     stop()
     set({held: direction})
@@ -88,5 +108,14 @@ export const useInput = create<InputState>()((set, get) => ({
 
     set((state) => ({tick: state.tick + 1}))
     repeat = setInterval(() => set((state) => ({tick: state.tick + 1})), REPEAT_MS)
+  },
+  nudge: (direction) => {
+    stop()
+    // Both in one write: `useRailInput` reads `held` on the tick it sees.
+    set((state) => ({held: direction, tick: state.tick + 1}))
+    settle = setTimeout(() => {
+      settle = null
+      set({held: null})
+    }, LEAN_MS)
   },
 }))

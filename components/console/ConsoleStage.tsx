@@ -3,19 +3,19 @@
 import dynamic from 'next/dynamic'
 import {useEffect, useState, useSyncExternalStore} from 'react'
 
+import {accept} from '@/components/console/actions'
 import {
-  linkForSlot,
   menuOptions,
   neighbours,
-  openLink,
   SECTION_LABELS,
   type ButtonSlot,
   type ConsoleContent,
 } from '@/components/console/content'
+import {inConsoleFrame, panelScale} from '@/components/console/frame'
 import {useInput, type Direction, type FocusTarget} from '@/components/console/input'
-import {isPortraitPhone, useIsMobile} from '@/components/console/mobile'
+import {useIsMobile} from '@/components/console/mobile'
 import {Skeleton} from '@/components/console/Skeleton'
-import {useConsole, useTheme} from '@/components/console/store'
+import {useConsole, useTheme, type Section} from '@/components/console/store'
 import {failWebgl, useWebgl, WebglBoundary} from '@/components/console/webgl'
 
 /**
@@ -60,6 +60,31 @@ const ARROWS: Record<string, Direction> = {
 
 const SLOT_KEYS: Record<string, ButtonSlot> = {a: 'A', b: 'B', x: 'X', y: 'Y'}
 
+/**
+ * What each face button does, wherever it is pressed from — the cap, its
+ * letter key, or the hidden twin in the page. `FaceButtons` builds the same
+ * four; this is the copy the keyboard and the landmark share.
+ */
+const SLOT_LABELS: Record<ButtonSlot, string> = {
+  A: 'Select',
+  B: 'Back',
+  X: 'Open the games library',
+  Y: 'Open the experience timeline',
+}
+
+/** The section each of the two shortcut caps jumps to. */
+const SLOT_SECTION: Partial<Record<ButtonSlot, Section>> = {X: 'library', Y: 'timeline'}
+
+function pressSlotAction(slot: ButtonSlot, content: ConsoleContent) {
+  useInput.getState().pressSlot(slot)
+
+  if (slot === 'A') return accept(content)
+  if (slot === 'B') return useConsole.getState().back()
+
+  const section = SLOT_SECTION[slot]
+  if (section) useConsole.getState().jump(section)
+}
+
 /** Keystrokes belong to whatever the visitor is typing in, if anything. */
 function isTyping() {
   const active = document.activeElement
@@ -73,11 +98,11 @@ function isTyping() {
  * Keyboard control of the console, on the DOM side so it works before the
  * three.js chunk lands.
  *
- * `Escape` closes (SPEC §5); `Enter` and `Space` open, because a canvas that
- * can only be opened by pointer is a dead end for keyboard visitors (§11.4).
- * The arrow keys are the joystick (§5) — they write the same held direction the
- * stick writes, which is what makes the stick lean when they are pressed — and
- * `A`/`B`/`X`/`Y` fire the social link bound to that slot (§8).
+ * `Escape` is the back button (SPEC §5); `Enter` and `Space` open, because a
+ * canvas that can only be opened by pointer is a dead end for keyboard visitors
+ * (§11.4). The arrow keys are the joystick (§5) — they write the same held
+ * direction the stick writes, which is what makes the stick lean when they are
+ * pressed — and `A`/`B`/`X`/`Y` do what the four caps beside them do.
  */
 function useConsoleKeys(content: ConsoleContent) {
   useEffect(() => {
@@ -85,15 +110,13 @@ function useConsoleKeys(content: ConsoleContent) {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
       if (isTyping()) return
 
-      const {isOpen, open, close, isDetailOpen, openDetail, closeDetail, libraryIndex, section} =
-        useConsole.getState()
+      const {isOpen, open, back} = useConsole.getState()
 
-      // SPEC §8: Escape closes the detail view; with none open, it closes the
-      // console.
+      // Escape is the B button: a detail view, then the menu, then the console
+      // itself. One definition of back, in the store (SPEC §8).
       if (event.key === 'Escape') {
         if (!isOpen) return
-        if (isDetailOpen) closeDetail()
-        else close()
+        back()
         return
       }
 
@@ -105,29 +128,19 @@ function useConsoleKeys(content: ConsoleContent) {
           return
         }
 
-        // Enter takes the highlighted menu half, or opens the selected
-        // project. A timeline entry has nothing to drill into — its detail is
-        // already on screen — so it stays a no-op there.
+        // Enter is the A button: it takes the highlighted menu half, or opens
+        // the selected project.
         if (event.key === 'Enter' || event.key === ' ') {
           if (document.activeElement !== document.body) return
           event.preventDefault()
-          if (isDetailOpen) return
-          if (section === 'menu') {
-            const target = menuOptions(content)[useConsole.getState().menuIndex]
-            if (target) useConsole.getState().setSection(target)
-          } else if (section === 'library' && content.projects[libraryIndex]) {
-            openDetail()
-          }
+          accept(content)
           return
         }
 
         const slot = SLOT_KEYS[event.key.toLowerCase()]
         if (slot) {
-          const link = linkForSlot(content.socialLinks, slot)
-          if (!link?.url) return
           event.preventDefault()
-          useInput.getState().pressSlot(slot)
-          openLink(link.url)
+          pressSlotAction(slot, content)
         }
         return
       }
@@ -324,144 +337,78 @@ function useWheelRail(content: ConsoleContent) {
   }, [content])
 }
 
-/** A finger has to travel this far before it is a swipe and not a tap. */
-const SWIPE_PX = 44
-
 /**
- * A screen delta, turned into the console's own frame.
+ * Finger-scrolling a panel that overflows: a timeline entry with a long
+ * summary, a project's detail view.
  *
- * On an upright phone the open console has rolled a quarter turn, so the
- * visitor's fingers and the console's axes no longer agree: the console's right
- * is down the screen. Turning the deltas by the same quarter turn puts them
- * back in the console's frame, and everything downstream — a swipe, a scroll —
- * never learns the difference.
+ * It is done here rather than left to the browser because the panel is a
+ * rotated, scaled subtree of a `<Html transform>`: what a browser makes of a
+ * touch on a box turned through 90° is not something to find out on someone's
+ * phone. The box is marked `touch-action: none`, so there is exactly one thing
+ * moving it — this, through `inConsoleFrame`, the same quarter turn the rails
+ * drag through.
  *
- * The rotation must match `Console`'s roll. If one sign flips, they all do.
+ * This used to carry swipe navigation too. It does not any more: sideways is
+ * the rails' own drag, which follows the finger instead of jumping a tile at a
+ * time, and up/down are the Library and Timeline buttons on the flap. A
+ * window-wide swipe was also the thing quietly competing with drag-to-rotate,
+ * which is why the console would not turn under a finger.
+ *
+ * Hence the `[data-firmware]` gate: nothing outside the screen is ever
+ * captured here, so a drag on bare chassis belongs entirely to `Console`.
+ *
+ * Nothing calls `preventDefault`, so every tap the firmware handles still
+ * works.
  */
-function inConsoleFrame(dx: number, dy: number): {x: number; y: number} {
-  const turned = isPortraitPhone(window.innerWidth, window.innerHeight)
-  return turned ? {x: dy, y: -dx} : {x: dx, y: dy}
-}
-
-/**
- * How many screen pixels one pixel of a panel box measures.
- *
- * The firmware is authored at a fixed width and then scaled onto the glass by
- * `<Html transform>`, so a finger that has travelled 100 screen pixels has to
- * scroll more or fewer than 100 of the panel's own. Rolled a quarter turn, the
- * box's local height runs along the screen's x, which is why the bounding
- * rect's width is what is measured there.
- */
-function panelScale(box: HTMLElement): number {
-  const rect = box.getBoundingClientRect()
-  const turned = isPortraitPhone(window.innerWidth, window.innerHeight)
-  const onScreen = turned ? rect.width : rect.height
-  const scale = box.offsetHeight > 0 ? onScreen / box.offsetHeight : 1
-  return scale > 0 ? scale : 1
-}
-
-/**
- * SPEC §8's touch mappings: swipe left/right to move within the rail, up/down
- * to change section. The same `move()` the keys, the stick and the wheel go
- * through — a swipe is only another way of naming a direction.
- *
- * Carousel-natural rather than scroll-natural: the content follows the finger,
- * so swiping left brings the next project in from the right. The opposite
- * convention is one sign flip if it reads wrong on a real device.
- *
- * **A box that scrolls keeps its own gesture.** A phone-sized panel overflows
- * often — most timeline entries do, and every project's detail view does — and
- * a finger dragged up inside one has to scroll it, not jump to another section.
- * So a vertical drag that begins inside `[data-console-scroll]` scrolls that box
- * and never navigates, which is what a nested scroller does everywhere else.
- *
- * The scrolling is done here rather than left to the browser because the panel
- * is a rotated, scaled subtree of a `<Html transform>`: what the browser would
- * do with a touch on a box turned through 90° is not something to find out on
- * someone's phone. The box is marked `touch-action: none` so there is exactly
- * one thing moving it — this handler, through the same quarter turn the swipe
- * uses, so a scroll and a swipe can never disagree about which way is up.
- *
- * A sideways drag inside a scrolling box still moves the rail: there is nothing
- * to scroll along x, and it keeps the rail reachable from anywhere on screen.
- *
- * Nothing here calls `preventDefault`, so the taps the firmware already handles
- * — a tile to select, a tile again to drill in, `BACK` to come out — and the
- * taps on the flap's own controls all keep working.
- *
- * ponytail: no fling. The content tracks the finger and stops when it lifts;
- * momentum is a spring and a rAF loop away if it is missed on a real device.
- */
-function useTouchRail(content: ConsoleContent, enabled: boolean) {
+function usePanelScroll(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return
 
     let start: {x: number; y: number} | null = null
     let scroller: {box: HTMLElement; top: number; scale: number} | null = null
-    let scrolling = false
 
     function onPointerDown(event: PointerEvent) {
-      if (event.pointerType === 'mouse') {
-        start = null
-        return
-      }
-      start = {x: event.clientX, y: event.clientY}
-      scrolling = false
+      start = null
+      scroller = null
+      if (event.pointerType === 'mouse') return
+      if (!(event.target instanceof HTMLElement)) return
+      if (!event.target.closest('[data-firmware]')) return
 
-      const box =
-        event.target instanceof HTMLElement ? event.target.closest('[data-console-scroll]') : null
-      // A box with nothing hidden below the fold is not a scroller, so a swipe
-      // that starts on a short entry still changes section.
-      scroller =
-        box instanceof HTMLElement && box.scrollHeight > box.clientHeight
-          ? {box, top: box.scrollTop, scale: panelScale(box)}
-          : null
+      const box = event.target.closest('[data-console-scroll]')
+      // A box with nothing hidden below the fold is not a scroller.
+      if (!(box instanceof HTMLElement) || box.scrollHeight <= box.clientHeight) return
+
+      start = {x: event.clientX, y: event.clientY}
+      scroller = {box, top: box.scrollTop, scale: panelScale(box)}
     }
 
     function onPointerMove(event: PointerEvent) {
       if (!start || !scroller) return
 
       const {x, y} = inConsoleFrame(event.clientX - start.x, event.clientY - start.y)
-      // The dominant axis wins outright, the same rule the swipe follows.
+      // The dominant axis wins outright, the same rule the rails follow.
       if (Math.abs(y) <= Math.abs(x)) return
 
-      scrolling = true
       scroller.box.scrollTop = scroller.top - y / scroller.scale
     }
 
-    function onPointerUp(event: PointerEvent) {
-      const from = start
-      const scrolled = scrolling
+    function onPointerUp() {
       start = null
       scroller = null
-      scrolling = false
-      // A gesture that scrolled a box has already done its job.
-      if (!from || scrolled) return
-
-      // A detail view is not a rail, and neither is a closed console.
-      const {isOpen, isDetailOpen} = useConsole.getState()
-      if (!isOpen || isDetailOpen) return
-
-      const {x, y} = inConsoleFrame(event.clientX - from.x, event.clientY - from.y)
-
-      // The dominant axis wins outright: a diagonal drag should do one thing.
-      if (Math.abs(x) > Math.abs(y)) {
-        if (Math.abs(x) > SWIPE_PX) move(x < 0 ? 'right' : 'left', content)
-      } else if (Math.abs(y) > SWIPE_PX) {
-        move(y < 0 ? 'down' : 'up', content)
-      }
     }
 
     window.addEventListener('pointerdown', onPointerDown)
     window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('pointercancel', onPointerUp)
 
     return () => {
       window.removeEventListener('pointerdown', onPointerDown)
       window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('pointercancel', onPointerUp)
     }
-  }, [content, enabled])
+  }, [enabled])
 }
 
 /**
@@ -551,7 +498,7 @@ export function ConsoleStage({content}: {content: ConsoleContent}) {
   const [notice, setNotice] = useState<{text: string; at: string} | null>(null)
   const announcement = notice?.at === selection ? notice.text : selection
 
-  useTouchRail(content, mobile)
+  usePanelScroll(mobile)
 
   return (
     <div
@@ -571,7 +518,11 @@ export function ConsoleStage({content}: {content: ConsoleContent}) {
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>
-      <ConsoleControls onNotice={(text) => setNotice({text, at: selection})} visible={!webglOk} />
+      <ConsoleControls
+        content={content}
+        onNotice={(text) => setNotice({text, at: selection})}
+        visible={!webglOk}
+      />
       {tuning ? <TuningPanel /> : null}
     </div>
   )
@@ -589,11 +540,19 @@ export function ConsoleStage({content}: {content: ConsoleContent}) {
  * They are visually hidden until focused, in the manner of a skip link. With no
  * WebGL there is no object to point at, so they are simply on screen — and
  * `Close` is dropped there, because closing would leave an empty page.
+ *
+ * The four face buttons are here too. They used to borrow the landmark's social
+ * anchors, which carried `data-console-focus` because each cap was one of those
+ * links; the caps are the console's own verbs now, so they need buttons that
+ * say what they do. Without WebGL the firmware is on screen with its own BACK
+ * control and section arrows, so these four stay hidden there.
  */
 function ConsoleControls({
+  content,
   onNotice,
   visible,
 }: {
+  content: ConsoleContent
   onNotice: (notice: string) => void
   visible: boolean
 }) {
@@ -645,6 +604,20 @@ function ConsoleControls({
       >
         {muted ? 'Unmute the console' : 'Mute the console'}
       </button>
+      {FACE_SLOTS.map((slot) => (
+        <button
+          className="sr-only"
+          data-console-focus={slot}
+          key={slot}
+          onClick={() => pressSlotAction(slot, content)}
+          type="button"
+        >
+          {SLOT_LABELS[slot]}
+        </button>
+      ))}
     </div>
   )
 }
+
+/** In the order they read on the diamond: top, right, bottom, left. */
+const FACE_SLOTS: ButtonSlot[] = ['X', 'A', 'B', 'Y']

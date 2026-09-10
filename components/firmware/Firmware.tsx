@@ -1,14 +1,11 @@
 'use client'
 
-import {useState} from 'react'
-
-import {neighbours, SECTION_LABELS, type ConsoleContent} from '@/components/console/content'
+import type {ConsoleContent} from '@/components/console/content'
 import {useConsole} from '@/components/console/store'
-import {useReducedMotion} from '@/components/console/useReducedMotion'
 import {Boot} from '@/components/firmware/Boot'
 import {Detail} from '@/components/firmware/Detail'
 import {useFirmwareLayout} from '@/components/firmware/layout'
-import {LibraryRail, transition} from '@/components/firmware/LibraryRail'
+import {LibraryRail} from '@/components/firmware/LibraryRail'
 import {Menu} from '@/components/firmware/Menu'
 import {StatusBar} from '@/components/firmware/StatusBar'
 import {Timeline} from '@/components/firmware/Timeline'
@@ -20,70 +17,6 @@ const STATUS_NAMES: Record<Section, string> = {
   menu: 'MENU',
   library: 'LIBRARY',
   timeline: 'TIMELINE',
-}
-
-/**
- * The way out of a screen, at the edge it leads to: a large chevron and the
- * name of where it goes. Up sits above the section, down below it, and the pair
- * of them is what makes the up/down keys discoverable — the joystick's other
- * axis is not obvious from a rail that only moves sideways.
- *
- * It is a control as well as a sign, because everything else on the screen is
- * clickable too. Where the stack has no neighbour, `neighbours()` returns none
- * and nothing renders — no dead affordance (SPEC §3.2).
- */
-function SectionArrow({
-  direction,
-  label,
-  onSwitch,
-}: {
-  direction: 'up' | 'down'
-  label: string
-  onSwitch: () => void
-}) {
-  const layout = useFirmwareLayout()
-  const reducedMotion = useReducedMotion()
-  const [hovered, setHovered] = useState(false)
-
-  return (
-    <div
-      onClick={onSwitch}
-      onPointerEnter={() => setHovered(true)}
-      onPointerLeave={() => setHovered(false)}
-      style={{
-        flex: '0 0 auto',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: `${Math.round(layout.railX * 0.3)}px`,
-        cursor: 'pointer',
-        padding: `${Math.round(layout.railX * 0.2)}px 0`,
-        // Under the pointer it comes forward, the same step the tiles take.
-        color: hovered ? 'var(--screen-fg)' : 'var(--screen-muted)',
-        ...transition(reducedMotion, 'color'),
-      }}
-    >
-      <span
-        style={{
-          color: 'var(--screen-accent)',
-          fontSize: `${Math.round(layout.titleFont * 0.8)}px`,
-          lineHeight: 0.7,
-        }}
-      >
-        {direction === 'up' ? '▴' : '▾'}
-      </span>
-      <span
-        style={{
-          fontFamily: 'var(--font-martian-mono), ui-monospace, monospace',
-          fontSize: `${layout.metaFont + 2}px`,
-          letterSpacing: '0.16em',
-          textTransform: 'uppercase',
-        }}
-      >
-        {label}
-      </span>
-    </div>
-  )
 }
 
 /**
@@ -109,14 +42,15 @@ export function Firmware({content}: {content: ConsoleContent}) {
   const index = useConsole((state) => state.libraryIndex)
   const isDetailOpen = useConsole((state) => state.isDetailOpen)
   const section = useConsole((state) => state.section)
-  const setSection = useConsole((state) => state.setSection)
 
   const project = content.projects[index] ?? null
-  const {up, down} = neighbours(section, content)
 
   return (
     <div
       aria-hidden
+      // What `usePanelScroll` looks for: a touch outside this is the chassis',
+      // and belongs to drag-to-rotate.
+      data-firmware
       style={{
         ...vars,
         position: 'relative',
@@ -133,24 +67,12 @@ export function Firmware({content}: {content: ConsoleContent}) {
     >
       <StatusBar section={STATUS_NAMES[section]} />
 
-      {up ? (
-        <SectionArrow direction="up" label={SECTION_LABELS[up]} onSwitch={() => setSection(up)} />
-      ) : null}
-
       {/* Keyed so the screens crossfade into one another. */}
       <div key={section} style={{display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0}}>
         {section === 'menu' ? <Menu content={content} /> : null}
         {section === 'library' ? <LibraryRail content={content} /> : null}
         {section === 'timeline' ? <Timeline content={content} /> : null}
       </div>
-
-      {down ? (
-        <SectionArrow
-          direction="down"
-          label={SECTION_LABELS[down]}
-          onSwitch={() => setSection(down)}
-        />
-      ) : null}
 
       {isDetailOpen && project ? <Detail project={project} /> : null}
 

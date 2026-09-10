@@ -14,8 +14,6 @@ const PANEL_RADIUS = 0.05
 const SEAM_BAND_DEPTH = 0.009
 const HINGE_LENGTH_INSET = 0.66
 const HINGE_RING_HEIGHT = 0.055
-const CLOSE_CAP_HEIGHT = 0.055
-const CLOSE_TRAVEL = 0.022
 const APERTURE_RADIUS = 0.06
 const MONITOR_BEZEL = 0.05
 const MONITOR_DEPTH = 0.022
@@ -36,14 +34,6 @@ export interface Dimensions {
   seam: {gap: number; bandWidth: number; bandDepth: number}
   panel: {depth: number; margin: number; radius: number}
   hinge: {radius: number; length: number; ringRadius: number; ringHeight: number}
-  closeButton: {
-    capRadius: number
-    capHeight: number
-    housingRadius: number
-    housingDepth: number
-    y: number
-    travel: number
-  }
   /** Info monitor panel on the left flap's inner face. */
   monitor: {width: number; height: number; y: number; depth: number; bezel: number}
   joystick: {
@@ -136,14 +126,6 @@ export function deriveDimensions(t: Tuning): Dimensions {
       length: t.bodyHeight - HINGE_LENGTH_INSET,
       ringRadius: t.flapInset / 2 + 0.004,
       ringHeight: HINGE_RING_HEIGHT,
-    },
-    closeButton: {
-      capRadius: t.closeButtonRadius,
-      capHeight: CLOSE_CAP_HEIGHT,
-      housingRadius: t.closeButtonRadius * 1.42,
-      housingDepth: 0.024,
-      y: -flapHeight / 2 + t.closeButtonY,
-      travel: CLOSE_TRAVEL,
     },
     monitor: {
       width: flapWidth - t.panelMargin * 2,

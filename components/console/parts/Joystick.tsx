@@ -38,10 +38,16 @@ function leanFor(held: Direction | null, tilt: number): [number, number] {
  * The joystick on the lower half of the left flap (SPEC §4, §5).
  *
  * The stick and the arrow keys are one input mirrored both ways: a held arrow
- * key leans the stick, and dragging the stick emits what the arrow keys emit.
- * Both write to `useInput`, which owns the 180ms repeat, and the lean below is
- * rendered from `held` — so there is exactly one direction in the system, and
- * the physical control always shows it.
+ * key leans the stick, and pushing the stick emits what the arrow keys emit.
+ * Both write to `useInput`, and the lean below is rendered from `held` — so
+ * there is exactly one direction in the system, and the physical control always
+ * shows it.
+ *
+ * They differ in one thing: a key repeats while it is down, a stick does not.
+ * One push is one move, and a finger that stays pushed emits nothing further
+ * until it lifts — `nudge` is what makes that true, and it also clears the lean
+ * on a timer, so the stick cannot be left leaning by a `pointerup` that never
+ * arrived.
  */
 export function Joystick() {
   const {dimensions: d, materials: m} = useSpec()
@@ -51,10 +57,12 @@ export function Joystick() {
   const size = useThree((state) => state.size)
 
   const held = useInput((state) => state.held)
-  const hold = useInput((state) => state.hold)
+  const nudge = useInput((state) => state.nudge)
 
   const [dragging, setDragging] = useState(false)
   const origin = useRef({x: 0, y: 0})
+  /** One direction per push: set on the first crossing, cleared on the next. */
+  const fired = useRef(false)
 
   const [leanX, leanY] = leanFor(held, d.joystick.maxTilt)
   const lean = useSpring({
@@ -65,7 +73,7 @@ export function Joystick() {
   })
 
   /**
-   * A drag is read in screen pixels and quantised to four directions, with a
+   * A push is read in screen pixels and quantised to four directions, with a
    * deadzone of 25% of the stick's radius (SPEC §5). One orthographic world
    * unit is `zoom` pixels, which is what converts the two.
    */
@@ -75,13 +83,14 @@ export function Joystick() {
     const deadzone = d.joystick.capRadius * camera.zoom * d.joystick.deadzone
 
     function move(event: PointerEvent) {
+      // The push has already been named. Everything until the finger lifts is
+      // the same push, however far it travels.
+      if (fired.current) return
+
       const dx = event.clientX - origin.current.x
       const dy = event.clientY - origin.current.y
 
-      if (Math.hypot(dx, dy) < deadzone) {
-        hold(null)
-        return
-      }
+      if (Math.hypot(dx, dy) < deadzone) return
 
       /*
         Turned onto a phone's long axis, the stick's own right points down the
@@ -90,32 +99,44 @@ export function Joystick() {
         no such correction: it is rendered in the console's own space, which the
         roll has already rotated.
 
-        The same transform as `useTouchRail`'s, and it must match `Console`'s
+        The same transform `inConsoleFrame` applies, and it must match `Console`'s
         roll. If one sign flips, all three do.
       */
       const turned = isPortraitPhone(size.width, size.height)
       const x = turned ? dy : dx
       const y = turned ? -dx : dy
 
-      if (Math.abs(x) > Math.abs(y)) hold(x > 0 ? 'right' : 'left')
-      else hold(y > 0 ? 'down' : 'up')
+      fired.current = true
+      if (Math.abs(x) > Math.abs(y)) nudge(x > 0 ? 'right' : 'left')
+      else nudge(y > 0 ? 'down' : 'up')
     }
 
+    /*
+      Four ways a finger can leave, because on a touch screen it does not
+      always leave the way it came: `pointerup` is the ordinary one,
+      `pointercancel` is the browser taking the gesture, `lostpointercapture`
+      is the implicit capture being dropped, and a `blur` is the tab going
+      away mid-push. The lean recentres on its own timer regardless — this only
+      re-arms the next push.
+    */
     function end() {
       setDragging(false)
-      hold(null)
     }
 
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', end)
     window.addEventListener('pointercancel', end)
+    window.addEventListener('lostpointercapture', end)
+    window.addEventListener('blur', end)
 
     return () => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', end)
       window.removeEventListener('pointercancel', end)
+      window.removeEventListener('lostpointercapture', end)
+      window.removeEventListener('blur', end)
     }
-  }, [dragging, camera, size, d.joystick.capRadius, d.joystick.deadzone, hold])
+  }, [dragging, camera, size, d.joystick.capRadius, d.joystick.deadzone, nudge])
 
   const hover = (on: boolean) => {
     document.body.style.cursor = on && isOpen ? 'grab' : ''
@@ -167,6 +188,7 @@ export function Joystick() {
             event.stopPropagation()
             if (!isOpen) return
             origin.current = {x: event.clientX, y: event.clientY}
+            fired.current = false
             setDragging(true)
           }}
           onPointerOver={() => hover(true)}

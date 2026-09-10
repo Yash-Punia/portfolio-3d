@@ -6,7 +6,7 @@ import {useEffect, useRef, useState} from 'react'
 import {MathUtils, type Group} from 'three'
 
 import type {ConsoleContent} from '@/components/console/content'
-import {isPortraitPhone, MOBILE_MAX_WIDTH} from '@/components/console/mobile'
+import {isPortraitPhone} from '@/components/console/mobile'
 import {Body} from '@/components/console/parts/Body'
 import {Flap} from '@/components/console/parts/Flap'
 import {Hinge} from '@/components/console/parts/Hinge'
@@ -37,7 +37,6 @@ export function Console({content}: {content: ConsoleContent}) {
   // The canvas size rather than a media query: this is inside the canvas, where
   // `state.size` is the same number `useConsoleZoom` frames the console from.
   const size = useThree((state) => state.size)
-  const narrow = size.width < MOBILE_MAX_WIDTH
   const turned = isOpen && isPortraitPhone(size.width, size.height)
 
   /**
@@ -138,14 +137,15 @@ export function Console({content}: {content: ConsoleContent}) {
         (SPEC §5: a drag starting on those does not rotate the model). A closed
         flap deliberately does not: §5 wants a shaky tap on a door to still open
         it, which is the flap's own 6px threshold, not a veto on dragging.
+
+        These are pointer events, so a finger drives them exactly as a mouse
+        does. SPEC §6 used to veto this on an open phone, on the theory that a
+        drag would fight the taps aimed at fingertip-wide controls — but every
+        one of those controls stops the event itself, so the only thing the veto
+        ever caught was a drag on bare chassis, which is precisely the gesture
+        it was meant to allow.
       */
       onPointerDown={(event) => {
-        // SPEC §6: not on a phone with the console open. Every control is a
-        // fingertip wide there, and a drag would fight the taps aimed at them —
-        // the console is being held, not turned over. Closed, it still rotates
-        // at every width.
-        if (isOpen && narrow) return
-
         from.current = {
           x: event.clientX,
           y: event.clientY,

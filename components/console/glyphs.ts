@@ -27,9 +27,55 @@ export const GLYPHS = {
   /** Close: the cross on the right flap's button (SPEC §4). */
   close:
     'M4.7 3.3 12 10.6l7.3-7.3 1.4 1.4L13.4 12l7.3 7.3-1.4 1.4L12 13.4l-7.3 7.3-1.4-1.4L10.6 12 3.3 4.7z',
+  /**
+   * The four verbs on the ABXY caps.
+   *
+   * A and B are letterforms rather than a tick and a cross, because that is
+   * what is printed on the buttons of the thing this is an object of — and a
+   * visitor who has held a handheld already knows which one goes back. Each
+   * counter is wound against its outer contour, the way `github`'s and `itch`'s
+   * are, so `toShapes` cuts it out rather than filling it in.
+   */
+  letterA: 'M12 2 3 22h4.3l1.8-4.4h5.8L16.7 22H21L12 2zm0 6.6 2.1 5.2H9.9L12 8.6z',
+  letterB:
+    'M4.6 2h7.7c3.4 0 5.6 1.7 5.6 4.6 0 1.9-1 3.4-2.7 4.1 2.2.6 3.5 2.3 3.5 4.6 0 3.4-2.5 5.4-6.5 5.4H4.6V2zm4 8h3.1c1.3 0 2.1-.7 2.1-1.9S12.9 6.2 11.6 6.2H8.6V10zm0 7.7h3.5c1.5 0 2.4-.8 2.4-2.1s-.9-2.1-2.4-2.1H8.6v4.2z',
+  /** Library: a handheld, seen face on. */
+  gamepad:
+    'M6.8 5h10.4c2.7 0 4.9 2.2 5.3 4.9l1.2 7.3c.3 2-1.2 3.8-3.2 3.8-1.1 0-2.1-.6-2.7-1.5L16.2 17H7.8l-1.6 2.5c-.6.9-1.6 1.5-2.7 1.5-2 0-3.5-1.8-3.2-3.8l1.2-7.3C1.9 7.2 4.1 5 6.8 5zm-.6 3.6v1.9H4.3v1.9h1.9v1.9h1.9v-1.9H10v-1.9H8.1V8.6H6.2zm10.6.5a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 0 0 0-2.8zm-2.6 2.9a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 0 0 0-2.8z',
+  /** Timeline: an hourglass. */
+  hourglass:
+    'M5 2h14v2h-1.2v2.1c0 2.2-1.3 4.2-3.3 5.1v1.6c2 .9 3.3 2.9 3.3 5.1V20H19v2H5v-2h1.2v-2.1c0-2.2 1.3-4.2 3.3-5.1v-1.6c-2-.9-3.3-2.9-3.3-5.1V4H5V2zm3.2 2v2.1c0 1.6 1.1 3 2.6 3.5l.7.2v4.4l-.7.2c-1.5.5-2.6 1.9-2.6 3.5V20h7.6v-2.1c0-1.6-1.1-3-2.6-3.5l-.7-.2V9.8l.7-.2c1.5-.5 2.6-1.9 2.6-3.5V4H8.2z',
+  /** The resume, on its way down. */
+  download: 'M11 3h2v9.2l3.6-3.6 1.4 1.4-6 6-6-6 1.4-1.4L11 12.2V3zM4 19h16v2H4v-2z',
+  /** BACK, on the screen: a chevron pointing the way out. */
+  chevronLeft: 'M15.4 4.4 7.8 12l7.6 7.6 1.4-1.4L10.6 12l6.2-6.2-1.4-1.4z',
 } as const
 
 export type GlyphName = keyof typeof GLYPHS
+
+/**
+ * The box each path was authored in.
+ *
+ * `glyphGeometry` normalises every mark, so the 3D caps do not care — but the
+ * DOM icons on the info monitor and the BACK control draw the same paths in a
+ * real `<svg>`, and there the box is the difference between an icon and a
+ * quarter of one. LinkedIn's mark came at 16; everything else at 24.
+ */
+export const VIEWBOX: Record<GlyphName, number> = {
+  github: 24,
+  twitter: 24,
+  itch: 24,
+  linkedin: 16,
+  moon: 24,
+  sun: 24,
+  close: 24,
+  letterA: 24,
+  letterB: 24,
+  gamepad: 24,
+  hourglass: 24,
+  download: 24,
+  chevronLeft: 24,
+}
 
 /**
  * A flat mesh of one glyph, scaled so its longest side is `size`.

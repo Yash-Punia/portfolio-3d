@@ -10,7 +10,6 @@ import {usePanelGeometry, type PanelSpec} from '@/components/console/geometry'
 import {FaceButtons} from '@/components/console/parts/FaceButtons'
 import {InfoMonitor} from '@/components/console/parts/InfoMonitor'
 import {Joystick} from '@/components/console/parts/Joystick'
-import {CloseButton} from '@/components/console/parts/CloseButton'
 import {ThemeToggle} from '@/components/console/parts/ThemeToggle'
 import {useSpec} from '@/components/console/spec'
 import {useConsole} from '@/components/console/store'
@@ -189,14 +188,18 @@ export function Flap({side, content}: {side: FlapSide; content: ConsoleContent})
 
         {side === 'left' ? (
           <>
-            <InfoMonitor href={href} settings={content.settings} />
+            <InfoMonitor
+              href={href}
+              settings={content.settings}
+              socialLinks={content.socialLinks}
+            />
             <Joystick />
           </>
         ) : (
           <>
             <ThemeToggle />
-            <FaceButtons socialLinks={content.socialLinks} />
-            <CloseButton />
+            {/* B is the close button now — a verb, not a cap of its own. */}
+            <FaceButtons content={content} />
           </>
         )}
       </group>

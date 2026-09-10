@@ -34,9 +34,6 @@ export interface Tuning {
   seamGap: number
   seamBandWidth: number
   openAngleDeg: number
-  closeButtonRadius: number
-  /** Close button's height above the bottom edge of its flap. */
-  closeButtonY: number
   /** Info monitor on the left flap: its height, and its centre in flap space. */
   monitorY: number
   monitorHeight: number
@@ -123,13 +120,11 @@ export const DEFAULT_TUNING: Tuning = {
   seamGap: 0.014,
   seamBandWidth: 0.017,
   openAngleDeg: 172,
-  closeButtonRadius: 0.13,
-  closeButtonY: 0.34,
-  monitorY: 1.04,
-  monitorHeight: 1.15,
+  monitorY: 0.94,
+  monitorHeight: 1.35,
   joystickY: -0.95,
   joystickRadius: 0.25,
-  abxyY: 0,
+  abxyY: -0.95,
   abxySpacing: 0.36,
   abxyRadius: 0.14,
   toggleY: 0.34,
@@ -186,7 +181,12 @@ export const useTuning = create<TuningState>()(
     }),
     {
       name: 'console-tuning',
-      version: 1,
+      // Every visit writes this record, not just a session behind `?tune` — so
+      // a change to `DEFAULT_TUNING` reaches nobody who has been here before
+      // unless the version moves and the old record is thrown away. Bump it
+      // whenever a default changes, or the new form ships to new visitors only.
+      version: 2,
+      migrate: () => ({values: DEFAULT_TUNING}),
       partialize: (state) => ({values: state.values}),
       merge: (persisted, current) => {
         const saved = (persisted as {values?: Partial<Tuning>} | undefined)?.values

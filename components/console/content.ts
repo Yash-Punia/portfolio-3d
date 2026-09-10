@@ -152,10 +152,6 @@ export function isLocalHref(href: string): boolean {
   return href.startsWith('/')
 }
 
-export function linkForSlot(links: SocialLinksQueryResult, slot: ButtonSlot): SocialLink | null {
-  return links.find((link) => link.buttonSlot === slot && link.url) ?? null
-}
-
 /**
  * Opening an outbound link. Lives here rather than in a 3D part because both
  * the face buttons and the firmware's own link lists fire it, and the firmware

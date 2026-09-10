@@ -33,10 +33,14 @@ import type {
  * crawlers and screen readers get the whole site (SPEC §1, §11.1). Phase 8
  * fills that landmark out; for now it holds what Phase 0 already queried.
  *
- * Those anchors are also the console's keyboard surface: each social link
- * carries the ABXY slot its physical button occupies, and focusing one lights
- * that button's focus ring in 3D (SPEC §11.4). One set of links, doing both
- * jobs — a second, hidden set would only make a screen reader read them twice.
+ * Those anchors are also the console's keyboard surface: focusing a project's
+ * button selects that tile on the rail and activating it opens the tile's
+ * detail view (SPEC §11.4, §11.6). One set of links, doing both jobs — a
+ * second, hidden set would only make a screen reader read them twice.
+ *
+ * The social links used to carry ABXY slots for the same reason. They do not
+ * any more: those four caps are the console's own verbs now, and their hidden
+ * twins live in `ConsoleStage` where they can say what they do.
  *
  * It renders nothing it was not given.
  */
@@ -258,13 +262,8 @@ export default async function Home() {
             <ul>
               {socialLinks.map((link) => (
                 <li key={link._id}>
-                  <a
-                    data-console-focus={link.buttonSlot ?? undefined}
-                    href={link.url ?? undefined}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    {link.label ?? link.platform} ({link.buttonSlot})
+                  <a href={link.url ?? undefined} rel="noopener noreferrer" target="_blank">
+                    {link.label ?? link.platform}
                   </a>
                 </li>
               ))}

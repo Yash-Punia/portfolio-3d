@@ -5,15 +5,17 @@ import {useState} from 'react'
 
 import {
   isLocalHref,
+  openLink,
   RESUME_FILENAME,
   RESUME_LABEL,
   type ConsoleContent,
 } from '@/components/console/content'
+import {GLYPHS, VIEWBOX, type GlyphName} from '@/components/console/glyphs'
 import {htmlScale} from '@/components/console/htmlScale'
 import {useSpec} from '@/components/console/spec'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
-import {useScreenTheme} from '@/components/firmware/theme'
+import {useScreenTheme, type ScreenPalette} from '@/components/firmware/theme'
 
 /**
  * The DOM is authored at this width in CSS pixels and then scaled to the
@@ -22,49 +24,122 @@ import {useScreenTheme} from '@/components/firmware/theme'
  */
 const PANEL_PX = 420
 
+/** The icon row: the box, the mark inside it, and the gap between boxes. */
+const ICON_BOX = 52
+const ICON_MARK = 30
+const ICON_GAP = 14
+
+/** The mark on a link is the platform's, so an unknown one has no icon. */
+const GLYPH_FOR: Record<string, GlyphName> = {
+  github: 'github',
+  itch: 'itch',
+  linkedin: 'linkedin',
+  twitter: 'twitter',
+}
+
+/**
+ * One mark in the row. A span, not a button: the panel around it is
+ * `aria-hidden`, and a focusable element inside one is a trap — `pointerEvents`
+ * is re-enabled here alone, so the rest of the panel stays click-through to the
+ * meshes behind it.
+ */
+function Icon({
+  glyph,
+  label,
+  onActivate,
+  palette,
+  reducedMotion,
+}: {
+  glyph: GlyphName
+  label: string
+  onActivate: () => void
+  palette: ScreenPalette
+  reducedMotion: boolean
+}) {
+  const [hovered, setHovered] = useState(false)
+  const box = VIEWBOX[glyph]
+
+  return (
+    <span
+      onClick={onActivate}
+      onPointerOut={() => setHovered(false)}
+      onPointerOver={() => setHovered(true)}
+      title={label}
+      style={{
+        display: 'grid',
+        placeItems: 'center',
+        width: `${ICON_BOX}px`,
+        height: `${ICON_BOX}px`,
+        borderRadius: '10px',
+        border: `1px solid ${hovered ? palette.accent : palette.muted}`,
+        color: hovered ? palette.accent : palette.fg,
+        cursor: 'pointer',
+        pointerEvents: 'auto',
+        // Colour is not motion, but a visitor who has asked for none gets none
+        // here either (SPEC §11.5).
+        transition: reducedMotion ? 'none' : 'color 120ms ease, border-color 120ms ease',
+      }}
+    >
+      <svg
+        aria-hidden
+        fill="currentColor"
+        height={ICON_MARK}
+        viewBox={`0 0 ${box} ${box}`}
+        width={ICON_MARK}
+      >
+        <path d={GLYPHS[glyph]} />
+      </svg>
+    </span>
+  )
+}
+
 /**
  * The small secondary display at the top of the left flap (SPEC §4). Self-lit,
- * so it reads as a powered instrument rather than a printed panel, and it shows
- * the name, title and status line whenever Sanity has them.
+ * so it reads as a powered instrument rather than a printed panel.
  *
- * It also carries the resume link, which used to be a physical cap below the
- * panel. The monitor is the one lit surface on this flap, so the words sit
- * where they can be read; the cap could only ever carry an arrow.
+ * It shows the name, title and status line, and under them the row of things
+ * that leave the site: the social links, then the resume. Those links used to
+ * be the four ABXY caps on the right flap — a cap carries one mark and the face
+ * buttons were needed for the console's own verbs, so they moved here, where a
+ * mark can be small and a fifth one costs nothing.
  *
- * The text is real DOM through drei's `<Html transform>` — the same mount SPEC
- * §7 locks for the firmware screen in Phase 4 — and is `aria-hidden`, because
- * the accessible copy of these strings is the server-rendered `.sr-only`
- * landmark on the page. Reading them twice is worse than reading them once, and
- * that landmark's anchor is also where keyboard visitors download from — which
- * is why the link below is a plain span rather than a focusable element buried
- * in a hidden subtree.
+ * The About copy that used to sit above the link is gone from the object. It is
+ * still on the page — the `.sr-only` landmark and the `Person` schema both
+ * render it — this panel is simply not what carries it any more.
+ *
+ * The text is real DOM through drei's `<Html transform>` and is `aria-hidden`,
+ * because the accessible copy of every string here is that same landmark:
+ * reading them twice is worse than reading them once, and nothing inside an
+ * `aria-hidden` subtree may be focusable. Which is why every control below is a
+ * span, and why the landmark's anchors are where a keyboard visitor follows
+ * these links and downloads the CV from.
  */
 export function InfoMonitor({
   href,
   settings,
+  socialLinks,
 }: {
   /** Where the resume lives, or null when there is nothing to download. */
   href: string | null
   settings: ConsoleContent['settings']
+  socialLinks: ConsoleContent['socialLinks']
 }) {
   const {dimensions: d, materials: m} = useSpec()
   const isOpen = useConsole((state) => state.isOpen)
   const {palette} = useScreenTheme()
   const reducedMotion = useReducedMotion()
-  const [hovered, setHovered] = useState(false)
 
   const name = settings?.fullName
   const title = settings?.title
   const status = settings?.statusLine
-  /*
-    The About copy, which Phase 5a left with nowhere to go when it deleted the
-    About tile from the rail: the monitor is the flap's one lit surface, and the
-    headline and body belong beside the name rather than only in the page's
-    hidden landmark. Both are optional in Sanity and both are guarded on their
-    own — the panel has always drawn whatever it was given.
-  */
-  const headline = settings?.aboutHeadline
-  const about = settings?.aboutBody
+
+  // In the order the query returns them. A link with no URL, or with a platform
+  // there is no mark for, is not an icon (SPEC §3.2).
+  const links = socialLinks.flatMap((link) => {
+    const glyph = link.platform ? GLYPH_FOR[link.platform] : undefined
+    if (!link.url || !glyph) return []
+    return [{id: link._id, glyph, label: link.label ?? link.platform ?? '', url: link.url}]
+  })
 
   const download = () => {
     if (!href) return
@@ -104,7 +179,7 @@ export function InfoMonitor({
         Mounted only while the console is open: closed, this panel faces into
         the body, and DOM in 3D space has no depth test to hide it there.
       */}
-      {isOpen && (name || title || status || headline || about || href) ? (
+      {isOpen && (name || title || status || links.length > 0 || href) ? (
         <Html
           aria-hidden
           center
@@ -152,48 +227,36 @@ export function InfoMonitor({
                 {status}
               </p>
             ) : null}
-            {headline ? (
-              <p style={{margin: '30px 0 0', fontSize: '27px', fontWeight: 500}}>{headline}</p>
-            ) : null}
-            {about ? (
-              <p
+
+            {links.length > 0 || href ? (
+              <div
                 style={{
-                  margin: '12px 0 0',
-                  fontSize: '20px',
-                  color: palette.muted,
-                  lineHeight: 1.45,
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: `${ICON_GAP}px`,
+                  margin: '34px 0 0',
                 }}
               >
-                {about}
-              </p>
-            ) : null}
-            {href ? (
-              <p style={{margin: '26px 0 0', fontSize: '24px'}}>
-                {/*
-                  A span, not a button: the wrapper is aria-hidden, and a
-                  focusable element inside that is a trap. `pointerEvents` is
-                  re-enabled here alone, so the rest of the panel stays
-                  click-through to the meshes behind it.
-                */}
-                <span
-                  onClick={download}
-                  onPointerOut={() => setHovered(false)}
-                  onPointerOver={() => setHovered(true)}
-                  style={{
-                    color: hovered ? palette.accent : palette.fg,
-                    cursor: 'pointer',
-                    pointerEvents: 'auto',
-                    textUnderlineOffset: '4px',
-                    textDecoration: 'underline',
-                    // The one transition on the object that was unconditional
-                    // (SPEC §11.5). Colour is not motion, but a visitor who has
-                    // asked for none gets none here either.
-                    transition: reducedMotion ? 'none' : 'color 120ms ease',
-                  }}
-                >
-                  {settings?.resumeLabel ?? RESUME_LABEL}
-                </span>
-              </p>
+                {links.map((link) => (
+                  <Icon
+                    key={link.id}
+                    glyph={link.glyph}
+                    label={link.label}
+                    onActivate={() => openLink(link.url)}
+                    palette={palette}
+                    reducedMotion={reducedMotion}
+                  />
+                ))}
+                {href ? (
+                  <Icon
+                    glyph="download"
+                    label={settings?.resumeLabel ?? RESUME_LABEL}
+                    onActivate={download}
+                    palette={palette}
+                    reducedMotion={reducedMotion}
+                  />
+                ) : null}
+              </div>
             ) : null}
           </div>
         </Html>

@@ -60,6 +60,19 @@ interface ConsoleState {
   /** Which screen is showing. Down goes deeper into the stack, up comes back. */
   section: Section
   setSection: (section: Section) => void
+  /**
+   * One step out, whatever "out" currently means: a detail view closes, a rail
+   * returns to the menu, and the menu closes the console. The B button, the
+   * BACK control on the screen and `Escape` are all this one action, so they
+   * cannot disagree about where back is.
+   */
+  back: () => void
+  /**
+   * Straight to a section from the outside — the Library and Timeline buttons
+   * on the right flap. From the beginning: index 0, no detail view, and the
+   * console opened first if it was shut.
+   */
+  jump: (section: Section) => void
   /** Which half of the menu is highlighted: 0 the top button, 1 the bottom. */
   menuIndex: number
   moveMenu: (delta: number, count: number) => void
@@ -132,6 +145,18 @@ export const useConsole = create<ConsoleState>()(
       },
       section: 'menu',
       setSection: (section) => set({section}),
+      back: () => {
+        const {isDetailOpen, section, closeDetail, close} = get()
+        if (isDetailOpen) return closeDetail()
+        if (section !== 'menu') return set({section: 'menu'})
+        close()
+      },
+      jump: (section) => {
+        // `open()` starts the firmware from the top, so it goes first and the
+        // destination is set after it — the same order `useLandmarkFocus` uses.
+        if (!get().isOpen) get().open()
+        set({section, libraryIndex: 0, timelineIndex: 0, isDetailOpen: false})
+      },
       menuIndex: 0,
       moveMenu: (delta, count) => set({menuIndex: moved(get().menuIndex, delta, count)}),
       setMenuIndex: (menuIndex) => set({menuIndex}),

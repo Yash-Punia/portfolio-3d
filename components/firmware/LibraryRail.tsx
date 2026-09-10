@@ -8,6 +8,7 @@ import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
 import {cover, placeholder} from '@/components/firmware/cover'
 import {useFirmwareLayout} from '@/components/firmware/layout'
+import {useRailDrag} from '@/components/firmware/useRailDrag'
 
 /**
  * The Library rail (SPEC §8). One horizontal row of projects in `order`.
@@ -182,8 +183,14 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
   const {projects} = content
   const selected = projects[index] ?? null
 
+  const step = layout.tileWidth + layout.tileGap
+  const drag = useRailDrag({step, index, count: projects.length, setIndex: setLibraryIndex})
+
   /** A click selects; a click on what is already selected drills in. */
   const select = (target: number) => {
+    // The end of a drag is not a tap on whatever the finger happened to lift
+    // over.
+    if (drag.moved()) return
     if (target === index) {
       openDetail()
       return
@@ -194,14 +201,25 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
   return (
     <div style={{display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0}}>
       {/* The padding is the headroom the selected tile's scale and lift need. */}
-      <div style={{overflow: 'hidden', padding: `${layout.railTop}px 0 14px`}}>
+      <div
+        {...drag.handlers}
+        style={{
+          overflow: 'hidden',
+          padding: `${layout.railTop}px 0 14px`,
+          // The rail owns the sideways gesture; nothing else may claim it.
+          touchAction: 'none',
+          cursor: drag.dragging ? 'grabbing' : 'grab',
+        }}
+      >
         <div
           style={{
             display: 'flex',
             gap: `${layout.tileGap}px`,
             paddingLeft: `${layout.railX}px`,
-            transform: `translateX(${-index * (layout.tileWidth + layout.tileGap)}px)`,
-            ...transition(reducedMotion, 'transform'),
+            transform: `translateX(${-index * step + drag.offset}px)`,
+            // Under the finger the rail *is* the finger: an eased transition
+            // would lag behind it.
+            ...(drag.dragging ? undefined : transition(reducedMotion, 'transform')),
           }}
         >
           {projects.map((project, position) => (
@@ -262,33 +280,45 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
               letterSpacing: '0.08em',
             }}
           >
-            {[selected.year, selected.role, selected.engine].filter(Boolean).join('   /   ')}
+            {/*
+              A 320px panel is a caption, not a page. On a phone the tile keeps
+              its cover, its title and the one fact that dates it; the role, the
+              engine, the blurb and the affordance line below are all a tap
+              away in the detail view, and stacked on the glass they were what
+              made the rail read as a wall of text.
+            */}
+            {mobile
+              ? selected.year
+              : [selected.year, selected.role, selected.engine].filter(Boolean).join('   /   ')}
           </p>
 
-          <p
-            style={{
-              margin: `${layout.textGap}px 0 0`,
-              color: 'var(--screen-fg)',
-              fontSize: `${layout.bodyFont}px`,
-              lineHeight: 1.5,
-            }}
-          >
-            {selected.blurb}
-          </p>
+          {mobile ? null : (
+            <>
+              <p
+                style={{
+                  margin: `${layout.textGap}px 0 0`,
+                  color: 'var(--screen-fg)',
+                  fontSize: `${layout.bodyFont}px`,
+                  lineHeight: 1.5,
+                }}
+              >
+                {selected.blurb}
+              </p>
 
-          {/* Says what happens, not marketing copy (SPEC §10). */}
-          <p
-            style={{
-              margin: `${Math.round(layout.textGap * 1.5)}px 0 0`,
-              color: 'var(--screen-accent)',
-              fontFamily: 'var(--font-martian-mono), ui-monospace, monospace',
-              fontSize: `${layout.metaFont - 1}px`,
-              letterSpacing: '0.16em',
-            }}
-          >
-            {/* A phone has no Enter key; there the tile itself is the control. */}
-            {mobile ? 'TAP — DETAILS' : 'ENTER — DETAILS'}
-          </p>
+              {/* Says what happens, not marketing copy (SPEC §10). */}
+              <p
+                style={{
+                  margin: `${Math.round(layout.textGap * 1.5)}px 0 0`,
+                  color: 'var(--screen-accent)',
+                  fontFamily: 'var(--font-martian-mono), ui-monospace, monospace',
+                  fontSize: `${layout.metaFont - 1}px`,
+                  letterSpacing: '0.16em',
+                }}
+              >
+                ENTER — DETAILS
+              </p>
+            </>
+          )}
         </div>
       ) : null}
     </div>
