@@ -7,7 +7,7 @@ import {useIsMobile} from '@/components/console/mobile'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
 import {cover, placeholder} from '@/components/firmware/cover'
-import {useFirmwareLayout} from '@/components/firmware/layout'
+import {useFirmwareLayout, type FirmwareLayout} from '@/components/firmware/layout'
 import {useRailDrag} from '@/components/firmware/useRailDrag'
 
 /**
@@ -40,6 +40,27 @@ function tileCover(project: Project) {
   return cover(project, 720, 405)
 }
 
+/**
+ * What a tile does when it is picked, in pixels above its own box: it lifts,
+ * and it wears a ring at `outlineOffset` plus the outline's own width.
+ *
+ * The scale is a tuning value and the row is `overflow: hidden`, so the
+ * headroom above the row has to be derived from all three rather than left as
+ * a number that happened to be enough at the width it was authored at. It was
+ * not enough on a phone, where the tile is 84px tall and the gap above it 14.
+ */
+const SELECTED_LIFT = 6
+const HOVER_LIFT = 3
+const SELECTED_RING = 5
+
+function railHeadroom(layout: FirmwareLayout): number {
+  // The ring hangs off the *scaled* box, so it scales with it. The 2px is
+  // slack: the panel is drawn through a transform, and landing the ring exactly
+  // on the clip edge is one rounding away from shaving it.
+  const grown = layout.tileHeight * (layout.selectedScale - 1)
+  return Math.ceil(grown + SELECTED_LIFT + SELECTED_RING * layout.selectedScale) + 2
+}
+
 function Tile({
   selected,
   reducedMotion,
@@ -64,7 +85,7 @@ function Tile({
     a hover state appears on this screen — what is under the pointer comes
     forward slightly, and no further. This is a menu (SPEC §10).
   */
-  const lift = selected ? 6 : hovered ? 3 : 0
+  const lift = selected ? SELECTED_LIFT : hovered ? HOVER_LIFT : 0
 
   return (
     <div
@@ -82,7 +103,7 @@ function Tile({
         transformOrigin: 'center bottom',
         transform: `scale(${selected ? layout.selectedScale : 1}) translateY(${-lift}px)`,
         outline: selected ? '2px solid var(--screen-accent)' : '1px solid transparent',
-        outlineOffset: '3px',
+        outlineOffset: `${SELECTED_RING - 2}px`,
         ...transition(reducedMotion, 'transform, outline-color'),
       }}
     >
@@ -186,6 +207,15 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
   const step = layout.tileWidth + layout.tileGap
   const drag = useRailDrag({step, index, count: projects.length, setIndex: setLibraryIndex})
 
+  /*
+    The selection sits in the middle of the panel rather than against its left
+    edge, so a tile has a neighbour either side of it and the rail reads as
+    something with a before and an after. The lead-in is what puts it there:
+    the row still translates by whole steps, so the drag maths is untouched.
+  */
+  const railLead = Math.round((layout.panelWidth - layout.tileWidth) / 2)
+  const headroom = railHeadroom(layout)
+
   /** A click selects; a click on what is already selected drills in. */
   const select = (target: number) => {
     // The end of a drag is not a tap on whatever the finger happened to lift
@@ -199,13 +229,28 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
   }
 
   return (
-    <div style={{display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0}}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        minHeight: 0,
+        /*
+          On a phone the section is a cover, a title and a year — a third of
+          the glass. Left at the top it reads as a page that failed to load
+          the rest of itself, so it sits in the middle of the screen instead.
+          The desktop panel is full, and centring there would only float the
+          rail away from the status bar.
+        */
+        justifyContent: mobile ? 'center' : 'flex-start',
+      }}
+    >
       {/* The padding is the headroom the selected tile's scale and lift need. */}
       <div
         {...drag.handlers}
         style={{
           overflow: 'hidden',
-          padding: `${layout.railTop}px 0 14px`,
+          padding: `${Math.max(layout.railTop, headroom)}px 0 ${headroom}px`,
           // The rail owns the sideways gesture; nothing else may claim it.
           touchAction: 'none',
           cursor: drag.dragging ? 'grabbing' : 'grab',
@@ -215,7 +260,7 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
           style={{
             display: 'flex',
             gap: `${layout.tileGap}px`,
-            paddingLeft: `${layout.railX}px`,
+            paddingLeft: `${railLead}px`,
             transform: `translateX(${-index * step + drag.offset}px)`,
             // Under the finger the rail *is* the finger: an eased transition
             // would lag behind it.

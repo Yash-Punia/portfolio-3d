@@ -2,10 +2,13 @@
 
 import {useState} from 'react'
 
-import {DEFAULT_TUNING, useTuning, type Tuning} from '@/components/console/tuning'
+import {play, type Cue} from '@/components/console/audio'
+import {DEFAULT_TUNING, useTuning, WAVES, type Tuning, type Wave} from '@/components/console/tuning'
 
 type NumberKey = {[K in keyof Tuning]: Tuning[K] extends number ? K : never}[keyof Tuning]
 type ColorKey = {[K in keyof Tuning]: Tuning[K] extends string ? K : never}[keyof Tuning]
+type BoolKey = {[K in keyof Tuning]: Tuning[K] extends boolean ? K : never}[keyof Tuning]
+type WaveKey = {[K in keyof Tuning]: Tuning[K] extends Wave ? K : never}[keyof Tuning]
 
 interface NumberControl {
   key: NumberKey
@@ -18,6 +21,12 @@ interface NumberControl {
 interface Group {
   title: string
   controls: NumberControl[]
+  /** A group that names a cue gets a button to hear it. */
+  cue?: Cue
+  /** A group that can be switched off gets a checkbox beside its title. */
+  on?: BoolKey
+  /** A group that makes a sound gets a waveform to pick. */
+  wave?: WaveKey
 }
 
 /**
@@ -154,9 +163,55 @@ const FIRMWARE_GROUPS: Group[] = [
   },
 ]
 
+/**
+ * The cues (SPEC §16.2). Every one has the same four knobs — start pitch, the
+ * pitch it glides to, how long, how loud — so they are generated from one table
+ * rather than written out nine times. `play` beside each title is how they are
+ * dialled: by ear, without having to trigger the event that fires them.
+ *
+ * The `Hz` range stops at 3kHz because a console blip above that is a whistle,
+ * and gain at 0.2 because these are punctuation, not music.
+ */
+const SOUND_CUES: {cue: Cue; title: string; prefix: string}[] = [
+  {cue: 'open', title: 'Open the console', prefix: 'sfxOpen'},
+  {cue: 'close', title: 'Close the console', prefix: 'sfxClose'},
+  {cue: 'boot', title: 'Boot chord', prefix: 'sfxBoot'},
+  {cue: 'move', title: 'Move along a rail', prefix: 'sfxMove'},
+  {cue: 'press', title: 'Face button', prefix: 'sfxPress'},
+  {cue: 'section', title: 'Change screen', prefix: 'sfxSection'},
+  {cue: 'detail', title: 'Open a project', prefix: 'sfxDetail'},
+  {cue: 'back', title: 'Step back out', prefix: 'sfxBack'},
+  {cue: 'theme', title: 'Theme toggle', prefix: 'sfxTheme'},
+]
+
+const SOUND_GROUPS: Group[] = [
+  {
+    title: 'Master',
+    on: 'sfxOn',
+    controls: [
+      {key: 'sfxVolume', label: 'Volume', min: 0, max: 2, step: 0.05},
+      // The ramp up to full gain. Near zero it is a click; past ~40ms a swell.
+      {key: 'sfxAttackMs', label: 'Attack (ms)', min: 0, max: 120, step: 1},
+    ],
+  },
+  ...SOUND_CUES.map(({cue, title, prefix}) => ({
+    title,
+    cue,
+    on: `${prefix}On` as BoolKey,
+    wave: `${prefix}Wave` as WaveKey,
+    controls: [
+      {key: `${prefix}From` as NumberKey, label: 'Pitch from (Hz)', min: 40, max: 3000, step: 5},
+      {key: `${prefix}To` as NumberKey, label: 'Pitch to (Hz)', min: 40, max: 3000, step: 5},
+      {key: `${prefix}Ms` as NumberKey, label: 'Length (ms)', min: 10, max: 600, step: 2},
+      {key: `${prefix}Gain` as NumberKey, label: 'Loudness', min: 0, max: 0.2, step: 0.002},
+    ],
+  })),
+]
+
 const TABS: {id: string; label: string; groups: Group[]; colours: boolean}[] = [
   {id: 'console', label: 'console', groups: CONSOLE_GROUPS, colours: true},
   {id: 'firmware', label: 'firmware', groups: FIRMWARE_GROUPS, colours: false},
+  {id: 'sounds', label: 'sounds', groups: SOUND_GROUPS, colours: false},
 ]
 
 const COLOURS: {key: ColorKey; label: string}[] = [
@@ -164,6 +219,7 @@ const COLOURS: {key: ColorKey; label: string}[] = [
   {key: 'bezelColor', label: 'Bezel and seams'},
   {key: 'accentColor', label: 'Red accent'},
   {key: 'buttonColor', label: 'Button caps'},
+  {key: 'heldTintColor', label: 'Button mark, held'},
   {key: 'screenColor', label: 'Screen, dark theme'},
   {key: 'screenLightColor', label: 'Screen, light theme'},
 ]
@@ -277,7 +333,51 @@ export function TuningPanel() {
           <div className="flex-1 overflow-y-auto px-3 py-2">
             {tab.groups.map((group) => (
               <section key={group.title} className="mb-3">
-                <h2 className="mb-1 text-neutral-500">{group.title}</h2>
+                <h2 className="mb-1 flex items-center justify-between gap-2 text-neutral-500">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {group.on ? (
+                      <input
+                        aria-label={`${group.title} on`}
+                        checked={values[group.on]}
+                        className="accent-[#e12b38]"
+                        onChange={(event) => set(group.on as BoolKey, event.target.checked)}
+                        type="checkbox"
+                      />
+                    ) : null}
+                    <span className="truncate">{group.title}</span>
+                  </span>
+                  {group.cue ? (
+                    <button
+                      className="shrink-0 rounded border border-white/15 px-1.5 py-0.5 text-neutral-300 hover:bg-white/10"
+                      // Straight to `play`, not through the store: the mute is
+                      // the visitor's, and a preview you cannot hear is not one.
+                      onClick={() => play(group.cue as Cue)}
+                      type="button"
+                    >
+                      play
+                    </button>
+                  ) : null}
+                </h2>
+
+                {group.wave ? (
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <label className="truncate text-neutral-300" htmlFor={group.wave}>
+                      Waveform
+                    </label>
+                    <select
+                      className="w-28 rounded border border-white/15 bg-white/5 px-1 py-0.5"
+                      id={group.wave}
+                      onChange={(event) => set(group.wave as WaveKey, event.target.value as Wave)}
+                      value={values[group.wave]}
+                    >
+                      {WAVES.map((wave) => (
+                        <option key={wave} value={wave}>
+                          {wave}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
                 {group.controls.map((control) => (
                   <div key={control.key} className="mb-1.5">
                     <label

@@ -14,6 +14,8 @@ export interface Materials {
   bezel: {color: string; roughness: number; metalness: number}
   accent: {color: string; roughness: number; metalness: number}
   button: {color: string; roughness: number; metalness: number}
+  /** The colour a cap's mark takes while a finger is on it. */
+  heldTint: string
   screenGlass: {
     color: string
     roughness: number
@@ -50,6 +52,12 @@ export function deriveMaterials(t: Tuning): Materials {
     accent: {color: t.accentColor, roughness: 0.4, metalness: 0.05},
     /** Button caps — off-white, not pure white. */
     button: {color: t.buttonColor, roughness: 0.5, metalness: 0.02},
+    /**
+     * A pressed cap's mark (SPEC §5). The cap's own travel is a fraction of a
+     * world unit and reads as nothing on a phone, so the glyph is what says a
+     * finger is down: it goes from bezel black to this while it is held.
+     */
+    heldTint: t.heldTintColor,
     /** Screen glass — a faint reflection is what sells it as glass. */
     screenGlass: {
       color: '#05070a',

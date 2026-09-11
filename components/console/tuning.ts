@@ -14,6 +14,13 @@ import {persist} from 'zustand/middleware'
  * so scaling every dimension here rescales nothing on screen. Ratios are what
  * matter.
  */
+/**
+ * The oscillator shapes a cue may use. `OscillatorType`'s fifth member,
+ * `custom`, needs a PeriodicWave that nothing here builds, so it is not offered.
+ */
+export const WAVES = ['sine', 'square', 'sawtooth', 'triangle'] as const
+export type Wave = (typeof WAVES)[number]
+
 export interface Tuning {
   bodyWidth: number
   bodyHeight: number
@@ -54,6 +61,14 @@ export interface Tuning {
   bezelColor: string
   accentColor: string
   buttonColor: string
+  /**
+   * The mark on a cap while a finger is on it (SPEC §5).
+   *
+   * A colour of its own rather than a shade of the accent: the tint has to read
+   * as pressed against both a white cap and a black one, and the depth that
+   * works on one is not the depth that works on the other.
+   */
+  heldTintColor: string
   /** Screen background when powered — SPEC §9's dark theme background. */
   screenColor: string
   /** Screen background in the light theme — SPEC §9's warm paper-white. */
@@ -102,6 +117,88 @@ export interface Tuning {
   fwDotSize: number
   /** Space between the axis and the selected entry's panel below it. */
   fwEntryGap: number
+
+  /*
+    The console's sounds (SPEC §16.2). Every cue has the same six knobs, so a
+    row of them reads as one table: whether it sounds at all, its waveform, the
+    pitch it starts at, the pitch it glides to (equal values hold a note), how
+    long it lasts, and how loud it is.
+
+    `sfxOn` silences the lot without clearing anyone's `muted` — that one is the
+    visitor's, this one is the author's — and `sfxVolume` multiplies every gain
+    below, so the console can be turned down without re-dialling nine cues.
+    `sfxAttackMs` is the ramp up to that gain, shared: it is the difference
+    between a blip and a click, and it wants to be the same on all of them.
+  */
+  sfxOn: boolean
+  sfxVolume: number
+  sfxAttackMs: number
+  /** The flaps swinging open and shut: low and short, a hinge not a chime. */
+  sfxOpenOn: boolean
+  sfxOpenWave: Wave
+  sfxOpenFrom: number
+  sfxOpenTo: number
+  sfxOpenMs: number
+  sfxOpenGain: number
+  sfxCloseOn: boolean
+  sfxCloseWave: Wave
+  sfxCloseFrom: number
+  sfxCloseTo: number
+  sfxCloseMs: number
+  sfxCloseGain: number
+  /** The boot chord: three notes climbing from `From` to `To`. */
+  sfxBootOn: boolean
+  sfxBootWave: Wave
+  sfxBootFrom: number
+  sfxBootTo: number
+  sfxBootMs: number
+  sfxBootGain: number
+  /**
+   * The rail's tick. Quietest of the lot by some way: it fires every 180ms
+   * while an arrow key is held, and anything louder is unbearable held for a
+   * second.
+   */
+  sfxMoveOn: boolean
+  sfxMoveWave: Wave
+  sfxMoveFrom: number
+  sfxMoveTo: number
+  sfxMoveMs: number
+  sfxMoveGain: number
+  /** A face button going down. */
+  sfxPressOn: boolean
+  sfxPressWave: Wave
+  sfxPressFrom: number
+  sfxPressTo: number
+  sfxPressMs: number
+  sfxPressGain: number
+  /** Changing screen — the menu, the Library, the Timeline. */
+  sfxSectionOn: boolean
+  sfxSectionWave: Wave
+  sfxSectionFrom: number
+  sfxSectionTo: number
+  sfxSectionMs: number
+  sfxSectionGain: number
+  /** Opening a project's detail view: the one cue that goes up. */
+  sfxDetailOn: boolean
+  sfxDetailWave: Wave
+  sfxDetailFrom: number
+  sfxDetailTo: number
+  sfxDetailMs: number
+  sfxDetailGain: number
+  /** Stepping back out of one. Its mirror, so the pair reads as in and out. */
+  sfxBackOn: boolean
+  sfxBackWave: Wave
+  sfxBackFrom: number
+  sfxBackTo: number
+  sfxBackMs: number
+  sfxBackGain: number
+  /** The theme cap turning over. */
+  sfxThemeOn: boolean
+  sfxThemeWave: Wave
+  sfxThemeFrom: number
+  sfxThemeTo: number
+  sfxThemeMs: number
+  sfxThemeGain: number
 }
 
 export const DEFAULT_TUNING: Tuning = {
@@ -135,6 +232,7 @@ export const DEFAULT_TUNING: Tuning = {
   bezelColor: '#0a0a0c',
   accentColor: '#4be12d',
   buttonColor: '#f2f2f0',
+  heldTintColor: '#298717',
   screenColor: '#0a0f12',
   screenLightColor: '#edeae2',
   screenEmissiveIntensity: 2.6,
@@ -144,21 +242,78 @@ export const DEFAULT_TUNING: Tuning = {
   fwStatusFont: 16,
   fwRailX: 52,
   fwRailTop: 80,
-  fwTileWidth: 250,
-  fwTileHeight: 140,
+  fwTileWidth: 375,
+  fwTileHeight: 210,
   fwTileGap: 54,
   fwSelectedScale: 1.12,
   fwUnselectedOpacity: 0.5,
   fwBlockGap: 60,
   fwTextGap: 17,
   fwTitleFont: 50,
-  fwMetaFont: 12,
-  fwBodyFont: 16,
+  fwMetaFont: 18,
+  fwBodyFont: 24,
   fwDetailCoverHeight: 270,
   fwAxisTop: 150,
-  fwDotGap: 190,
+  fwDotGap: 300,
   fwDotSize: 14,
   fwEntryGap: 64,
+  sfxOn: true,
+  sfxVolume: 1,
+  sfxAttackMs: 8,
+  sfxOpenOn: true,
+  sfxOpenWave: 'triangle',
+  sfxOpenFrom: 180,
+  sfxOpenTo: 90,
+  sfxOpenMs: 170,
+  sfxOpenGain: 0.09,
+  sfxCloseOn: true,
+  sfxCloseWave: 'triangle',
+  sfxCloseFrom: 140,
+  sfxCloseTo: 70,
+  sfxCloseMs: 150,
+  sfxCloseGain: 0.08,
+  sfxBootOn: false,
+  sfxBootWave: 'triangle',
+  sfxBootFrom: 523.25,
+  sfxBootTo: 783.99,
+  sfxBootMs: 90,
+  sfxBootGain: 0.05,
+  sfxMoveOn: true,
+  sfxMoveWave: 'sawtooth',
+  sfxMoveFrom: 295,
+  sfxMoveTo: 385,
+  sfxMoveMs: 26,
+  sfxMoveGain: 0.028,
+  sfxPressOn: false,
+  sfxPressWave: 'square',
+  sfxPressFrom: 1180,
+  sfxPressTo: 760,
+  sfxPressMs: 44,
+  sfxPressGain: 0.035,
+  sfxSectionOn: true,
+  sfxSectionWave: 'triangle',
+  sfxSectionFrom: 660,
+  sfxSectionTo: 990,
+  sfxSectionMs: 90,
+  sfxSectionGain: 0.04,
+  sfxDetailOn: true,
+  sfxDetailWave: 'triangle',
+  sfxDetailFrom: 660,
+  sfxDetailTo: 990,
+  sfxDetailMs: 90,
+  sfxDetailGain: 0.04,
+  sfxBackOn: true,
+  sfxBackWave: 'triangle',
+  sfxBackFrom: 990,
+  sfxBackTo: 660,
+  sfxBackMs: 90,
+  sfxBackGain: 0.035,
+  sfxThemeOn: true,
+  sfxThemeWave: 'triangle',
+  sfxThemeFrom: 420,
+  sfxThemeTo: 40,
+  sfxThemeMs: 316,
+  sfxThemeGain: 0.04,
 }
 
 interface TuningState {
@@ -185,7 +340,7 @@ export const useTuning = create<TuningState>()(
       // a change to `DEFAULT_TUNING` reaches nobody who has been here before
       // unless the version moves and the old record is thrown away. Bump it
       // whenever a default changes, or the new form ships to new visitors only.
-      version: 2,
+      version: 6,
       migrate: () => ({values: DEFAULT_TUNING}),
       partialize: (state) => ({values: state.values}),
       merge: (persisted, current) => {

@@ -1,18 +1,25 @@
+import {useTuning, type Tuning, type Wave} from '@/components/console/tuning'
+
 /**
  * The console's sounds (SPEC §16.2, confirmed: audible, with a mute in the
  * status bar).
  *
- * Synthesised rather than sampled. Four short cues do not justify four audio
+ * Synthesised rather than sampled. Nine short cues do not justify nine audio
  * files — a fetch each, a decode each, and a licence question each — when an
  * oscillator and a gain envelope are the whole of what they are. Nothing is
- * imported, nothing is downloaded, and the module is a few hundred bytes.
+ * downloaded and the module is a few hundred bytes.
+ *
+ * Every pitch, length and gain comes from the tuning store, so the whole set
+ * can be dialled by ear behind `?tune` rather than guessed at here. That import
+ * is one way: `tuning.ts` knows about nobody.
  *
  * Nobody calls this directly with the mute flag in hand: `useConsole` owns
  * `muted` and checks it before every cue, which is why this file imports
  * nothing from the store (the store imports this one).
  */
 
-export type Cue = 'open' | 'close' | 'move' | 'press' | 'boot'
+export type Cue =
+  'open' | 'close' | 'boot' | 'move' | 'press' | 'section' | 'detail' | 'back' | 'theme'
 
 /**
  * Created on the first cue, never at module load: a browser refuses an
@@ -40,7 +47,7 @@ interface Note {
   from: number
   to?: number
   ms: number
-  type?: OscillatorType
+  type?: Wave
   gain?: number
   /** Delay from the start of the cue, for the boot's three notes. */
   at?: number
@@ -55,9 +62,17 @@ interface Note {
  * reach zero) is what makes these read as a console's blips rather than as
  * pops.
  */
-function note(ctx: AudioContext, {from, to, ms, type = 'square', gain = 0.05, at = 0}: Note) {
+function note(
+  ctx: AudioContext,
+  {from, to, ms, type = 'square', gain = 0.05, at = 0}: Note,
+  volume: number,
+  attackMs: number,
+) {
+  const level = Math.max(gain * volume, 0.0002)
   const start = ctx.currentTime + at / 1000
   const end = start + ms / 1000
+  // The attack cannot outrun the note, or the ramps cross and the note clicks.
+  const peak = Math.min(start + attackMs / 1000, start + (ms / 1000) * 0.5)
 
   const osc = ctx.createOscillator()
   osc.type = type
@@ -66,7 +81,7 @@ function note(ctx: AudioContext, {from, to, ms, type = 'square', gain = 0.05, at
 
   const envelope = ctx.createGain()
   envelope.gain.setValueAtTime(0.0001, start)
-  envelope.gain.exponentialRampToValueAtTime(gain, start + 0.008)
+  envelope.gain.exponentialRampToValueAtTime(level, peak)
   envelope.gain.exponentialRampToValueAtTime(0.0001, end)
 
   osc.connect(envelope).connect(ctx.destination)
@@ -76,25 +91,145 @@ function note(ctx: AudioContext, {from, to, ms, type = 'square', gain = 0.05, at
 }
 
 /**
- * What each cue sounds like. The two flap cues are low and short — a hinge
- * rather than a chime; the rail's tick is high and very quiet, because it fires
- * every 180ms while a direction is held and anything louder would be unbearable
- * held for a second.
+ * The boot chord: three notes climbing from `From` to `To` in equal ratios, so
+ * a major triad is one pair of numbers rather than three. The last one rings on
+ * past the other two — it is the note the screen arrives on.
  */
-const CUES: Record<Cue, Note[]> = {
-  open: [{from: 180, to: 90, ms: 170, type: 'triangle', gain: 0.09}],
-  close: [{from: 140, to: 70, ms: 150, type: 'triangle', gain: 0.08}],
-  move: [{from: 880, ms: 26, gain: 0.022}],
-  press: [{from: 1180, to: 760, ms: 44, gain: 0.035}],
-  boot: [
-    {from: 523.25, ms: 90, type: 'triangle', gain: 0.05, at: 0},
-    {from: 659.25, ms: 90, type: 'triangle', gain: 0.05, at: 90},
-    {from: 783.99, ms: 190, type: 'triangle', gain: 0.055, at: 180},
-  ],
+const BOOT_NOTES = 3
+const BOOT_TAIL = 2.1
+
+function bootNotes(k: Knobs): Note[] {
+  const from = Math.max(k.from, 20)
+  const to = Math.max(k.to, 20)
+  const ratio = (to / from) ** (1 / (BOOT_NOTES - 1))
+
+  return Array.from({length: BOOT_NOTES}, (_, i) => {
+    const last = i === BOOT_NOTES - 1
+    return {
+      from: from * ratio ** i,
+      ms: last ? k.ms * BOOT_TAIL : k.ms,
+      type: k.wave,
+      gain: k.gain,
+      at: i * k.ms,
+    }
+  })
+}
+
+/** One cue's six knobs, gathered. */
+interface Knobs {
+  on: boolean
+  wave: Wave
+  from: number
+  to: number
+  ms: number
+  gain: number
+}
+
+/**
+ * The switch is written out rather than indexed by a built key name, so every
+ * knob a cue reads is a real property TypeScript has checked. Adding a cue
+ * fails to compile until its six are declared.
+ */
+function knobsFor(t: Tuning, cue: Cue): Knobs {
+  switch (cue) {
+    case 'open':
+      return {
+        on: t.sfxOpenOn,
+        wave: t.sfxOpenWave,
+        from: t.sfxOpenFrom,
+        to: t.sfxOpenTo,
+        ms: t.sfxOpenMs,
+        gain: t.sfxOpenGain,
+      }
+    case 'close':
+      return {
+        on: t.sfxCloseOn,
+        wave: t.sfxCloseWave,
+        from: t.sfxCloseFrom,
+        to: t.sfxCloseTo,
+        ms: t.sfxCloseMs,
+        gain: t.sfxCloseGain,
+      }
+    case 'boot':
+      return {
+        on: t.sfxBootOn,
+        wave: t.sfxBootWave,
+        from: t.sfxBootFrom,
+        to: t.sfxBootTo,
+        ms: t.sfxBootMs,
+        gain: t.sfxBootGain,
+      }
+    case 'move':
+      return {
+        on: t.sfxMoveOn,
+        wave: t.sfxMoveWave,
+        from: t.sfxMoveFrom,
+        to: t.sfxMoveTo,
+        ms: t.sfxMoveMs,
+        gain: t.sfxMoveGain,
+      }
+    case 'press':
+      return {
+        on: t.sfxPressOn,
+        wave: t.sfxPressWave,
+        from: t.sfxPressFrom,
+        to: t.sfxPressTo,
+        ms: t.sfxPressMs,
+        gain: t.sfxPressGain,
+      }
+    case 'section':
+      return {
+        on: t.sfxSectionOn,
+        wave: t.sfxSectionWave,
+        from: t.sfxSectionFrom,
+        to: t.sfxSectionTo,
+        ms: t.sfxSectionMs,
+        gain: t.sfxSectionGain,
+      }
+    case 'detail':
+      return {
+        on: t.sfxDetailOn,
+        wave: t.sfxDetailWave,
+        from: t.sfxDetailFrom,
+        to: t.sfxDetailTo,
+        ms: t.sfxDetailMs,
+        gain: t.sfxDetailGain,
+      }
+    case 'back':
+      return {
+        on: t.sfxBackOn,
+        wave: t.sfxBackWave,
+        from: t.sfxBackFrom,
+        to: t.sfxBackTo,
+        ms: t.sfxBackMs,
+        gain: t.sfxBackGain,
+      }
+    case 'theme':
+      return {
+        on: t.sfxThemeOn,
+        wave: t.sfxThemeWave,
+        from: t.sfxThemeFrom,
+        to: t.sfxThemeTo,
+        ms: t.sfxThemeMs,
+        gain: t.sfxThemeGain,
+      }
+  }
 }
 
 export function play(cue: Cue) {
+  const t = useTuning.getState().values
+  // Two switches, and both are the author's: `sfxOn` for the whole set and the
+  // cue's own. The visitor's mute is a different thing and lives in the store.
+  if (!t.sfxOn) return
+
+  const k = knobsFor(t, cue)
+  if (!k.on) return
+
   const ctx = audio()
   if (!ctx) return
-  for (const spec of CUES[cue]) note(ctx, spec)
+
+  const notes =
+    cue === 'boot' ? bootNotes(k) : [{from: k.from, to: k.to, ms: k.ms, gain: k.gain, type: k.wave}]
+
+  for (const spec of notes) note(ctx, spec, t.sfxVolume, t.sfxAttackMs)
 }

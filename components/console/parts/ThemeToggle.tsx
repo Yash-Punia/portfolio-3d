@@ -6,6 +6,7 @@ import {DoubleSide} from 'three'
 
 import {useGlyphGeometry} from '@/components/console/glyphs'
 import {useInput} from '@/components/console/input'
+
 import {useSpec} from '@/components/console/spec'
 import {useConsole, useTheme} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
@@ -52,15 +53,17 @@ export function ThemeToggle() {
   /*
     This is the one cap on the object that is black where every other one is
     off-white, so it is the one that does not announce itself as pressable by
-    its colour alone. It gets what the face buttons have instead: the collar
-    flashes accent for the length of a press and the cap sinks into it, which
-    is the object's own vocabulary for "this is a button" (SPEC §5).
+    its colour alone. It gets what the face buttons have instead: the cap sinks
+    under a finger and its mark goes dark, which is the object's own vocabulary
+    for "this is a button" (SPEC §5).
 
     Local state rather than `input.ts`'s `pressedSlot` — that is keyed by ABXY
     slot, and this control has no slot and no keyboard twin to stay in step
     with.
   */
   const [pressed, setPressed] = useState(false)
+  /** The cap is down while a finger is on it; `pressed` is the release flash. */
+  const [held, setHeld] = useState(false)
 
   useEffect(() => {
     if (!pressed) return
@@ -79,7 +82,7 @@ export function ThemeToggle() {
   const restZ = d.toggle.housingDepth + d.toggle.capHeight / 2
   // The same travel and the same fast spring the face buttons depress on.
   const {capZ} = useSpring({
-    capZ: pressed ? restZ - d.abxy.travel : restZ,
+    capZ: pressed || held ? restZ - d.abxy.travel : restZ,
     config: {tension: 900, friction: 28},
     immediate: reducedMotion,
   })
@@ -97,12 +100,30 @@ export function ThemeToggle() {
 
   const faceZ = d.toggle.capHeight / 2 + 0.002
 
+  /*
+    The mark on both faces. Lit accent at rest — a glyph on a black cap needs it
+    to stay legible — and dark green with the light off while a finger is on it,
+    which is `heldTintColor` doing the same job on a mark that was
+    already green.
+  */
+  const mark = {
+    ...m.accent,
+    color: held ? m.heldTint : m.accent.color,
+    emissive: m.accent.color,
+    emissiveIntensity: held ? 0 : 0.45,
+    side: DoubleSide,
+  }
+
   return (
     <group
       position={[0, d.toggle.y, d.faceZ]}
       rotation={[0, Math.PI, 0]}
+      // One tap, one press. A tap raises a pointerdown *and* a click, so only
+      // the release fires — pressing on both counted every tap twice and ran
+      // two 140ms timers over each other.
       onClick={(event) => {
         event.stopPropagation()
+        setHeld(false)
         if (!isOpen) return
         setPressed(true)
         setTheme(light ? 'dark' : 'light')
@@ -110,10 +131,15 @@ export function ThemeToggle() {
       // Swallowed so a press on the button cannot also drag the console round.
       onPointerDown={(event) => {
         event.stopPropagation()
-        if (isOpen) setPressed(true)
+        if (isOpen) setHeld(true)
       }}
+      onPointerUp={() => setHeld(false)}
+      onPointerCancel={() => setHeld(false)}
       onPointerOver={() => hover(true)}
-      onPointerOut={() => hover(false)}
+      onPointerOut={() => {
+        setHeld(false)
+        hover(false)
+      }}
     >
       {/*
         SPEC §11.4, and the reason this control now has a keyboard path at all:
@@ -132,12 +158,7 @@ export function ThemeToggle() {
         <cylinderGeometry
           args={[d.toggle.housingRadius, d.toggle.housingRadius, d.toggle.housingDepth, 40]}
         />
-        {/* The rim flashes accent-coloured for the length of a press. */}
-        <meshStandardMaterial
-          {...m.bezel}
-          emissive={m.accent.color}
-          emissiveIntensity={pressed ? 0.85 : 0}
-        />
+        <meshStandardMaterial {...m.bezel} />
       </mesh>
 
       <animated.group position-z={capZ} rotation-y={spin}>
@@ -155,12 +176,7 @@ export function ThemeToggle() {
           and a lit glyph is what keeps an accent mark legible on black.
         */}
         <mesh geometry={moon} position={[0, 0, faceZ]} raycast={() => null}>
-          <meshStandardMaterial
-            {...m.accent}
-            emissive={m.accent.color}
-            emissiveIntensity={0.45}
-            side={DoubleSide}
-          />
+          <meshStandardMaterial {...mark} />
         </mesh>
 
         <mesh
@@ -169,12 +185,7 @@ export function ThemeToggle() {
           rotation={[0, Math.PI, 0]}
           raycast={() => null}
         >
-          <meshStandardMaterial
-            {...m.accent}
-            emissive={m.accent.color}
-            emissiveIntensity={0.45}
-            side={DoubleSide}
-          />
+          <meshStandardMaterial {...mark} />
         </mesh>
       </animated.group>
     </group>

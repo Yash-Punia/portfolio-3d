@@ -56,7 +56,20 @@ function Dot({
       onClick={onSelect}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
-      style={{flex: `0 0 ${layout.dotGap}px`, cursor: 'pointer'}}
+      /*
+        The stop's two labels sit over their own dot rather than starting at it.
+        Left-aligned they needed a gutter before the next dot to stay legible,
+        and with the selection now parked in the middle of the panel they would
+        have hung to one side of the thing they name.
+      */
+      style={{
+        flex: `0 0 ${layout.dotGap}px`,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        cursor: 'pointer',
+      }}
     >
       <p
         style={{
@@ -109,7 +122,9 @@ function Dot({
 
       <p
         style={{
-          margin: `${Math.round(layout.textGap * 0.8)}px ${Math.round(layout.dotSize * 1.6)}px 0 0`,
+          margin: `${Math.round(layout.textGap * 0.8)}px 0 0`,
+          // The gutter that keeps one stop's name off the next one's.
+          maxWidth: `${layout.dotGap - Math.round(layout.dotSize * 1.6)}px`,
           color: selected ? 'var(--screen-fg)' : 'var(--screen-muted)',
           fontSize: `${layout.bodyFont - 2}px`,
           fontWeight: selected ? 600 : 400,
@@ -234,8 +249,10 @@ function Entry({entry, projects}: {entry: TimelineEntry; projects: ConsoleConten
             <span
               key={chip.id}
               onClick={() => {
-                setLibraryIndex(chip.index)
+                // Section first: entering it starts from the beginning, and the
+                // chip means a particular project, so its index goes on top.
                 setSection('library')
+                setLibraryIndex(chip.index)
               }}
               style={{
                 border: '1px solid color-mix(in srgb, var(--screen-accent) 55%, transparent)',
@@ -260,6 +277,7 @@ export function Timeline({content}: {content: ConsoleContent}) {
   const setTimelineIndex = useConsole((state) => state.setTimelineIndex)
   const reducedMotion = useReducedMotion()
   const layout = useFirmwareLayout()
+  const mobile = useIsMobile()
 
   const {timeline, projects} = content
   const selected = timeline[index] ?? null
@@ -271,8 +289,29 @@ export function Timeline({content}: {content: ConsoleContent}) {
     setIndex: setTimelineIndex,
   })
 
+  /*
+    The selected stop sits in the middle of the panel, the way the Library's
+    selected tile does — one stop before it, one after. The lead-in is what puts
+    it there; the row still translates by whole steps, so the drag is untouched.
+  */
+  const axisLead = Math.round((layout.panelWidth - layout.dotGap) / 2)
+
   return (
-    <div style={{display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0}}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        minHeight: 0,
+        /*
+          The same centring the Library has on a phone. It only ever applies to
+          a short entry: an entry with more than a screenful still fills the
+          panel, and `justify-content` has no free space left to distribute —
+          so a long summary cannot be pushed off the top by it.
+        */
+        justifyContent: mobile ? 'center' : 'flex-start',
+      }}
+    >
       <div
         {...drag.handlers}
         style={{
@@ -305,7 +344,7 @@ export function Timeline({content}: {content: ConsoleContent}) {
           style={{
             position: 'relative',
             display: 'flex',
-            paddingLeft: `${layout.railX}px`,
+            paddingLeft: `${axisLead}px`,
             transform: `translateX(${-index * layout.dotGap + drag.offset}px)`,
             ...(drag.dragging ? undefined : transition(reducedMotion, 'transform')),
           }}

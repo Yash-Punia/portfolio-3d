@@ -1,6 +1,6 @@
 'use client'
 
-import {useRef, useState, type PointerEvent as ReactPointerEvent} from 'react'
+import {useEffect, useRef, useState, type PointerEvent as ReactPointerEvent} from 'react'
 
 import {inConsoleFrame, panelScale} from '@/components/console/frame'
 
@@ -18,6 +18,13 @@ import {inConsoleFrame, panelScale} from '@/components/console/frame'
  * scaled subtree of a `<Html transform>`, so neither the direction nor the
  * distance of a finger is what it looks like until those two have had it.
  *
+ * The move and release listeners are on the window, the way `Joystick`'s and
+ * `Console`'s are, so a drag that leaves the rail still finishes cleanly.
+ * Capturing the pointer on the rail would do the same job and cost the click:
+ * a captured pointer retargets the `click` that follows to the element holding
+ * the capture, so the tile under the cursor never hears it and a plain click on
+ * the selected project stopped opening it.
+ *
  * ponytail: no fling. The row tracks the finger and settles where it lifts;
  * momentum is a spring and a rAF loop away if it is missed on a real device.
  */
@@ -33,9 +40,6 @@ export interface RailDrag {
   moved: () => boolean
   handlers: {
     onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void
-    onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void
-    onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void
-    onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => void
   }
 }
 
@@ -56,23 +60,54 @@ export function useRailDrag({
   const start = useRef<{x: number; y: number; scale: number} | null>(null)
   const travelled = useRef(false)
 
-  const finish = (event: ReactPointerEvent<HTMLElement>) => {
-    const from = start.current
-    start.current = null
-    setDragging(false)
-    setOffset(0)
-    if (!from || count === 0) return
+  useEffect(() => {
+    if (!dragging) return
 
-    const {x} = inConsoleFrame(event.clientX - from.x, event.clientY - from.y)
-    const shift = x / from.scale
-    if (Math.abs(shift) < TAP_PX) return
+    /** The finger's travel along the rail, in the panel's own pixels. */
+    function shiftOf(event: PointerEvent): number | null {
+      const from = start.current
+      if (!from) return null
 
-    // Where the rail was left, read back as an index. The row's translate is
-    // `-index * step + shift`, so the item now under the selection slot is that
-    // divided back out — round, and clamp: no wrap and no bounce (SPEC §3.2).
-    const next = Math.round((index * step - shift) / step)
-    setIndex(Math.min(Math.max(next, 0), count - 1))
-  }
+      const {x, y} = inConsoleFrame(event.clientX - from.x, event.clientY - from.y)
+      // The dominant axis wins outright: a drag down a scrolling panel that
+      // began on the rail is that panel's, not the rail's.
+      if (Math.abs(x) <= Math.abs(y)) return null
+
+      return x / from.scale
+    }
+
+    function move(event: PointerEvent) {
+      const shift = shiftOf(event)
+      if (shift === null) return
+
+      if (Math.abs(shift) > TAP_PX) travelled.current = true
+      setOffset(shift)
+    }
+
+    function end(event: PointerEvent) {
+      const shift = shiftOf(event)
+      start.current = null
+      setDragging(false)
+      setOffset(0)
+      if (shift === null || count === 0 || Math.abs(shift) < TAP_PX) return
+
+      // Where the rail was left, read back as an index. The row's translate is
+      // `-index * step + shift`, so the item now under the selection slot is
+      // that divided back out — round, and clamp: no wrap, no bounce (§3.2).
+      const next = Math.round((index * step - shift) / step)
+      setIndex(Math.min(Math.max(next, 0), count - 1))
+    }
+
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', end)
+
+    return () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+    }
+  }, [dragging, index, step, count, setIndex])
 
   return {
     offset,
@@ -86,32 +121,8 @@ export function useRailDrag({
           y: event.clientY,
           scale: panelScale(event.currentTarget),
         }
-        // Implicit capture is a touch pointer's only; taking it explicitly
-        // means a mouse dragged off the rail still finishes here. It is a
-        // convenience, not the mechanism — a browser that refuses the capture
-        // still gets the drag, so a throw here must not end the gesture.
-        try {
-          event.currentTarget.setPointerCapture(event.pointerId)
-        } catch {
-          // No capture. The handlers on the element are enough.
-        }
         setDragging(true)
       },
-      onPointerMove: (event) => {
-        const from = start.current
-        if (!from) return
-
-        const {x, y} = inConsoleFrame(event.clientX - from.x, event.clientY - from.y)
-        // The dominant axis wins outright: a drag down a scrolling panel that
-        // began on the rail is that panel's, not the rail's.
-        if (Math.abs(x) <= Math.abs(y)) return
-
-        const shift = x / from.scale
-        if (Math.abs(shift) > TAP_PX) travelled.current = true
-        setOffset(shift)
-      },
-      onPointerUp: finish,
-      onPointerCancel: finish,
     },
   }
 }

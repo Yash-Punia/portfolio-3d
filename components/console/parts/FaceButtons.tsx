@@ -1,7 +1,7 @@
 'use client'
 
 import {animated, useSpring} from '@react-spring/three'
-import {useEffect} from 'react'
+import {useEffect, useState} from 'react'
 import {DoubleSide} from 'three'
 
 import {accept} from '@/components/console/actions'
@@ -63,9 +63,19 @@ function FaceButton({
   const geometry = useGlyphGeometry(glyph, d.abxy.glyphSize)
   const [x, y] = LAYOUT[slot]
 
+  /*
+    The cap is down while a finger is on it, and that is all pointerdown does.
+
+    The press itself — the cue and the action — belongs to the release, because
+    a tap raises both a pointerdown and a click and firing on each meant one tap
+    counted twice: two `press` cues on top of each other, and the cap snapping
+    down, up and down again as two 140ms timers overlapped.
+  */
+  const [held, setHeld] = useState(false)
+
   const capZ = d.abxy.housingDepth + d.abxy.capHeight / 2
   const {z} = useSpring({
-    z: pressed ? capZ - d.abxy.travel : capZ,
+    z: pressed || held ? capZ - d.abxy.travel : capZ,
     config: {tension: 900, friction: 28},
     immediate: reducedMotion,
   })
@@ -85,12 +95,7 @@ function FaceButton({
         <cylinderGeometry
           args={[d.abxy.housingRadius, d.abxy.housingRadius, d.abxy.housingDepth, 40]}
         />
-        {/* The rim flashes accent-coloured for the length of a press. */}
-        <meshStandardMaterial
-          {...m.bezel}
-          emissive={m.accent.color}
-          emissiveIntensity={pressed ? 0.85 : 0}
-        />
+        <meshStandardMaterial {...m.bezel} />
       </mesh>
 
       {/* SPEC §11.4: a red ring in 3D is the focus indicator for these. */}
@@ -104,29 +109,49 @@ function FaceButton({
       <animated.group position-z={z}>
         <mesh
           rotation={FACING}
+          // One tap, one press: the click is the release, and it is the only
+          // thing that fires. A finger slid off the cap lifts it and does
+          // nothing, which is what a button under a thumb should do.
           onClick={(event) => {
             event.stopPropagation()
+            setHeld(false)
             if (!isOpen) return
             pressSlot(slot)
             onPress()
           }}
+          // Swallowed so a press on the cap cannot also drag the console round.
           onPointerDown={(event) => {
             event.stopPropagation()
-            if (isOpen) pressSlot(slot)
+            if (isOpen) setHeld(true)
           }}
+          onPointerUp={() => setHeld(false)}
+          onPointerCancel={() => setHeld(false)}
           onPointerOver={() => hover(true)}
-          onPointerOut={() => hover(false)}
+          onPointerOut={() => {
+            setHeld(false)
+            hover(false)
+          }}
         >
           <cylinderGeometry args={[d.abxy.capRadius, d.abxy.capRadius, d.abxy.capHeight, 40]} />
           <meshStandardMaterial {...m.button} />
         </mesh>
 
+        {/*
+          The mark is what says a finger is down: the cap's 0.018 of travel
+          reads as nothing on a phone, and the glyph is the part of the cap a
+          thumb is aimed at. Switched, not faded — a button is a contact.
+          `heldTintColor` is the knob (Colours, console tab).
+        */}
         <mesh
           geometry={geometry}
           position={[0, 0, d.abxy.capHeight / 2 + 0.002]}
           raycast={() => null}
         >
-          <meshStandardMaterial {...m.bezel} side={DoubleSide} />
+          <meshStandardMaterial
+            {...m.bezel}
+            color={held ? m.heldTint : m.bezel.color}
+            side={DoubleSide}
+          />
         </mesh>
       </animated.group>
     </group>

@@ -215,8 +215,10 @@ function useLandmarkFocus() {
       if (index === null) return
 
       const {isOpen, isDetailOpen, setSection, setLibraryIndex} = useConsole.getState()
-      setLibraryIndex(index)
+      // Section first: entering it starts from the beginning, and this means a
+      // particular project, so its index goes on top.
       if (isOpen && !isDetailOpen) setSection('library')
+      setLibraryIndex(index)
     }
 
     function onClick(event: MouseEvent) {

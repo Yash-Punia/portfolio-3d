@@ -40,8 +40,14 @@ function useClock(): string | null {
 }
 
 /**
- * The way out, top left of the glass — a chevron and the word, so it is a back
- * button rather than a symbol to work out.
+ * The way out, top left of the glass: a left arrow, where every screen on a
+ * phone puts one — and the section name beside it, because the two of them
+ * together are a target a thumb can actually find. An arrow alone on a bar this
+ * size is about ten pixels wide on a phone.
+ *
+ * So the name is part of the control rather than a label next to it. That reads
+ * the way a phone's back affordance normally does, where the title of the place
+ * you came from is the thing you press.
  *
  * It is the B cap's twin: both call `back()`, so a detail view closes, then a
  * rail returns to the menu, then the console shuts. The screen used to say this
@@ -53,12 +59,13 @@ function useClock(): string | null {
  * `aria-hidden` and a focusable element inside one is a trap. The accessible
  * twin is the "Back" button in the page.
  */
-function BackButton() {
+function BackControl({section}: {section: string}) {
   const layout = useFirmwareLayout()
   const back = useConsole((state) => state.back)
   const [hovered, setHovered] = useState(false)
   const box = VIEWBOX.chevronLeft
-  const mark = Math.round(layout.statusFont * 1.1)
+  const mark = Math.round(layout.statusFont * 1.5)
+  const pad = Math.round(layout.railX * 0.46)
 
   return (
     <span
@@ -66,20 +73,28 @@ function BackButton() {
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
       style={{
-        display: 'inline-flex',
+        display: 'flex',
         alignItems: 'center',
-        gap: '0.5ch',
-        // A hit box a fingertip can find, without moving the bar's baseline.
-        margin: `0 0.9ch 0 -0.4ch`,
-        padding: '6px 0.4ch',
-        color: hovered ? 'var(--screen-fg)' : 'var(--screen-accent)',
+        gap: '0.6ch',
+        // Full height of the bar, and out to its left edge: the tap area is
+        // everything there is room for rather than the ink's own box.
+        alignSelf: 'stretch',
+        margin: `0 0 0 -${pad}px`,
+        padding: `0 ${pad}px`,
+        color: hovered ? 'var(--screen-accent)' : 'var(--screen-fg)',
         cursor: 'pointer',
       }}
     >
-      <svg aria-hidden fill="currentColor" height={mark} viewBox={`0 0 ${box} ${box}`} width={mark}>
+      <svg
+        aria-hidden
+        fill="var(--screen-accent)"
+        height={mark}
+        viewBox={`0 0 ${box} ${box}`}
+        width={mark}
+      >
         <path d={GLYPHS.chevronLeft} />
       </svg>
-      BACK
+      {section}
     </span>
   )
 }
@@ -112,10 +127,7 @@ export function StatusBar({section}: {section: string}) {
         letterSpacing: '0.14em',
       }}
     >
-      <span style={{display: 'flex', alignItems: 'center', color: 'var(--screen-fg)'}}>
-        <BackButton />
-        {section}
-      </span>
+      <BackControl section={section} />
 
       <span style={{display: 'flex', alignItems: 'center', gap: '1.1ch'}}>
         {VERSION}

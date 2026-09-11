@@ -63,7 +63,7 @@ export interface FirmwareLayout {
  */
 const MOBILE: Partial<Tuning> = {
   fwPanelWidth: 320,
-  fwStatusHeight: 28,
+  fwStatusHeight: 34,
   fwStatusFont: 10,
   fwRailX: 18,
   fwRailTop: 14,
@@ -74,10 +74,16 @@ const MOBILE: Partial<Tuning> = {
   fwTextGap: 7,
   fwTitleFont: 22,
   fwMetaFont: 11,
-  fwBodyFont: 14,
+  fwBodyFont: 13,
   fwDetailCoverHeight: 88,
   fwAxisTop: 36,
-  fwDotGap: 82,
+  /*
+    Each dot carries two lines of words, not just the dot: `2026 / 03` above it
+    and an organisation below. At 82 the label was nearly the whole gap and
+    every name of more than one word wrapped, so the axis read as a wall rather
+    than as a row of stops.
+  */
+  fwDotGap: 132,
   fwDotSize: 10,
   fwEntryGap: 22,
 }

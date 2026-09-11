@@ -144,17 +144,35 @@ export const useConsole = create<ConsoleState>()(
         set({isBooting: false, hasBooted: true})
       },
       section: 'menu',
-      setSection: (section) => set({section}),
+      /*
+        Every way into a screen starts it from the beginning — the menu, a tap
+        on it, the arrows between screens and the Library and Timeline caps
+        alike. Resetting here rather than in each caller is what makes that
+        true of all of them; a caller that means a particular tile (a timeline
+        chip, a project in the page's landmark) sets its index after this.
+      */
+      setSection: (section) => {
+        if (get().section === section) return
+        cue('section')
+        set({section, libraryIndex: 0, timelineIndex: 0})
+      },
       back: () => {
         const {isDetailOpen, section, closeDetail, close} = get()
+        // Each branch delegates to an action that already sounds for itself.
         if (isDetailOpen) return closeDetail()
-        if (section !== 'menu') return set({section: 'menu'})
+        if (section !== 'menu') {
+          cue('back')
+          return set({section: 'menu'})
+        }
         close()
       },
       jump: (section) => {
         // `open()` starts the firmware from the top, so it goes first and the
         // destination is set after it — the same order `useLandmarkFocus` uses.
-        if (!get().isOpen) get().open()
+        // It sounds for itself, so only a jump on an already-open console is
+        // a section change to be heard.
+        if (get().isOpen) cue('section')
+        else get().open()
         set({section, libraryIndex: 0, timelineIndex: 0, isDetailOpen: false})
       },
       menuIndex: 0,
@@ -168,10 +186,19 @@ export const useConsole = create<ConsoleState>()(
         set({timelineIndex: moved(get().timelineIndex, delta, count)}),
       setTimelineIndex: (timelineIndex) => set({timelineIndex}),
       isDetailOpen: false,
-      openDetail: () => set({isDetailOpen: true}),
-      closeDetail: () => set({isDetailOpen: false}),
+      openDetail: () => {
+        cue('detail')
+        set({isDetailOpen: true})
+      },
+      closeDetail: () => {
+        if (get().isDetailOpen) cue('back')
+        set({isDetailOpen: false})
+      },
       theme: null,
-      setTheme: (theme) => set({theme}),
+      setTheme: (theme) => {
+        if (get().theme !== theme) cue('theme')
+        set({theme})
+      },
       muted: false,
       toggleMuted: () => {
         const muted = !get().muted

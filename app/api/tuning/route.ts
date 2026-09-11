@@ -1,7 +1,7 @@
 import {readFile, writeFile} from 'node:fs/promises'
 import path from 'node:path'
 
-import {DEFAULT_TUNING, type Tuning} from '@/components/console/tuning'
+import {DEFAULT_TUNING, WAVES, type Tuning, type Wave} from '@/components/console/tuning'
 
 /**
  * Writes the tuning panel's current values back into `DEFAULT_TUNING`, so a
@@ -21,8 +21,13 @@ import {DEFAULT_TUNING, type Tuning} from '@/components/console/tuning'
 const SOURCE = path.join(process.cwd(), 'components', 'console', 'tuning.ts')
 const BLOCK = /export const DEFAULT_TUNING: Tuning = \{[\s\S]*?\n\}/
 const HEX = /^#[0-9a-fA-F]{6}$/
-/** No dimension in this model is anywhere near this; it only bounds nonsense. */
-const LIMIT = 1000
+/**
+ * Only bounds nonsense. It has to clear the largest legitimate value in the
+ * record, which is no longer a dimension in world units but a frequency in Hz —
+ * the cues run to a few kHz, and the panel's own pitch sliders stop at 3000.
+ * Above human hearing is the right ceiling for a record that carries both.
+ */
+const LIMIT = 20_000
 
 const KEYS = Object.keys(DEFAULT_TUNING) as (keyof Tuning)[]
 
@@ -39,12 +44,21 @@ function renderDefaults(body: Record<string, unknown>): string | null {
   for (const key of KEYS) {
     const value = body[key]
 
-    if (typeof DEFAULT_TUNING[key] === 'number') {
+    const shape = DEFAULT_TUNING[key]
+
+    if (typeof shape === 'number') {
       if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > LIMIT) {
         return null
       }
       // Slider arithmetic produces things like 0.30000000000000004.
       lines.push(`  ${key}: ${Number(value.toFixed(4))},`)
+    } else if (typeof shape === 'boolean') {
+      if (typeof value !== 'boolean') return null
+      lines.push(`  ${key}: ${value},`)
+    } else if (WAVES.includes(shape as Wave)) {
+      // A key whose default is a waveform takes a waveform, not a colour.
+      if (typeof value !== 'string' || !WAVES.includes(value as Wave)) return null
+      lines.push(`  ${key}: '${value}',`)
     } else {
       if (typeof value !== 'string' || !HEX.test(value)) return null
       lines.push(`  ${key}: '${value.toLowerCase()}',`)
