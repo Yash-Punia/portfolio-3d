@@ -52,6 +52,8 @@ export const projectsQuery = defineQuery(`*[_type == "project"] | order(order as
     "width": asset->metadata.dimensions.width,
     "height": asset->metadata.dimensions.height
   },
+  // The URL and the type: a GIF is drawn with <img>, a video with <video>.
+  "preview": preview.asset->{url, mimeType},
   gallery,
   videoUrl,
   links[]{label, url},

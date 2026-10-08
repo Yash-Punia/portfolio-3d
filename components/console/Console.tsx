@@ -37,13 +37,15 @@ export function Console({content}: {content: ConsoleContent}) {
   // The canvas size rather than a media query: this is inside the canvas, where
   // `state.size` is the same number `useConsoleZoom` frames the console from.
   const size = useThree((state) => state.size)
-  const turned = isOpen && isPortraitPhone(size.width, size.height)
+  const turned = isPortraitPhone(size.width, size.height)
 
   /**
    * The quarter turn onto a phone's long axis (SPEC §6).
    *
-   * Opened on an upright phone, the console rolls to landscape and the visitor
-   * turns the phone to meet it — the turn is the instruction. It is a handheld;
+   * On an upright phone the console lies along the long axis from the first
+   * frame, closed or open, and the visitor turns the phone to meet it. It used
+   * to stand upright while closed and roll on open, which read as the page
+   * changing its mind about which way up it was. It is a handheld;
    * held sideways it is the size of a real one, with both flaps and every
    * control on them in frame, which is what the DOM overlay used to stand in
    * for.
@@ -54,8 +56,7 @@ export function Console({content}: {content: ConsoleContent}) {
    *
    * A phone that auto-rotated to landscape does not roll — the viewport is
    * already wide, `isPortraitPhone` is false, and the browser has done the
-   * turning. Which is also why closing rolls it back: shut, it stands upright
-   * on the page again.
+   * turning.
    */
   const {roll} = useSpring({
     roll: turned ? -Math.PI / 2 : 0,

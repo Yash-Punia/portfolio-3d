@@ -4,13 +4,7 @@ import dynamic from 'next/dynamic'
 import {useEffect, useState, useSyncExternalStore} from 'react'
 
 import {accept} from '@/components/console/actions'
-import {
-  menuOptions,
-  neighbours,
-  SECTION_LABELS,
-  type ButtonSlot,
-  type ConsoleContent,
-} from '@/components/console/content'
+import {neighbours, type ButtonSlot, type ConsoleContent} from '@/components/console/content'
 import {inConsoleFrame, panelScale} from '@/components/console/frame'
 import {useInput, type Direction, type FocusTarget} from '@/components/console/input'
 import {useIsMobile} from '@/components/console/mobile'
@@ -112,8 +106,8 @@ function useConsoleKeys(content: ConsoleContent) {
 
       const {isOpen, open, back} = useConsole.getState()
 
-      // Escape is the B button: a detail view, then the menu, then the console
-      // itself. One definition of back, in the store (SPEC §8).
+      // Escape is the B button: a detail view, then the Timeline, then the
+      // console itself. One definition of back, in the store (SPEC §8).
       if (event.key === 'Escape') {
         if (!isOpen) return
         back()
@@ -128,8 +122,7 @@ function useConsoleKeys(content: ConsoleContent) {
           return
         }
 
-        // Enter is the A button: it takes the highlighted menu half, or opens
-        // the selected project.
+        // Enter is the A button: it opens the selected project.
         if (event.key === 'Enter' || event.key === ' ') {
           if (document.activeElement !== document.body) return
           event.preventDefault()
@@ -264,31 +257,38 @@ function useRailInput(content: ConsoleContent) {
         const direction = state.held
         if (direction === null) return
 
-        // A detail view is not a rail.
-        if (!useConsole.getState().isOpen || useConsole.getState().isDetailOpen) return
-        move(direction, content)
+        const {isOpen, isDetailOpen} = useConsole.getState()
+        if (!isOpen) return
+        // A detail view is not a rail: there the stick scrolls the page.
+        if (isDetailOpen) scrollDetail(direction)
+        else move(direction, content)
       }),
     [content],
   )
 }
 
 /**
+ * The stick, and the arrow keys, inside a project's detail view: up and down
+ * scroll it a good part of a screen at a time; sideways means nothing there.
+ */
+function scrollDetail(direction: Direction) {
+  if (direction !== 'up' && direction !== 'down') return
+  const box = document.querySelector('[data-detail-scroll]')
+  if (!(box instanceof HTMLElement)) return
+  const step = box.clientHeight * 0.4
+  box.scrollBy({top: direction === 'up' ? -step : step, behavior: 'smooth'})
+}
+
+/**
  * One directional move, from whichever input made it.
  *
- * Up and down walk the stack of screens — menu, Library, Timeline — through the
- * one `neighbours()` definition the arrows on screen also draw themselves from.
- * Left and right move within the rail showing, except on the menu, where the
- * two halves are stacked and every direction moves the highlight: a menu that
- * ignored a sideways nudge would feel broken (SPEC §8).
+ * Up and down walk the stack of screens — Library, Timeline — through the one
+ * `neighbours()` definition. Left and right move within the rail showing
+ * (SPEC §8).
  */
 function move(direction: Direction, content: ConsoleContent) {
-  const {section, setSection, moveMenu, moveLibrary, moveTimeline} = useConsole.getState()
+  const {section, setSection, moveLibrary, moveTimeline} = useConsole.getState()
   const delta = direction === 'up' || direction === 'left' ? -1 : 1
-
-  if (section === 'menu') {
-    moveMenu(delta, menuOptions(content).length)
-    return
-  }
 
   if (direction === 'up' || direction === 'down') {
     const target = neighbours(section, content)[direction]
@@ -399,13 +399,15 @@ function usePanelScroll(enabled: boolean) {
       scroller = null
     }
 
-    window.addEventListener('pointerdown', onPointerDown)
+    // Captured: the firmware stops its own pointerdown from bubbling (it would
+    // otherwise reach R3F, see `Firmware`), so the bubble phase never gets here.
+    window.addEventListener('pointerdown', onPointerDown, true)
     window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', onPointerUp)
     window.addEventListener('pointercancel', onPointerUp)
 
     return () => {
-      window.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('pointerdown', onPointerDown, true)
       window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerup', onPointerUp)
       window.removeEventListener('pointercancel', onPointerUp)
@@ -452,7 +454,6 @@ function useAnnouncement(content: ConsoleContent): string {
   const isOpen = useConsole((state) => state.isOpen)
   const isBooting = useConsole((state) => state.isBooting)
   const section = useConsole((state) => state.section)
-  const menuIndex = useConsole((state) => state.menuIndex)
   const index = useConsole((state) => state.libraryIndex)
   const timelineIndex = useConsole((state) => state.timelineIndex)
   const isDetailOpen = useConsole((state) => state.isDetailOpen)
@@ -462,11 +463,6 @@ function useAnnouncement(content: ConsoleContent): string {
   // live region does not announce — it only speaks once this changes.
   if (!isOpen) return 'Console closed'
   if (isBooting) return 'Console on, booting'
-
-  if (section === 'menu') {
-    const option = menuOptions(content)[menuIndex]
-    return option ? `Menu, ${SECTION_LABELS[option]}` : 'Menu'
-  }
 
   if (section === 'timeline') {
     const entry = content.timeline[timelineIndex]

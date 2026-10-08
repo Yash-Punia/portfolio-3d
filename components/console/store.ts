@@ -17,11 +17,14 @@ import {useMediaQuery} from '@/components/console/useMediaQuery'
  */
 export type Theme = 'dark' | 'light'
 /**
- * The firmware's screens, stacked vertically: the menu the boot hands over to,
- * the Library under it, the Timeline under that. Up and down walk the stack
- * (SPEC §8).
+ * The firmware's screens, stacked vertically: the Library the boot hands over
+ * to, the Timeline under it. Up and down walk the stack (SPEC §8).
+ *
+ * There used to be a menu above the two, offering one or the other. It was a
+ * screen whose only job was to be dismissed, so the console opens straight
+ * into the games instead.
  */
-export type Section = 'menu' | 'library' | 'timeline'
+export type Section = 'library' | 'timeline'
 
 /** No wrap and no bounce: with one item in a rail, left and right are no-ops. */
 function clamp(index: number, count: number): number {
@@ -61,8 +64,9 @@ interface ConsoleState {
   section: Section
   setSection: (section: Section) => void
   /**
-   * One step out, whatever "out" currently means: a detail view closes, a rail
-   * returns to the menu, and the menu closes the console. The B button, the
+   * One step out, whatever "out" currently means: a detail view closes, the
+   * Timeline returns to the Library, and the Library closes the console. The
+   * B button, the
    * BACK control on the screen and `Escape` are all this one action, so they
    * cannot disagree about where back is.
    */
@@ -73,11 +77,7 @@ interface ConsoleState {
    * console opened first if it was shut.
    */
   jump: (section: Section) => void
-  /** Which half of the menu is highlighted: 0 the top button, 1 the bottom. */
-  menuIndex: number
-  moveMenu: (delta: number, count: number) => void
-  setMenuIndex: (index: number) => void
-  /** 0 is the About tile; 1..n are the projects in `order` (SPEC §8). */
+  /** The selected project, in `order` (SPEC §8). */
   libraryIndex: number
   /**
    * Moves the selection within the rail, clamped. No wrap and no bounce: with
@@ -117,8 +117,8 @@ export const useConsole = create<ConsoleState>()(
         share `move()` in `ConsoleStage`.
       */
       isOpen: false,
-      // Every open starts the firmware from the top: booting, then the menu,
-      // with no detail view (SPEC §7). A console reopened into someone else's
+      // Every open starts the firmware from the top: booting, then the first
+      // game in the Library, with no detail view (SPEC §7). A console reopened into someone else's
       // half-finished navigation would read as a page that never closed.
       open: () => {
         if (get().isOpen) return
@@ -126,8 +126,7 @@ export const useConsole = create<ConsoleState>()(
         set({
           isOpen: true,
           isBooting: true,
-          section: 'menu',
-          menuIndex: 0,
+          section: 'library',
           libraryIndex: 0,
           timelineIndex: 0,
           isDetailOpen: false,
@@ -143,11 +142,10 @@ export const useConsole = create<ConsoleState>()(
         cue('boot')
         set({isBooting: false, hasBooted: true})
       },
-      section: 'menu',
+      section: 'library',
       /*
-        Every way into a screen starts it from the beginning — the menu, a tap
-        on it, the arrows between screens and the Library and Timeline caps
-        alike. Resetting here rather than in each caller is what makes that
+        Every way into a screen starts it from the beginning — the arrows
+        between screens and the Library and Timeline caps alike. Resetting here rather than in each caller is what makes that
         true of all of them; a caller that means a particular tile (a timeline
         chip, a project in the page's landmark) sets its index after this.
       */
@@ -160,9 +158,9 @@ export const useConsole = create<ConsoleState>()(
         const {isDetailOpen, section, closeDetail, close} = get()
         // Each branch delegates to an action that already sounds for itself.
         if (isDetailOpen) return closeDetail()
-        if (section !== 'menu') {
+        if (section === 'timeline') {
           cue('back')
-          return set({section: 'menu'})
+          return set({section: 'library', libraryIndex: 0})
         }
         close()
       },
@@ -175,9 +173,6 @@ export const useConsole = create<ConsoleState>()(
         else get().open()
         set({section, libraryIndex: 0, timelineIndex: 0, isDetailOpen: false})
       },
-      menuIndex: 0,
-      moveMenu: (delta, count) => set({menuIndex: moved(get().menuIndex, delta, count)}),
-      setMenuIndex: (menuIndex) => set({menuIndex}),
       libraryIndex: 0,
       moveLibrary: (delta, count) => set({libraryIndex: moved(get().libraryIndex, delta, count)}),
       setLibraryIndex: (libraryIndex) => set({libraryIndex}),

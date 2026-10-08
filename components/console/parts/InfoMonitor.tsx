@@ -61,7 +61,13 @@ function Icon({
 
   return (
     <span
-      onClick={onActivate}
+      onClick={(event) => {
+        // Stopped for the reason `Firmware` stops its own: this DOM sits inside
+        // R3F's event target, and a tap here would otherwise reach the chassis.
+        event.stopPropagation()
+        onActivate()
+      }}
+      onPointerDown={(event) => event.stopPropagation()}
       onPointerOut={() => setHovered(false)}
       onPointerOver={() => setHovered(true)}
       title={label}
@@ -203,7 +209,7 @@ export function InfoMonitor({
               <p
                 style={{
                   margin: 0,
-                  fontSize: '46px',
+                  fontSize: '36px',
                   fontWeight: 600,
                   fontStretch: '112%',
                   letterSpacing: '-0.01em',
@@ -213,13 +219,13 @@ export function InfoMonitor({
               </p>
             ) : null}
             {title ? (
-              <p style={{margin: '10px 0 0', fontSize: '26px', color: palette.muted}}>{title}</p>
+              <p style={{margin: '8px 0 0', fontSize: '20px', color: palette.muted}}>{title}</p>
             ) : null}
             {status ? (
               <p
                 style={{
-                  margin: '26px 0 0',
-                  fontSize: '19px',
+                  margin: '20px 0 0',
+                  fontSize: '15px',
                   color: palette.muted,
                   fontFamily: 'var(--font-martian-mono), ui-monospace, monospace',
                 }}

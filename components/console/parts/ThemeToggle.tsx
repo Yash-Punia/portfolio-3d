@@ -116,7 +116,11 @@ export function ThemeToggle() {
 
   return (
     <group
-      position={[0, d.toggle.y, d.faceZ]}
+      // Left of centre: the close cap shares the row, to its right. Negated
+      // because this position is in the flap's own frame, which faces away on
+      // the inner face — the π turn below rights what is *inside* the group,
+      // not where the group is put.
+      position={[-d.toggle.x, d.toggle.y, d.faceZ]}
       rotation={[0, Math.PI, 0]}
       // One tap, one press. A tap raises a pointerdown *and* a click, so only
       // the release fires — pressing on both counted every tap twice and ran
@@ -152,6 +156,18 @@ export function ThemeToggle() {
           <meshStandardMaterial {...m.accent} emissive={m.accent.color} emissiveIntensity={0.6} />
         </mesh>
       ) : null}
+
+      {/* The wider, invisible target `FaceButton` has too (Hit areas, console tab). */}
+      <mesh position={[0, 0, d.toggle.housingDepth / 2]} rotation={FACING} visible={false}>
+        <cylinderGeometry
+          args={[
+            d.toggle.hitRadius,
+            d.toggle.hitRadius,
+            d.toggle.housingDepth + d.toggle.capHeight,
+            24,
+          ]}
+        />
+      </mesh>
 
       {/* The same recessed collar the other buttons sit in. */}
       <mesh position={[0, 0, d.toggle.housingDepth / 2]} rotation={FACING}>

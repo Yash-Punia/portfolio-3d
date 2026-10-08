@@ -35,7 +35,8 @@ export interface FirmwareLayout {
   titleFont: number
   metaFont: number
   bodyFont: number
-  detailCoverHeight: number
+  /** How long the selection rests before a project's clip replaces its cover. */
+  previewDelayMs: number
   axisTop: number
   dotGap: number
   dotSize: number
@@ -64,18 +65,17 @@ export interface FirmwareLayout {
 const MOBILE: Partial<Tuning> = {
   fwPanelWidth: 320,
   fwStatusHeight: 34,
-  fwStatusFont: 10,
+  fwStatusFont: 9,
   fwRailX: 18,
   fwRailTop: 14,
   fwTileWidth: 150,
   fwTileHeight: 84,
   fwTileGap: 18,
   fwBlockGap: 16,
-  fwTextGap: 7,
-  fwTitleFont: 22,
-  fwMetaFont: 11,
-  fwBodyFont: 13,
-  fwDetailCoverHeight: 88,
+  fwTextGap: 6,
+  fwTitleFont: 16,
+  fwMetaFont: 9,
+  fwBodyFont: 11,
   fwAxisTop: 36,
   /*
     Each dot carries two lines of words, not just the dot: `2026 / 03` above it
@@ -109,7 +109,7 @@ export function deriveFirmwareLayout(tuning: Tuning, mobile = false): FirmwareLa
     titleFont: t.fwTitleFont,
     metaFont: t.fwMetaFont,
     bodyFont: t.fwBodyFont,
-    detailCoverHeight: t.fwDetailCoverHeight,
+    previewDelayMs: t.fwPreviewDelayMs,
     axisTop: t.fwAxisTop,
     dotGap: t.fwDotGap,
     dotSize: t.fwDotSize,

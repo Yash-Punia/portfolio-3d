@@ -51,9 +51,23 @@ export interface Tuning {
   abxyY: number
   abxySpacing: number
   abxyRadius: number
-  /** Theme toggle, at the top of the right flap. */
+  /**
+   * The top row of the right flap: the theme toggle and the close cap share a
+   * height (`toggleY`, below the top edge) and each has its own x, so the two
+   * can sit side by side.
+   */
   toggleY: number
+  toggleX: number
   toggleRadius: number
+  closeX: number
+  /**
+   * How far past its own cap a control answers a finger, as a multiple of the
+   * cap's radius. The caps are drawn at the size of a real handheld's, which is
+   * smaller than a thumb on a phone; the target does not have to be. Each one
+   * is an invisible disc behind the cap, so nothing on the object changes.
+   */
+  buttonHitScale: number
+  joystickHitScale: number
   /** Multipliers on the computed camera zoom, for nudging the framing. */
   zoomScaleClosed: number
   zoomScaleOpen: number
@@ -109,8 +123,11 @@ export interface Tuning {
   fwTitleFont: number
   fwMetaFont: number
   fwBodyFont: number
-  /** Height of the cover image at the top of the detail view. */
-  fwDetailCoverHeight: number
+  /**
+   * How long the selection has to rest on a project before its cover gives way
+   * to its gameplay clip, when it has one.
+   */
+  fwPreviewDelayMs: number
   /** Timeline: space above the axis, spacing along it, and the dot size. */
   fwAxisTop: number
   fwDotGap: number
@@ -171,7 +188,7 @@ export interface Tuning {
   sfxPressTo: number
   sfxPressMs: number
   sfxPressGain: number
-  /** Changing screen — the menu, the Library, the Timeline. */
+  /** Changing screen — the Library, the Timeline. */
   sfxSectionOn: boolean
   sfxSectionWave: Wave
   sfxSectionFrom: number
@@ -221,11 +238,15 @@ export const DEFAULT_TUNING: Tuning = {
   monitorHeight: 1.35,
   joystickY: -0.95,
   joystickRadius: 0.25,
-  abxyY: -0.95,
-  abxySpacing: 0.36,
+  abxyY: -0.88,
+  abxySpacing: 0.46,
   abxyRadius: 0.14,
   toggleY: 0.34,
+  toggleX: -0.32,
   toggleRadius: 0.14,
+  closeX: 0.55,
+  buttonHitScale: 2.15,
+  joystickHitScale: 3,
   zoomScaleClosed: 0.8,
   zoomScaleOpen: 1,
   shellColor: '#2e2e2e',
@@ -239,7 +260,7 @@ export const DEFAULT_TUNING: Tuning = {
   screenEmissiveIntensityLight: 1,
   fwPanelWidth: 900,
   fwStatusHeight: 60,
-  fwStatusFont: 16,
+  fwStatusFont: 13,
   fwRailX: 52,
   fwRailTop: 80,
   fwTileWidth: 375,
@@ -248,11 +269,11 @@ export const DEFAULT_TUNING: Tuning = {
   fwSelectedScale: 1.12,
   fwUnselectedOpacity: 0.5,
   fwBlockGap: 60,
-  fwTextGap: 17,
-  fwTitleFont: 50,
-  fwMetaFont: 18,
-  fwBodyFont: 24,
-  fwDetailCoverHeight: 270,
+  fwTextGap: 13,
+  fwTitleFont: 34,
+  fwMetaFont: 14,
+  fwBodyFont: 18,
+  fwPreviewDelayMs: 1500,
   fwAxisTop: 150,
   fwDotGap: 300,
   fwDotSize: 14,
@@ -340,7 +361,7 @@ export const useTuning = create<TuningState>()(
       // a change to `DEFAULT_TUNING` reaches nobody who has been here before
       // unless the version moves and the old record is thrown away. Bump it
       // whenever a default changes, or the new form ships to new visitors only.
-      version: 6,
+      version: 7,
       migrate: () => ({values: DEFAULT_TUNING}),
       partialize: (state) => ({values: state.values}),
       merge: (persisted, current) => {

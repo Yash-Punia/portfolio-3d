@@ -1,6 +1,6 @@
 'use client'
 
-import {useState, type CSSProperties, type ReactNode} from 'react'
+import {useEffect, useState, type CSSProperties, type ReactNode} from 'react'
 
 import type {ConsoleContent, Project} from '@/components/console/content'
 import {useIsMobile} from '@/components/console/mobile'
@@ -113,11 +113,71 @@ function Tile({
 }
 
 /**
+ * A project's gameplay clip, laid over its cover once the selection has rested
+ * on it (`fwPreviewDelayMs`).
+ *
+ * It is invisible until it has a frame to show and then fades in, so a slow
+ * GIF never blanks the tile — the cover is still underneath until it does. A
+ * GIF is an image and a video is a video; Sanity's `mimeType` says which.
+ * Muted and `playsInline`, which is what lets a phone autoplay it at all.
+ */
+function PreviewClip({url, mimeType}: {url: string; mimeType: string | null}) {
+  const [shown, setShown] = useState(false)
+  const style: CSSProperties = {
+    position: 'absolute',
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    opacity: shown ? 1 : 0,
+    transition: 'opacity 300ms ease-out',
+  }
+
+  if (mimeType?.startsWith('video/')) {
+    return (
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        src={url}
+        onLoadedData={() => setShown(true)}
+        style={style}
+      />
+    )
+  }
+
+  /* eslint-disable-next-line @next/next/no-img-element -- see cover.ts. An
+     animated GIF also has to arrive untouched: an optimiser would hand back its
+     first frame. */
+  return <img alt="" src={url} onLoad={() => setShown(true)} style={style} />
+}
+
+/**
  * A project's cover, or — when the field is empty — a solid accent-tinted tile
  * with the title set in Archivo Expanded. Deliberate, not a broken image
- * (SPEC §3.2).
+ * (SPEC §3.2). With `previewing` set, its clip plays over whichever it is.
  */
-function ProjectFace({
+function ProjectFace(props: {
+  project: Project
+  selected: boolean
+  hovered: boolean
+  reducedMotion: boolean
+  /** The first two tiles, which are the ones on the glass when it opens. */
+  eager: boolean
+  previewing: boolean
+}) {
+  const clip = props.previewing ? props.project.preview : null
+
+  return (
+    <>
+      <CoverFace {...props} />
+      {clip?.url ? <PreviewClip url={clip.url} mimeType={clip.mimeType} /> : null}
+    </>
+  )
+}
+
+function CoverFace({
   project,
   selected,
   hovered,
@@ -128,7 +188,6 @@ function ProjectFace({
   selected: boolean
   hovered: boolean
   reducedMotion: boolean
-  /** The first two tiles, which are the ones on the glass when it opens. */
   eager: boolean
 }) {
   const layout = useFirmwareLayout()
@@ -208,6 +267,26 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
   const drag = useRailDrag({step, index, count: projects.length, setIndex: setLibraryIndex})
 
   /*
+    The clip waits for the selection to settle: a visitor running the stick
+    along the rail should see covers go by, not a clip start loading under
+    every one. Which tile it settled on is the state, so moving away ends the
+    clip without anything having to reset it. No clip at all under reduced
+    motion (SPEC §11.5) — autoplaying footage is exactly what that asks for
+    less of.
+  */
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null)
+  const hasClip = Boolean(selected?.preview?.url) && !reducedMotion
+
+  useEffect(() => {
+    if (!hasClip) return
+    const id = setTimeout(() => setPreviewIndex(index), layout.previewDelayMs)
+    return () => {
+      clearTimeout(id)
+      setPreviewIndex(null)
+    }
+  }, [hasClip, index, layout.previewDelayMs])
+
+  /*
     The selection sits in the middle of the panel rather than against its left
     edge, so a tile has a neighbour either side of it and the rail reads as
     something with a before and an after. The lead-in is what puts it there:
@@ -281,6 +360,7 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
                   hovered={hovered}
                   reducedMotion={reducedMotion}
                   eager={position < 2}
+                  previewing={position === previewIndex && !drag.dragging}
                 />
               )}
             </Tile>

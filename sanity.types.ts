@@ -75,6 +75,13 @@ export type SanityImageHotspot = {
   width?: number
 }
 
+export type SanityFileAssetReference = {
+  _ref: string
+  _type: 'reference'
+  _weak?: boolean
+  [internalGroqTypeReferenceTo]?: 'sanity.fileAsset'
+}
+
 export type Project = {
   _id: string
   _type: 'project'
@@ -115,6 +122,11 @@ export type Project = {
     crop?: SanityImageCrop
     _type: 'image'
   }
+  preview?: {
+    asset?: SanityFileAssetReference
+    media?: unknown
+    _type: 'file'
+  }
   gallery?: Array<{
     asset?: SanityImageAssetReference
     media?: unknown
@@ -150,13 +162,6 @@ export type SocialLink = {
   url?: string
   buttonSlot?: 'A' | 'B' | 'X' | 'Y'
   label?: string
-}
-
-export type SanityFileAssetReference = {
-  _ref: string
-  _type: 'reference'
-  _weak?: boolean
-  [internalGroqTypeReferenceTo]?: 'sanity.fileAsset'
 }
 
 export type SiteSettings = {
@@ -299,10 +304,10 @@ export type AllSanitySchemaTypes =
   | TimelineEntry
   | SanityImageCrop
   | SanityImageHotspot
+  | SanityFileAssetReference
   | Project
   | Slug
   | SocialLink
-  | SanityFileAssetReference
   | SiteSettings
   | SanityImagePaletteSwatch
   | SanityImagePalette
@@ -356,7 +361,7 @@ export type SocialLinksQueryResult = Array<{
 
 // Source: sanity/lib/queries.ts
 // Variable: projectsQuery
-// Query: *[_type == "project"] | order(order asc){  _id,  title,  "slug": slug.current,  order,  blurb,  description,  role,  year,  engine,  tech,  platforms,  // The cover carries its own placeholder and its own aspect: lqip is the tiny  // data URI Sanity generates for every asset, painted under the image while it  // loads, and the dimensions are the intrinsic size the element declares  // (SPEC §12).  cover{    ...,    "lqip": asset->metadata.lqip,    "width": asset->metadata.dimensions.width,    "height": asset->metadata.dimensions.height  },  gallery,  videoUrl,  links[]{label, url},  teamSize,  featured}
+// Query: *[_type == "project"] | order(order asc){  _id,  title,  "slug": slug.current,  order,  blurb,  description,  role,  year,  engine,  tech,  platforms,  // The cover carries its own placeholder and its own aspect: lqip is the tiny  // data URI Sanity generates for every asset, painted under the image while it  // loads, and the dimensions are the intrinsic size the element declares  // (SPEC §12).  cover{    ...,    "lqip": asset->metadata.lqip,    "width": asset->metadata.dimensions.width,    "height": asset->metadata.dimensions.height  },  // The URL and the type: a GIF is drawn with <img>, a video with <video>.  "preview": preview.asset->{url, mimeType},  gallery,  videoUrl,  links[]{label, url},  teamSize,  featured}
 export type ProjectsQueryResult = Array<{
   _id: string
   title: string | null
@@ -395,6 +400,10 @@ export type ProjectsQueryResult = Array<{
     lqip: string | null
     width: number | null
     height: number | null
+  } | null
+  preview: {
+    url: string | null
+    mimeType: string | null
   } | null
   gallery: Array<{
     asset?: SanityImageAssetReference
@@ -441,7 +450,7 @@ declare module '@sanity/client' {
   interface SanityQueries {
     '*[_type == "siteSettings"][0]{\n  fullName,\n  title,\n  statusLine,\n  aboutHeadline,\n  aboutBody,\n  resumeLabel,\n  "resumeUrl": resumeFile.asset->url,\n  seo,\n  "avatarUrl": avatar.asset->url,\n  "ogImage": seo.ogImage.asset->{\n    url,\n    "width": metadata.dimensions.width,\n    "height": metadata.dimensions.height\n  }\n}': SiteSettingsQueryResult
     '*[_type == "socialLink"] | order(buttonSlot asc){\n  _id,\n  platform,\n  url,\n  buttonSlot,\n  label\n}': SocialLinksQueryResult
-    '*[_type == "project"] | order(order asc){\n  _id,\n  title,\n  "slug": slug.current,\n  order,\n  blurb,\n  description,\n  role,\n  year,\n  engine,\n  tech,\n  platforms,\n  // The cover carries its own placeholder and its own aspect: lqip is the tiny\n  // data URI Sanity generates for every asset, painted under the image while it\n  // loads, and the dimensions are the intrinsic size the element declares\n  // (SPEC \xA712).\n  cover{\n    ...,\n    "lqip": asset->metadata.lqip,\n    "width": asset->metadata.dimensions.width,\n    "height": asset->metadata.dimensions.height\n  },\n  gallery,\n  videoUrl,\n  links[]{label, url},\n  teamSize,\n  featured\n}': ProjectsQueryResult
+    '*[_type == "project"] | order(order asc){\n  _id,\n  title,\n  "slug": slug.current,\n  order,\n  blurb,\n  description,\n  role,\n  year,\n  engine,\n  tech,\n  platforms,\n  // The cover carries its own placeholder and its own aspect: lqip is the tiny\n  // data URI Sanity generates for every asset, painted under the image while it\n  // loads, and the dimensions are the intrinsic size the element declares\n  // (SPEC \xA712).\n  cover{\n    ...,\n    "lqip": asset->metadata.lqip,\n    "width": asset->metadata.dimensions.width,\n    "height": asset->metadata.dimensions.height\n  },\n  // The URL and the type: a GIF is drawn with <img>, a video with <video>.\n  "preview": preview.asset->{url, mimeType},\n  gallery,\n  videoUrl,\n  links[]{label, url},\n  teamSize,\n  featured\n}': ProjectsQueryResult
     '*[_type == "timelineEntry"] | order(select(kind == "work" => 0, 1) asc, startDate desc){\n  _id,\n  kind,\n  organisation,\n  role,\n  startDate,\n  endDate,\n  isCurrent,\n  location,\n  summary,\n  highlights,\n  result,\n  relatedProjects[]->{_id, title, "slug": slug.current}\n}': TimelineQueryResult
   }
 }

@@ -16,7 +16,7 @@ import {useTuning} from '@/components/console/tuning'
  * else on the page to leave room for.
  */
 function fillFor(width: number, isOpen: boolean, turned: boolean) {
-  if (turned) return {w: 0.92, h: 0.94}
+  if (turned && isOpen) return {w: 0.92, h: 0.94}
   if (width < 640) return {w: 0.88, h: 0.62}
   if (width < 1024) return isOpen ? {w: 0.94, h: 0.74} : {w: 0.8, h: 0.78}
   return isOpen ? {w: 0.86, h: 0.78} : {w: 0.62, h: 0.82}
@@ -41,7 +41,8 @@ export function useConsoleZoom(isOpen: boolean): number {
   const width = useThree((state) => state.size.width)
   const height = useThree((state) => state.size.height)
 
-  const turned = isOpen && isPortraitPhone(width, height)
+  // Closed or open: on an upright phone the console is always lying sideways.
+  const turned = isPortraitPhone(width, height)
   const box = isOpen ? dimensions.open : dimensions.closed
   const framed = turned ? {width: box.height, height: box.width} : box
   const fill = fillFor(width, isOpen, turned)

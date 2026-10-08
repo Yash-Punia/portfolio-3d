@@ -1,7 +1,7 @@
 'use client'
 
 import {animated, useSpring} from '@react-spring/three'
-import {useThree} from '@react-three/fiber'
+import {useThree, type ThreeEvent} from '@react-three/fiber'
 import {useEffect, useRef, useState} from 'react'
 
 import {useSpec} from '@/components/console/spec'
@@ -147,6 +147,14 @@ export function Joystick() {
     document.body.style.cursor = ''
   }, [isOpen])
 
+  const grab = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation()
+    if (!isOpen) return
+    origin.current = {x: event.clientX, y: event.clientY}
+    fired.current = false
+    setDragging(true)
+  }
+
   const pivotZ = d.joystick.wellDepth
   const stemZ = d.joystick.stemHeight / 2
   const capZ = d.joystick.stemHeight
@@ -184,13 +192,7 @@ export function Joystick() {
         <mesh
           position={[0, 0, capZ]}
           scale={[1, 1, d.joystick.capHeight / d.joystick.capRadius]}
-          onPointerDown={(event) => {
-            event.stopPropagation()
-            if (!isOpen) return
-            origin.current = {x: event.clientX, y: event.clientY}
-            fired.current = false
-            setDragging(true)
-          }}
+          onPointerDown={grab}
           onPointerOver={() => hover(true)}
           onPointerOut={() => hover(false)}
         >
@@ -198,6 +200,23 @@ export function Joystick() {
           <meshStandardMaterial {...m.shell} />
         </mesh>
       </animated.group>
+
+      {/*
+        The stick's real target: an invisible disc wider than the well by
+        `joystickHitScale` (Hit areas, console tab), standing level with the
+        dome so a thumb that lands beside the cap still takes the stick. It
+        does not lean, so the target stays put while the stick moves.
+      */}
+      <mesh
+        position={[0, 0, (pivotZ + capZ) / 2]}
+        rotation={FACING}
+        visible={false}
+        onPointerDown={grab}
+        onPointerOver={() => hover(true)}
+        onPointerOut={() => hover(false)}
+      >
+        <cylinderGeometry args={[d.joystick.hitRadius, d.joystick.hitRadius, pivotZ + capZ, 24]} />
+      </mesh>
     </group>
   )
 }

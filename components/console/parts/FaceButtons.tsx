@@ -7,7 +7,7 @@ import {DoubleSide} from 'three'
 import {accept} from '@/components/console/actions'
 import type {ButtonSlot, ConsoleContent} from '@/components/console/content'
 import {useGlyphGeometry, type GlyphName} from '@/components/console/glyphs'
-import {useInput} from '@/components/console/input'
+import {useInput, type FocusTarget} from '@/components/console/input'
 import {useSpec} from '@/components/console/spec'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
@@ -37,31 +37,39 @@ const SLOTS = Object.keys(LAYOUT) as ButtonSlot[]
  * the left flap, where a mark can be small and there is room for five.
  */
 const GLYPH_FOR: Record<ButtonSlot, GlyphName> = {
-  A: 'letterA',
-  B: 'letterB',
+  A: 'check',
+  B: 'undo',
   X: 'gamepad',
   Y: 'hourglass',
 }
 
-function FaceButton({
-  slot,
+/**
+ * One round cap on a flap: the ABXY four, and the close cap at the top of the
+ * right flap, which is the same button in black.
+ *
+ * `focus` names the cap for the focus ring its twin in the page lights, and for
+ * the depression a keyboard press shows through `pressedSlot`.
+ */
+export function FaceButton({
+  focus,
   glyph,
   onPress,
+  dark = false,
 }: {
-  slot: ButtonSlot
+  focus: FocusTarget
   glyph: GlyphName
   onPress: () => void
+  /** A black cap with a lit mark, like the theme toggle beside the close cap. */
+  dark?: boolean
 }) {
   const {dimensions: d, materials: m} = useSpec()
   const isOpen = useConsole((state) => state.isOpen)
   const reducedMotion = useReducedMotion()
 
-  const pressed = useInput((state) => state.pressedSlot === slot)
-  const focused = useInput((state) => state.focusedSlot === slot)
-  const pressSlot = useInput((state) => state.pressSlot)
+  const pressed = useInput((state) => state.pressedSlot === focus)
+  const focused = useInput((state) => state.focusedSlot === focus)
 
   const geometry = useGlyphGeometry(glyph, d.abxy.glyphSize)
-  const [x, y] = LAYOUT[slot]
 
   /*
     The cap is down while a finger is on it, and that is all pointerdown does.
@@ -89,8 +97,63 @@ function FaceButton({
     document.body.style.cursor = ''
   }, [isOpen])
 
+  /*
+    The mark is what says a finger is down: the cap's 0.018 of travel reads as
+    nothing on a phone, and the glyph is the part of the cap a thumb is aimed
+    at. Switched, not faded — a button is a contact. `heldTintColor` is the knob
+    (Colours, console tab). A dark cap's mark is lit, the way the toggle's are,
+    and goes dark with the same tint.
+  */
+  const mark = dark
+    ? {
+        ...m.accent,
+        color: held ? m.heldTint : m.accent.color,
+        emissive: m.accent.color,
+        emissiveIntensity: held ? 0 : 0.45,
+      }
+    : {...m.bezel, color: held ? m.heldTint : m.bezel.color}
+
   return (
-    <group position={[x * d.abxy.spacing, y * d.abxy.spacing, 0]}>
+    /*
+      The handlers sit on the cap's whole group, so the invisible hit disc below
+      answers for it as well as the cap, its collar and its mark — R3F bubbles a
+      child mesh's events up to here.
+    */
+    <group
+      // One tap, one press: the click is the release, and it is the only thing
+      // that fires. A finger slid off the cap lifts it and does nothing, which
+      // is what a button under a thumb should do.
+      onClick={(event) => {
+        event.stopPropagation()
+        setHeld(false)
+        if (!isOpen) return
+        onPress()
+      }}
+      // Swallowed so a press on the cap cannot also drag the console round.
+      onPointerDown={(event) => {
+        event.stopPropagation()
+        if (isOpen) setHeld(true)
+      }}
+      onPointerUp={() => setHeld(false)}
+      onPointerCancel={() => setHeld(false)}
+      onPointerOver={() => hover(true)}
+      onPointerOut={() => {
+        setHeld(false)
+        hover(false)
+      }}
+    >
+      {/*
+        The target a finger has to land on, wider than the cap by
+        `buttonHitScale` (Hit areas, console tab). Invisible is not
+        unraycastable: three tests every mesh it is handed, drawn or not. It
+        does not ride the cap down, so the target does not move under a press.
+      */}
+      <mesh position={[0, 0, d.abxy.housingDepth / 2]} rotation={FACING} visible={false}>
+        <cylinderGeometry
+          args={[d.abxy.hitRadius, d.abxy.hitRadius, d.abxy.housingDepth + d.abxy.capHeight, 24]}
+        />
+      </mesh>
+
       <mesh position={[0, 0, d.abxy.housingDepth / 2]} rotation={FACING}>
         <cylinderGeometry
           args={[d.abxy.housingRadius, d.abxy.housingRadius, d.abxy.housingDepth, 40]}
@@ -107,51 +170,17 @@ function FaceButton({
       ) : null}
 
       <animated.group position-z={z}>
-        <mesh
-          rotation={FACING}
-          // One tap, one press: the click is the release, and it is the only
-          // thing that fires. A finger slid off the cap lifts it and does
-          // nothing, which is what a button under a thumb should do.
-          onClick={(event) => {
-            event.stopPropagation()
-            setHeld(false)
-            if (!isOpen) return
-            pressSlot(slot)
-            onPress()
-          }}
-          // Swallowed so a press on the cap cannot also drag the console round.
-          onPointerDown={(event) => {
-            event.stopPropagation()
-            if (isOpen) setHeld(true)
-          }}
-          onPointerUp={() => setHeld(false)}
-          onPointerCancel={() => setHeld(false)}
-          onPointerOver={() => hover(true)}
-          onPointerOut={() => {
-            setHeld(false)
-            hover(false)
-          }}
-        >
+        <mesh rotation={FACING}>
           <cylinderGeometry args={[d.abxy.capRadius, d.abxy.capRadius, d.abxy.capHeight, 40]} />
-          <meshStandardMaterial {...m.button} />
+          <meshStandardMaterial {...(dark ? m.bezel : m.button)} />
         </mesh>
 
-        {/*
-          The mark is what says a finger is down: the cap's 0.018 of travel
-          reads as nothing on a phone, and the glyph is the part of the cap a
-          thumb is aimed at. Switched, not faded — a button is a contact.
-          `heldTintColor` is the knob (Colours, console tab).
-        */}
         <mesh
           geometry={geometry}
           position={[0, 0, d.abxy.capHeight / 2 + 0.002]}
           raycast={() => null}
         >
-          <meshStandardMaterial
-            {...m.bezel}
-            color={held ? m.heldTint : m.bezel.color}
-            side={DoubleSide}
-          />
+          <meshStandardMaterial {...mark} side={DoubleSide} />
         </mesh>
       </animated.group>
     </group>
@@ -170,6 +199,7 @@ export function FaceButtons({content}: {content: ConsoleContent}) {
   const {dimensions: d} = useSpec()
   const back = useConsole((state) => state.back)
   const jump = useConsole((state) => state.jump)
+  const pressSlot = useInput((state) => state.pressSlot)
 
   const press: Record<ButtonSlot, () => void> = {
     A: () => accept(content),
@@ -180,9 +210,21 @@ export function FaceButtons({content}: {content: ConsoleContent}) {
 
   return (
     <group position={[0, d.abxy.y, d.faceZ]} rotation={[0, Math.PI, 0]}>
-      {SLOTS.map((slot) => (
-        <FaceButton key={slot} slot={slot} glyph={GLYPH_FOR[slot]} onPress={press[slot]} />
-      ))}
+      {SLOTS.map((slot) => {
+        const [x, y] = LAYOUT[slot]
+        return (
+          <group key={slot} position={[x * d.abxy.spacing, y * d.abxy.spacing, 0]}>
+            <FaceButton
+              focus={slot}
+              glyph={GLYPH_FOR[slot]}
+              onPress={() => {
+                pressSlot(slot)
+                press[slot]()
+              }}
+            />
+          </group>
+        )
+      })}
     </group>
   )
 }

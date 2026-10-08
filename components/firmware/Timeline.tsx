@@ -277,7 +277,6 @@ export function Timeline({content}: {content: ConsoleContent}) {
   const setTimelineIndex = useConsole((state) => state.setTimelineIndex)
   const reducedMotion = useReducedMotion()
   const layout = useFirmwareLayout()
-  const mobile = useIsMobile()
 
   const {timeline, projects} = content
   const selected = timeline[index] ?? null
@@ -303,13 +302,8 @@ export function Timeline({content}: {content: ConsoleContent}) {
         flexDirection: 'column',
         flex: 1,
         minHeight: 0,
-        /*
-          The same centring the Library has on a phone. It only ever applies to
-          a short entry: an entry with more than a screenful still fills the
-          panel, and `justify-content` has no free space left to distribute —
-          so a long summary cannot be pushed off the top by it.
-        */
-        justifyContent: mobile ? 'center' : 'flex-start',
+        // Top-aligned at every width, unlike the Library on a phone: the axis
+        // stays put under the status bar however long the entry below it is.
       }}
     >
       <div

@@ -6,7 +6,6 @@ import {Boot} from '@/components/firmware/Boot'
 import {Detail} from '@/components/firmware/Detail'
 import {useFirmwareLayout} from '@/components/firmware/layout'
 import {LibraryRail} from '@/components/firmware/LibraryRail'
-import {Menu} from '@/components/firmware/Menu'
 import {StatusBar} from '@/components/firmware/StatusBar'
 import {Timeline} from '@/components/firmware/Timeline'
 import {useScreenTheme} from '@/components/firmware/theme'
@@ -14,7 +13,6 @@ import type {Section} from '@/components/console/store'
 
 /** The status bar's own names: short caps chrome, not the readable labels. */
 const STATUS_NAMES: Record<Section, string> = {
-  menu: 'MENU',
   library: 'LIBRARY',
   timeline: 'TIMELINE',
 }
@@ -51,6 +49,16 @@ export function Firmware({content}: {content: ConsoleContent}) {
       // What `usePanelScroll` looks for: a touch outside this is the chassis',
       // and belongs to drag-to-rotate.
       data-firmware
+      /*
+        drei mounts this inside the very element R3F listens on, so without
+        these a press on the screen bubbles into the scene — where R3F raycasts
+        it from the DOM target's own offsets, lands on bare chassis, and starts
+        turning the console under a finger that was only swiping the rail. Move
+        and up are left alone: the rail drag, the stick and the turn all listen
+        for those on the window.
+      */
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
       style={{
         ...vars,
         position: 'relative',
@@ -69,7 +77,6 @@ export function Firmware({content}: {content: ConsoleContent}) {
 
       {/* Keyed so the screens crossfade into one another. */}
       <div key={section} style={{display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0}}>
-        {section === 'menu' ? <Menu content={content} /> : null}
         {section === 'library' ? <LibraryRail content={content} /> : null}
         {section === 'timeline' ? <Timeline content={content} /> : null}
       </div>

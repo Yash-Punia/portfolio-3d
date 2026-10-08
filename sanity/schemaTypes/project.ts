@@ -124,6 +124,15 @@ export const project = defineType({
       validation: (rule) => rule.required(),
     }),
     defineField({
+      name: 'preview',
+      title: 'Gameplay preview',
+      type: 'file',
+      group: 'media',
+      options: {accept: 'image/gif,video/mp4,video/webm'},
+      description:
+        'Optional short looping clip that replaces the cover when a visitor rests on this project for a moment. A GIF works; an MP4 or WebM of the same clip is a fraction of the size and loads faster on a phone. Keep it a few seconds long, landscape, with no sound.',
+    }),
+    defineField({
       name: 'gallery',
       title: 'Gallery',
       type: 'array',

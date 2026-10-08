@@ -91,10 +91,19 @@ const CONSOLE_GROUPS: Group[] = [
     ],
   },
   {
-    title: 'Theme toggle',
+    title: 'Theme toggle and close',
     controls: [
       {key: 'toggleY', label: 'Depth below top edge', min: 0.1, max: 2, step: 0.02},
-      {key: 'toggleRadius', label: 'Cap radius', min: 0.05, max: 0.4, step: 0.005},
+      {key: 'toggleX', label: 'Toggle across', min: -0.9, max: 0.9, step: 0.01},
+      {key: 'closeX', label: 'Close across', min: -0.9, max: 0.9, step: 0.01},
+      {key: 'toggleRadius', label: 'Toggle radius', min: 0.05, max: 0.4, step: 0.005},
+    ],
+  },
+  {
+    title: 'Hit areas',
+    controls: [
+      {key: 'buttonHitScale', label: 'Buttons (× cap radius)', min: 1, max: 3, step: 0.05},
+      {key: 'joystickHitScale', label: 'Joystick (× cap radius)', min: 1, max: 3, step: 0.05},
     ],
   },
   {
@@ -149,8 +158,10 @@ const FIRMWARE_GROUPS: Group[] = [
     ],
   },
   {
-    title: 'Detail view',
-    controls: [{key: 'fwDetailCoverHeight', label: 'Cover height', min: 60, max: 520, step: 5}],
+    title: 'Preview clip',
+    controls: [
+      {key: 'fwPreviewDelayMs', label: 'Rest before it plays (ms)', min: 0, max: 5000, step: 100},
+    ],
   },
   {
     title: 'Timeline',

@@ -28,17 +28,12 @@ export const GLYPHS = {
   close:
     'M4.7 3.3 12 10.6l7.3-7.3 1.4 1.4L13.4 12l7.3 7.3-1.4 1.4L12 13.4l-7.3 7.3-1.4-1.4L10.6 12 3.3 4.7z',
   /**
-   * The four verbs on the ABXY caps.
-   *
-   * A and B are letterforms rather than a tick and a cross, because that is
-   * what is printed on the buttons of the thing this is an object of — and a
-   * visitor who has held a handheld already knows which one goes back. Each
-   * counter is wound against its outer contour, the way `github`'s and `itch`'s
-   * are, so `toShapes` cuts it out rather than filling it in.
+   * The four verbs on the ABXY caps. A is a tick — in, take this one — and B an
+   * arrow turning back on itself, so the pair say what they do rather than
+   * which letter they are.
    */
-  letterA: 'M12 2 3 22h4.3l1.8-4.4h5.8L16.7 22H21L12 2zm0 6.6 2.1 5.2H9.9L12 8.6z',
-  letterB:
-    'M4.6 2h7.7c3.4 0 5.6 1.7 5.6 4.6 0 1.9-1 3.4-2.7 4.1 2.2.6 3.5 2.3 3.5 4.6 0 3.4-2.5 5.4-6.5 5.4H4.6V2zm4 8h3.1c1.3 0 2.1-.7 2.1-1.9S12.9 6.2 11.6 6.2H8.6V10zm0 7.7h3.5c1.5 0 2.4-.8 2.4-2.1s-.9-2.1-2.4-2.1H8.6v4.2z',
+  check: 'M9 15.2 4.9 11.1 2.8 13.2 9 19.4 21.2 7.2l-2.1-2.1z',
+  undo: 'M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z',
   /** Library: a handheld, seen face on. */
   gamepad:
     'M6.8 5h10.4c2.7 0 4.9 2.2 5.3 4.9l1.2 7.3c.3 2-1.2 3.8-3.2 3.8-1.1 0-2.1-.6-2.7-1.5L16.2 17H7.8l-1.6 2.5c-.6.9-1.6 1.5-2.7 1.5-2 0-3.5-1.8-3.2-3.8l1.2-7.3C1.9 7.2 4.1 5 6.8 5zm-.6 3.6v1.9H4.3v1.9h1.9v1.9h1.9v-1.9H10v-1.9H8.1V8.6H6.2zm10.6.5a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 0 0 0-2.8zm-2.6 2.9a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 0 0 0-2.8z',
@@ -49,6 +44,12 @@ export const GLYPHS = {
   download: 'M11 3h2v9.2l3.6-3.6 1.4 1.4-6 6-6-6 1.4-1.4L11 12.2V3zM4 19h16v2H4v-2z',
   /** BACK, on the screen: a chevron pointing the way out. */
   chevronLeft: 'M15.4 4.4 7.8 12l7.6 7.6 1.4-1.4L10.6 12l6.2-6.2-1.4-1.4z',
+  /** The detail view's link buttons: a trailer, a store page, anything else. */
+  play: 'M8 5v14l11-7z',
+  store:
+    'M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z',
+  external:
+    'M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z',
 } as const
 
 export type GlyphName = keyof typeof GLYPHS
@@ -69,12 +70,15 @@ export const VIEWBOX: Record<GlyphName, number> = {
   moon: 24,
   sun: 24,
   close: 24,
-  letterA: 24,
-  letterB: 24,
+  check: 24,
+  undo: 24,
   gamepad: 24,
   hourglass: 24,
   download: 24,
   chevronLeft: 24,
+  play: 24,
+  store: 24,
+  external: 24,
 }
 
 /**

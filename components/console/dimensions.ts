@@ -48,6 +48,8 @@ export interface Dimensions {
     stemHeight: number
     maxTilt: number
     deadzone: number
+    /** The invisible disc a finger actually has to land on. */
+    hitRadius: number
   }
   /** ABXY diamond on the right flap: X top, A right, B bottom, Y left. */
   abxy: {
@@ -61,15 +63,19 @@ export interface Dimensions {
     glyphSize: number
     ringRadius: number
     ringTube: number
+    hitRadius: number
   }
-  /** Theme toggle at the top of the right flap's inner face. */
+  /** Theme toggle and close cap, side by side at the top of the right flap. */
   toggle: {
+    x: number
+    closeX: number
     y: number
     capRadius: number
     capHeight: number
     housingRadius: number
     housingDepth: number
     glyphSize: number
+    hitRadius: number
   }
   /** Inner face of a flap, in flap-local space — where the controls sit. */
   faceZ: number
@@ -146,6 +152,7 @@ export function deriveDimensions(t: Tuning): Dimensions {
       stemHeight: t.joystickRadius * 0.6,
       maxTilt: JOYSTICK_MAX_TILT,
       deadzone: JOYSTICK_DEADZONE,
+      hitRadius: t.joystickRadius * t.joystickHitScale,
     },
     abxy: {
       y: t.abxyY,
@@ -158,10 +165,12 @@ export function deriveDimensions(t: Tuning): Dimensions {
       glyphSize: t.abxyRadius * 1.15,
       ringRadius: t.abxyRadius * 1.72,
       ringTube: 0.013,
+      hitRadius: t.abxyRadius * t.buttonHitScale,
     },
     toggle: {
-      // Measured down from the flap's top edge, the way the close button is
-      // measured up from its bottom one.
+      x: t.toggleX,
+      closeX: t.closeX,
+      // Measured down from the flap's top edge.
       y: flapHeight / 2 - t.toggleY,
       capRadius: t.toggleRadius,
       // Deeper than a face button's cap: this one turns over, so its edge is
@@ -170,6 +179,7 @@ export function deriveDimensions(t: Tuning): Dimensions {
       housingRadius: t.toggleRadius * 1.45,
       housingDepth: BUTTON_HOUSING_DEPTH,
       glyphSize: t.toggleRadius * 1.15,
+      hitRadius: t.toggleRadius * t.buttonHitScale,
     },
     faceZ: -t.flapDepth / 2,
     z: {

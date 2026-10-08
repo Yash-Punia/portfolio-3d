@@ -7,7 +7,7 @@ import {MathUtils, type MeshStandardMaterial} from 'three'
 
 import {resumeHref, type ConsoleContent} from '@/components/console/content'
 import {usePanelGeometry, type PanelSpec} from '@/components/console/geometry'
-import {FaceButtons} from '@/components/console/parts/FaceButtons'
+import {FaceButton, FaceButtons} from '@/components/console/parts/FaceButtons'
 import {InfoMonitor} from '@/components/console/parts/InfoMonitor'
 import {Joystick} from '@/components/console/parts/Joystick'
 import {ThemeToggle} from '@/components/console/parts/ThemeToggle'
@@ -82,6 +82,7 @@ export function Flap({side, content}: {side: FlapSide; content: ConsoleContent})
 
   const isOpen = useConsole((state) => state.isOpen)
   const open = useConsole((state) => state.open)
+  const close = useConsole((state) => state.close)
   const reducedMotion = useReducedMotion()
   const band = useRef<MeshStandardMaterial>(null)
   const pressedAt = useRef<{x: number; y: number} | null>(null)
@@ -198,7 +199,14 @@ export function Flap({side, content}: {side: FlapSide; content: ConsoleContent})
         ) : (
           <>
             <ThemeToggle />
-            {/* B is the close button now — a verb, not a cap of its own. */}
+            {/*
+              Top right: the way out in one press, wherever the screen is. The
+              x is negated for the reason `ThemeToggle`'s is: the flap's own
+              frame faces away on its inner side.
+            */}
+            <group position={[-d.toggle.closeX, d.toggle.y, d.faceZ]} rotation={[0, Math.PI, 0]}>
+              <FaceButton dark focus="close" glyph="close" onPress={close} />
+            </group>
             <FaceButtons content={content} />
           </>
         )}

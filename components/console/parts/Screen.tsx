@@ -44,9 +44,10 @@ export function Screen({content}: {content: ConsoleContent}) {
       // alone lands it on the glass — see `deriveFirmwareLayout`.
       scale={htmlScale(d.screen.width, panelWidth)}
       transform
-      // A drag that starts on the screen must not rotate the console (SPEC §5);
-      // the screen mesh behind it already stops the event, and the DOM layer
-      // over it never reaches R3F at all.
+      // A drag that starts on the screen must not rotate the console (SPEC §5).
+      // This DOM is mounted inside R3F's own event target, so it would reach
+      // the scene by bubbling — `Firmware` stops its pointerdown and click at
+      // its root for exactly that reason.
       zIndexRange={[10, 0]}
     >
       <Firmware content={content} />
