@@ -1,35 +1,55 @@
-'use client'
-
-import {menuChoice, type ConsoleContent} from '@/components/console/content'
+import {
+  contactRows,
+  openLink,
+  openRow,
+  trailerOf,
+  type ConsoleContent,
+} from '@/components/console/content'
+import {hasRows, SCREENS, type Device} from '@/components/console/device'
 import {useConsole} from '@/components/console/store'
 
 /**
- * The accept verb — the A button, and `Enter`/`Space`.
+ * The console's verbs that have to read the content, in one place so the caps,
+ * the keyboard, the page's hidden buttons and the screen's own taps agree.
  *
- * It lives here rather than in the store because it is the one navigation
- * action that has to read the content: which section the menu's highlight
- * stands for, and whether the rail's selection is a real project. And it lives
- * here rather than in `content.ts` because that file is
- * imported by the page, which is a Server Component — importing the store there
- * would pull zustand into the server bundle for nothing.
- *
- * `back()` and `jump()` need no content, so they are store actions.
+ * Here rather than in the store because they need the content, and rather than
+ * in `content.ts` because that file is imported by the page, which is a Server
+ * Component.
  */
-export function accept(content: ConsoleContent) {
-  const {isOpen, open, isDetailOpen, section, menuIndex, libraryIndex, setSection, openDetail} =
-    useConsole.getState()
 
-  if (!isOpen) return open()
-  // A detail view is the bottom of the stack: there is nothing further in.
-  if (isDetailOpen) return
+/**
+ * A, Enter and Space.
+ *
+ * - Games: the trailer if the game has one, otherwise its page.
+ * - A project page: the trailer.
+ * - A list (Contact, the handheld's About): the highlighted row.
+ */
+export function accept(content: ConsoleContent, device: Device) {
+  const state = useConsole.getState()
 
-  if (section === 'menu') {
-    const target = menuChoice(content, menuIndex)
-    if (target) setSection(target)
+  if (state.screen === 'games') {
+    const project = content.projects[state.gameIndex]
+    if (!project) return
+    const trailer = trailerOf(project)
+    if (trailer?.kind === 'link') return openLink(trailer.src)
+    if (trailer) return state.playTrailer()
+    if (!state.isProjectOpen) state.openProject()
     return
   }
 
-  // A timeline entry has nothing to drill into — its detail is already on
-  // screen — so accept stays a no-op there.
-  if (section === 'library' && content.projects[libraryIndex]) openDetail()
+  if (hasRows(state.screen, device)) {
+    const row = contactRows(content)[state.rowIndex]
+    if (row) openRow(row)
+  }
+}
+
+/** Y and `D`: the selected game's page. */
+export function details(content: ConsoleContent) {
+  const state = useConsole.getState()
+  if (content.projects[state.gameIndex]) state.openProject()
+}
+
+/** MENU, X and `M`: the next tab along. */
+export function menu(device: Device) {
+  useConsole.getState().nextScreen(SCREENS[device])
 }

@@ -10,7 +10,7 @@ import {Component, useSyncExternalStore, type ReactNode} from 'react'
  * canvas, WebGL 2 then WebGL 1, and the context released again immediately so
  * the probe does not hold one of the browser's few live contexts. A machine that
  * refuses both — a locked-down browser, a blocklisted driver, a device out of
- * memory — gets the 2D firmware instead of a blank stage.
+ * memory — gets the flat screen instead of a blank stage.
  */
 export function webglAvailable(): boolean {
   try {

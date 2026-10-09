@@ -1,31 +1,29 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import {useEffect, useState, useSyncExternalStore} from 'react'
+import {useEffect, useState} from 'react'
 
-import {accept} from '@/components/console/actions'
+import {accept, details, menu} from '@/components/console/actions'
 import {
-  menuChoice,
-  menuOptions,
-  neighbours,
-  SECTION_LABELS,
+  contactRows,
+  socialLabel,
+  isLocalHref,
+  RESUME_FILENAME,
+  resumeHref,
   type ButtonSlot,
   type ConsoleContent,
 } from '@/components/console/content'
-import {inConsoleFrame, panelScale} from '@/components/console/frame'
+import {hasRows, SCREEN_LABELS, useDevice, type Device} from '@/components/console/device'
 import {useInput, type Direction, type FocusTarget} from '@/components/console/input'
-import {useIsMobile} from '@/components/console/mobile'
 import {Skeleton} from '@/components/console/Skeleton'
-import {useConsole, useTheme, type Section} from '@/components/console/store'
+import {useConsole} from '@/components/console/store'
+import {C, FONT} from '@/components/console/tokens'
 import {failWebgl, useWebgl, WebglBoundary} from '@/components/console/webgl'
 
 /**
- * The client boundary for the 3D scene.
- *
- * three.js is pulled in on the client only (SPEC §12) — `ssr: false` is only
- * valid inside a Client Component, so this wrapper exists to hold it. The
- * container fills the viewport before the chunk arrives, so the canvas cannot
- * shift the page in.
+ * The client boundary for the 3D scene. three.js is pulled in on the client
+ * only — `ssr: false` is only valid inside a Client Component, so this wrapper
+ * exists to hold it.
  */
 const Scene = dynamic(() => import('@/components/console/Scene'), {
   ssr: false,
@@ -33,24 +31,10 @@ const Scene = dynamic(() => import('@/components/console/Scene'), {
 })
 
 /**
- * The tuning panel is a development tool and ships in its own chunk, pulled in
- * only when `?tune` asks for it — no visitor pays for it and none of its markup
- * reaches the page (SPEC §1).
+ * The screen without a console, for a browser that cannot run WebGL. Its own
+ * chunk: a visitor whose browser does run WebGL never downloads it.
  */
-const TuningPanel = dynamic(
-  () => import('@/components/console/TuningPanel').then((module) => module.TuningPanel),
-  {ssr: false},
-)
-
-/**
- * The firmware without a canvas (SPEC §11.3), in its own chunk for the same
- * reason the scene is in one: a visitor whose browser runs WebGL never
- * downloads it, and importing it directly here would pull the whole firmware
- * into the page bundle (SPEC §12).
- */
-const FallbackFirmware = dynamic(() => import('@/components/console/FallbackFirmware'), {
-  ssr: false,
-})
+const FlatScreen = dynamic(() => import('@/components/console/FlatScreen'), {ssr: false})
 
 const ARROWS: Record<string, Direction> = {
   ArrowUp: 'up',
@@ -59,31 +43,19 @@ const ARROWS: Record<string, Direction> = {
   ArrowRight: 'right',
 }
 
-const SLOT_KEYS: Record<string, ButtonSlot> = {a: 'A', b: 'B', x: 'X', y: 'Y'}
+/** The letters a keyboard presses the caps with. `D` is Y's (the design's legend), `M` is MENU. */
+const KEYS: Record<string, FocusTarget> = {a: 'A', b: 'B', x: 'X', y: 'Y', d: 'Y', m: 'menu'}
 
-/**
- * What each face button does, wherever it is pressed from — the cap, its
- * letter key, or the hidden twin in the page. `FaceButtons` builds the same
- * four; this is the copy the keyboard and the landmark share.
- */
-const SLOT_LABELS: Record<ButtonSlot, string> = {
-  A: 'Select',
-  B: 'Back',
-  X: 'Open the games library',
-  Y: 'Open the experience timeline',
-}
+/** What each cap does, wherever it is pressed from — the cap, its key, or its twin in the page. */
+function pressAction(cap: FocusTarget, content: ConsoleContent, device: Device) {
+  useInput.getState().pressSlot(cap)
+  const state = useConsole.getState()
 
-/** The section each of the two shortcut caps jumps to. */
-const SLOT_SECTION: Partial<Record<ButtonSlot, Section>> = {X: 'library', Y: 'timeline'}
-
-function pressSlotAction(slot: ButtonSlot, content: ConsoleContent) {
-  useInput.getState().pressSlot(slot)
-
-  if (slot === 'A') return accept(content)
-  if (slot === 'B') return useConsole.getState().back()
-
-  const section = SLOT_SECTION[slot]
-  if (section) useConsole.getState().jump(section)
+  if (cap === 'A') return accept(content, device)
+  if (cap === 'B') return state.back()
+  if (cap === 'Y') return details(content)
+  if (cap === 'about') return state.setScreen('about')
+  menu(device)
 }
 
 /** Keystrokes belong to whatever the visitor is typing in, if anything. */
@@ -96,61 +68,43 @@ function isTyping() {
 }
 
 /**
- * Keyboard control of the console, on the DOM side so it works before the
- * three.js chunk lands.
- *
- * `Escape` is the back button (SPEC §5); `Enter` and `Space` open, because a
- * canvas that can only be opened by pointer is a dead end for keyboard visitors
- * (§11.4). The arrow keys are the joystick (§5) — they write the same held
- * direction the stick writes, which is what makes the stick lean when they are
- * pressed — and `A`/`B`/`X`/`Y` do what the four caps beside them do.
+ * Keyboard control, on the DOM side so it works before the three.js chunk
+ * lands. The arrow keys are the D-pad — they write the same held direction it
+ * does, which is what makes it rock under a keystroke. `Escape` is B, `Enter`
+ * and `Space` are A, and the letters press their caps.
  */
-function useConsoleKeys(content: ConsoleContent) {
+function useConsoleKeys(content: ConsoleContent, device: Device) {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
       if (isTyping()) return
 
-      const {isOpen, open, back} = useConsole.getState()
-
-      // Escape is the B button: a detail view, then the rail, then the menu,
-      // then the console itself. One definition of back, in the store (SPEC §8).
       if (event.key === 'Escape') {
-        if (!isOpen) return
-        back()
+        useInput.getState().pressSlot('B')
+        useConsole.getState().back()
         return
       }
 
-      if (isOpen) {
-        const direction = ARROWS[event.key]
-        if (direction) {
-          event.preventDefault()
-          useInput.getState().hold(direction)
-          return
-        }
-
-        // Enter is the A button: it takes the highlighted menu half, or opens
-        // the selected project.
-        if (event.key === 'Enter' || event.key === ' ') {
-          if (document.activeElement !== document.body) return
-          event.preventDefault()
-          accept(content)
-          return
-        }
-
-        const slot = SLOT_KEYS[event.key.toLowerCase()]
-        if (slot) {
-          event.preventDefault()
-          pressSlotAction(slot, content)
-        }
+      const direction = ARROWS[event.key]
+      if (direction) {
+        event.preventDefault()
+        useInput.getState().hold(direction)
         return
       }
 
-      // Only while closed, and only when nothing else owns the keystroke.
+      // Enter on a focused link or button is that control's own; only a bare
+      // page hands it to the console.
       if (event.key === 'Enter' || event.key === ' ') {
         if (document.activeElement !== document.body) return
         event.preventDefault()
-        open()
+        pressAction('A', content, device)
+        return
+      }
+
+      const cap = KEYS[event.key.toLowerCase()]
+      if (cap) {
+        event.preventDefault()
+        pressAction(cap, content, device)
       }
     }
 
@@ -158,40 +112,30 @@ function useConsoleKeys(content: ConsoleContent) {
       if (ARROWS[event.key]) useInput.getState().hold(null)
     }
 
-    // A tab away mid-hold would otherwise leave the stick leaning forever.
-    function onBlur() {
-      useInput.getState().hold(null)
-    }
+    // A tab away mid-hold would otherwise leave the D-pad rocked forever.
+    const onBlur = () => useInput.getState().hold(null)
 
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
     window.addEventListener('blur', onBlur)
-
     return () => {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('blur', onBlur)
     }
-  }, [content])
+  }, [content, device])
 }
 
-const FOCUS_TARGETS: FocusTarget[] = ['A', 'B', 'X', 'Y', 'close', 'theme']
+const FOCUS_TARGETS: FocusTarget[] = ['A', 'B', 'X', 'Y', 'menu', 'about']
 
 /**
- * The physical controls' focus rings, and the rail's selection, driven by real
- * DOM focus in the page.
+ * The caps' focus rings, and the shelf's selection, driven by real DOM focus
+ * in the page.
  *
- * The visually-hidden landmark already renders the anchors and buttons — they
- * are server-rendered, they carry the accessible names, and they are where
- * `Tab` naturally lands. Mirroring their focus onto the object gives SPEC
- * §11.4's visible focus indicator without a second, duplicate set of controls
- * for a screen reader to read through, and it is delegated from `document` so
- * `app/page.tsx` stays a Server Component with no handlers of its own.
- *
- * Two attributes: `data-console-focus` names a control on the chassis, and
- * `data-project-index` names a tile on the Library rail — focusing a project's
- * button selects that tile, activating it opens the tile's detail view, which is
- * SPEC §11.6's "project tiles are buttons" without leaving the rail behind.
+ * The visually-hidden landmark renders a button per project; `ConsoleControls`
+ * renders one per cap. Focusing a project's button selects it on the shelf and
+ * activating it opens its page; focusing a cap's twin lights the cap. Delegated
+ * from `document`, so `app/page.tsx` stays a Server Component.
  */
 function useLandmarkFocus() {
   useEffect(() => {
@@ -211,28 +155,19 @@ function useLandmarkFocus() {
 
     function onFocus(event: FocusEvent) {
       useInput.getState().focusSlot(controlOf(event.target))
-
       const index = indexOf(event.target)
       if (index === null) return
-
-      const {isOpen, isDetailOpen, setSection, setLibraryIndex} = useConsole.getState()
-      // Section first: entering it starts from the beginning, and this means a
-      // particular project, so its index goes on top.
-      if (isOpen && !isDetailOpen) setSection('library')
-      setLibraryIndex(index)
+      const state = useConsole.getState()
+      if (state.screen !== 'games') state.setScreen('games')
+      state.setGameIndex(index)
     }
 
     function onClick(event: MouseEvent) {
       const index = indexOf(event.target)
       if (index === null) return
-
-      // `open()` starts the firmware from the top, so it goes first and the
-      // destination is set after it.
-      const console = useConsole.getState()
-      if (!console.isOpen) console.open()
-      console.setSection('library')
-      console.setLibraryIndex(index)
-      console.openDetail()
+      const state = useConsole.getState()
+      state.setGameIndex(index)
+      state.openProject()
     }
 
     const onBlur = () => useInput.getState().focusSlot(null)
@@ -240,7 +175,6 @@ function useLandmarkFocus() {
     document.addEventListener('focusin', onFocus)
     document.addEventListener('focusout', onBlur)
     document.addEventListener('click', onClick)
-
     return () => {
       document.removeEventListener('focusin', onFocus)
       document.removeEventListener('focusout', onBlur)
@@ -249,41 +183,9 @@ function useLandmarkFocus() {
   }, [])
 }
 
-/**
- * The rail's consumer of the directional stream Phase 3 built.
- *
- * `input.tick` advances once when a direction is taken and every 180ms it is
- * held after, from either the joystick or the arrow keys — so subscribing here
- * is what makes both of them move the selection, at one tile per notch rather
- * than one per frame (SPEC §5, §8).
- */
-function useRailInput(content: ConsoleContent) {
-  useEffect(
-    () =>
-      useInput.subscribe((state, previous) => {
-        if (state.tick === previous.tick) return
-        const direction = state.held
-        if (direction === null) return
-
-        const {isOpen, isDetailOpen} = useConsole.getState()
-        if (!isOpen) return
-        // In a detail view up and down scroll the page, and left and right step
-        // to the neighbouring project, as the corner arrows on the glass do.
-        if (!isDetailOpen) move(direction, content)
-        else if (direction === 'left' || direction === 'right')
-          useConsole.getState().moveLibrary(direction === 'left' ? -1 : 1, content.projects.length)
-        else scrollDetail(direction)
-      }),
-    [content],
-  )
-}
-
-/**
- * The stick, and the arrow keys, inside a project's detail view: up and down
- * scroll it a good part of a screen at a time.
- */
-function scrollDetail(direction: 'up' | 'down') {
-  const box = document.querySelector('[data-detail-scroll]')
+/** The one scrolling box on the glass, nudged by the D-pad's up and down. */
+function scrollBox(direction: 'up' | 'down') {
+  const box = document.querySelector('[data-glass] [data-scroll]')
   if (!(box instanceof HTMLElement)) return
   const step = box.clientHeight * 0.4
   box.scrollBy({top: direction === 'up' ? -step : step, behavior: 'smooth'})
@@ -292,50 +194,64 @@ function scrollDetail(direction: 'up' | 'down') {
 /**
  * One directional move, from whichever input made it.
  *
- * Up and down walk the stack of screens — Library, Timeline — through the one
- * `neighbours()` definition. Left and right move within the rail showing,
- * except on the menu, where the two halves are stacked and every direction
- * moves the highlight: a menu that ignored a sideways nudge would feel broken
- * (SPEC §8).
+ * - Games: left and right walk the shelf.
+ * - A project page: left and right step to the neighbouring game, up and down
+ *   scroll the write-up.
+ * - A list: up and down walk its rows, and scroll on past the ends.
+ * - Anything else that scrolls: up and down scroll it.
  */
-function move(direction: Direction, content: ConsoleContent) {
-  const {section, setSection, moveMenu, moveLibrary, moveTimeline} = useConsole.getState()
+function move(direction: Direction, content: ConsoleContent, device: Device) {
+  const state = useConsole.getState()
+  const vertical = direction === 'up' || direction === 'down'
   const delta = direction === 'up' || direction === 'left' ? -1 : 1
 
-  if (section === 'menu') {
-    moveMenu(delta, menuOptions(content).length)
+  if (state.screen === 'games') {
+    if (!vertical) return state.moveGame(delta, content.projects.length)
+    if (state.isProjectOpen) scrollBox(direction)
     return
   }
 
-  if (direction === 'up' || direction === 'down') {
-    const target = neighbours(section, content)[direction]
-    if (target) setSection(target)
-    return
+  if (!vertical) return
+  if (hasRows(state.screen, device)) {
+    const before = state.rowIndex
+    state.moveRow(delta, contactRows(content).length)
+    if (useConsole.getState().rowIndex !== before) return
   }
-
-  if (section === 'timeline') moveTimeline(delta, content.timeline.length)
-  else moveLibrary(delta, content.projects.length)
+  scrollBox(direction)
 }
 
-/** SPEC §8: accumulate, fire on a threshold, then lock so a flick cannot skip. */
+/**
+ * The D-pad's and the arrow keys' consumer: `input.tick` advances once per
+ * move, so subscribing here moves the selection one step per press or repeat.
+ */
+function useDirectionalInput(content: ConsoleContent, device: Device) {
+  useEffect(
+    () =>
+      useInput.subscribe((state, previous) => {
+        if (state.tick === previous.tick || state.held === null) return
+        move(state.held, content, device)
+      }),
+    [content, device],
+  )
+}
+
+/** Accumulate, fire on a threshold, then lock so an inertial flick cannot skip. */
 const WHEEL_THRESHOLD = 40
 const WHEEL_LOCK_MS = 120
 
 /**
- * Vertical scroll moves the selection horizontally — the "scroll down to move
- * across" behaviour of SPEC §8 — and a trackpad's horizontal axis does the same.
- * Delta accumulates to a threshold, fires one move, then the stream is locked
- * for 120ms and whatever inertia arrives during it is discarded, which is what
- * keeps an inertial flick from skipping eight projects.
+ * The wheel, over the home screen, walks the shelf: vertical scroll moves the
+ * selection across. Anywhere that scrolls natively keeps its wheel.
  */
-function useWheelRail(content: ConsoleContent) {
+function useWheelShelf(content: ConsoleContent) {
   useEffect(() => {
     let accumulated = 0
     let lockedUntil = 0
 
     function onWheel(event: WheelEvent) {
-      const {isOpen, isDetailOpen} = useConsole.getState()
-      if (!isOpen || isDetailOpen) return
+      const {screen, isProjectOpen, moveGame} = useConsole.getState()
+      if (screen !== 'games' || isProjectOpen) return
+      if (event.target instanceof Element && event.target.closest('[data-scroll]')) return
 
       const now = performance.now()
       if (now < lockedUntil) {
@@ -346,7 +262,7 @@ function useWheelRail(content: ConsoleContent) {
       accumulated += Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
       if (Math.abs(accumulated) < WHEEL_THRESHOLD) return
 
-      move(accumulated > 0 ? 'right' : 'left', content)
+      moveGame(accumulated > 0 ? 1 : -1, content.projects.length)
       accumulated = 0
       lockedUntil = now + WHEEL_LOCK_MS
     }
@@ -357,285 +273,204 @@ function useWheelRail(content: ConsoleContent) {
 }
 
 /**
- * Finger-scrolling a panel that overflows: a timeline entry with a long
- * summary, a project's detail view.
- *
- * It is done here rather than left to the browser because the panel is a
- * rotated, scaled subtree of a `<Html transform>`: what a browser makes of a
- * touch on a box turned through 90° is not something to find out on someone's
- * phone. The box is marked `touch-action: none`, so there is exactly one thing
- * moving it — this, through `inConsoleFrame`, the same quarter turn the rails
- * drag through.
- *
- * It no longer carries window-wide swipe navigation: sideways on a rail is the
- * rail's own drag, which follows the finger instead of jumping a tile at a
- * time, and up/down are the Library and Timeline buttons on the flap. A
- * window-wide swipe was also the thing quietly competing with drag-to-rotate,
- * which is why the console would not turn under a finger. The one swipe left is
- * sideways on a project's detail view, which has no rail under it to drag.
- *
- * Hence the `[data-firmware]` gate: nothing outside the screen is ever
- * captured here, so a drag on bare chassis belongs entirely to `Console`.
- *
- * Nothing calls `preventDefault`, so every tap the firmware handles still
- * works.
+ * What the screen is showing, in words. The screen itself is `aria-hidden` —
+ * the page's landmark is the readable copy — so the one thing a screen reader
+ * cannot otherwise learn is that a press changed it.
  */
-/** How far, in panel px, a sideways swipe in a detail view must travel to step. */
-const DETAIL_SWIPE = 48
+function useAnnouncement(content: ConsoleContent, device: Device): string {
+  const isBooting = useConsole((state) => state.isBooting)
+  const screen = useConsole((state) => state.screen)
+  const index = useConsole((state) => state.gameIndex)
+  const isProjectOpen = useConsole((state) => state.isProjectOpen)
+  const isTrailerPlaying = useConsole((state) => state.isTrailerPlaying)
+  const rowIndex = useConsole((state) => state.rowIndex)
 
-function usePanelScroll(enabled: boolean, projectCount: number) {
-  useEffect(() => {
-    if (!enabled) return
+  if (isBooting) return 'Console on'
 
-    let start: {x: number; y: number} | null = null
-    let scroller: {box: HTMLElement; top: number; scale: number; scrolls: boolean} | null = null
+  if (screen !== 'games') {
+    const label = SCREEN_LABELS[screen]
+    if (!hasRows(screen, device)) return label
+    const row = contactRows(content)[rowIndex]
+    return row ? `${label}, ${row.label}` : label
+  }
 
-    function onPointerDown(event: PointerEvent) {
-      start = null
-      scroller = null
-      if (event.pointerType === 'mouse') return
-      if (!(event.target instanceof HTMLElement)) return
-      if (!event.target.closest('[data-firmware]')) return
-
-      const box = event.target.closest('[data-console-scroll]')
-      if (!(box instanceof HTMLElement)) return
-      // A box with nothing hidden below the fold is not a scroller — but a
-      // detail view still takes the sideways swipe to its neighbours.
-      const scrolls = box.scrollHeight > box.clientHeight
-      if (!scrolls && !box.hasAttribute('data-detail-scroll')) return
-
-      start = {x: event.clientX, y: event.clientY}
-      scroller = {box, top: box.scrollTop, scale: panelScale(box), scrolls}
-    }
-
-    function onPointerMove(event: PointerEvent) {
-      if (!start || !scroller?.scrolls) return
-
-      const {x, y} = inConsoleFrame(event.clientX - start.x, event.clientY - start.y)
-      // The dominant axis wins outright, the same rule the rails follow.
-      if (Math.abs(y) <= Math.abs(x)) return
-
-      scroller.box.scrollTop = scroller.top - y / scroller.scale
-    }
-
-    function onPointerUp(event: PointerEvent) {
-      /*
-        A sideways swipe on a project's detail view steps to its neighbour, the
-        way the corner arrows and the stick do: finger to the left brings the
-        next one in, as on any carousel. Decided on the release, so a swipe is
-        one step however far it goes.
-      */
-      if (event.type === 'pointerup' && start && scroller?.box.hasAttribute('data-detail-scroll')) {
-        const {x, y} = inConsoleFrame(event.clientX - start.x, event.clientY - start.y)
-        if (Math.abs(x) > Math.abs(y) && Math.abs(x) / scroller.scale > DETAIL_SWIPE) {
-          useConsole.getState().moveLibrary(x < 0 ? 1 : -1, projectCount)
-        }
-      }
-      start = null
-      scroller = null
-    }
-
-    // Captured: the firmware stops its own pointerdown from bubbling (it would
-    // otherwise reach R3F, see `Firmware`), so the bubble phase never gets here.
-    window.addEventListener('pointerdown', onPointerDown, true)
-    window.addEventListener('pointermove', onPointerMove)
-    window.addEventListener('pointerup', onPointerUp)
-    window.addEventListener('pointercancel', onPointerUp)
-
-    return () => {
-      window.removeEventListener('pointerdown', onPointerDown, true)
-      window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('pointerup', onPointerUp)
-      window.removeEventListener('pointercancel', onPointerUp)
-    }
-  }, [enabled, projectCount])
+  const project = content.projects[index]
+  if (!project) return 'Games'
+  const name = project.title ?? ''
+  if (isTrailerPlaying) return `${name}, trailer playing`
+  if (isProjectOpen) return `${name}, details`
+  return `Games, ${name}, ${index + 1} of ${content.projects.length}`
 }
 
 /**
- * The stage behind the console follows the screen's theme.
- *
- * The chassis materials still do not (SPEC §5) — this is the page the object
- * stands on, and a light screen on a near-black page reads as a lamp in a dark
- * room. The two stage colours and the cross-fade between them live in
- * `globals.css`; all this does is say which pair is in force.
+ * The page around the desk console (design 4a): name and title on the left,
+ * the links and the résumé on the right — so a recruiter never has to "play"
+ * to reach them — and the keyboard's hint underneath.
  */
-function useStageTheme() {
-  const theme = useTheme()
+function DeskChrome({content}: {content: ConsoleContent}) {
+  const {settings, socialLinks} = content
+  const resume = resumeHref(settings)
+  const link = {color: C.muted, textDecoration: 'none'}
 
-  useEffect(() => {
-    document.documentElement.dataset.stage = theme
-  }, [theme])
-}
-
-/** The URL is an external source the server render cannot see. */
-const subscribeToNothing = () => () => {}
-
-function useTuningFlag() {
-  return useSyncExternalStore(
-    subscribeToNothing,
-    () => new URLSearchParams(window.location.search).has('tune'),
-    () => false,
+  return (
+    <>
+      <header
+        style={{
+          position: 'fixed',
+          left: 56,
+          right: 56,
+          top: 0,
+          height: 84,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontFamily: FONT.ui,
+          color: C.ink,
+          zIndex: 5,
+        }}
+      >
+        <div style={{display: 'flex', gap: 14, alignItems: 'baseline'}}>
+          <div style={{fontSize: 15, fontWeight: 600}}>{settings?.fullName}</div>
+          {settings?.title ? (
+            <div style={{fontSize: 14, color: C.label}}>{settings.title}</div>
+          ) : null}
+        </div>
+        <nav aria-label="Contact" style={{display: 'flex', gap: 28, fontSize: 14}}>
+          {socialLinks.map((social) =>
+            social.url ? (
+              <a
+                className="chrome-link"
+                href={social.url}
+                key={social._id}
+                rel="noopener noreferrer"
+                style={link}
+                target="_blank"
+              >
+                {socialLabel(social)}
+              </a>
+            ) : null,
+          )}
+          {resume ? (
+            <a
+              className="chrome-link"
+              download={isLocalHref(resume) ? RESUME_FILENAME : undefined}
+              href={resume}
+              style={{...link, color: C.ink}}
+            >
+              Résumé ↓
+            </a>
+          ) : null}
+        </nav>
+      </header>
+      <div
+        aria-hidden
+        style={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 30,
+          display: 'flex',
+          justifyContent: 'center',
+          fontFamily: FONT.ui,
+          fontSize: 12.5,
+          color: C.dim,
+          pointerEvents: 'none',
+        }}
+      >
+        Arrow keys · Enter · Esc
+      </div>
+    </>
   )
 }
 
-/**
- * What the rail has selected, in words (SPEC §11.6).
- *
- * The firmware itself is `aria-hidden` — the page's `.sr-only` landmark is the
- * accessible copy of its content — so the one thing a screen reader cannot
- * otherwise learn is that moving the joystick changed the selection. This
- * announces exactly that, and nothing that is already in the landmark.
- */
-function useAnnouncement(content: ConsoleContent): string {
-  const isOpen = useConsole((state) => state.isOpen)
-  const isBooting = useConsole((state) => state.isBooting)
-  const section = useConsole((state) => state.section)
-  const menuIndex = useConsole((state) => state.menuIndex)
-  const index = useConsole((state) => state.libraryIndex)
-  const timelineIndex = useConsole((state) => state.timelineIndex)
-  const isDetailOpen = useConsole((state) => state.isDetailOpen)
-
-  // Opening, booting and closing are state changes with nothing on screen to
-  // read, so they say themselves. Closed is the first render's value, which a
-  // live region does not announce — it only speaks once this changes.
-  if (!isOpen) return 'Console closed'
-  if (isBooting) return 'Console on, booting'
-
-  if (section === 'menu') {
-    const option = menuChoice(content, menuIndex)
-    return option ? `Menu, ${SECTION_LABELS[option]}` : 'Menu'
-  }
-
-  if (section === 'timeline') {
-    const entry = content.timeline[timelineIndex]
-    if (!entry) return 'Timeline'
-    return `Timeline, ${entry.role} at ${entry.organisation}`
-  }
-
-  const name = content.projects[index]?.title ?? ''
-
-  return isDetailOpen ? `${name}, details` : `Library, ${name}`
-}
-
 export function ConsoleStage({content}: {content: ConsoleContent}) {
-  useConsoleKeys(content)
-  useLandmarkFocus()
-  useStageTheme()
-  useRailInput(content)
-  useWheelRail(content)
-  const tuning = useTuningFlag()
-  const selection = useAnnouncement(content)
-  const mobile = useIsMobile()
+  const device = useDevice()
   const webglOk = useWebgl()
+  useConsoleKeys(content, device)
+  useLandmarkFocus()
+  useDirectionalInput(content, device)
+  useWheelShelf(content)
+  const selection = useAnnouncement(content, device)
 
   /*
-    A control that changes something invisible says so — the theme and the mute
-    have no on-screen state a screen reader can reach. Each notice is stamped
-    with the selection it was raised against, so the next thing the rail says
-    replaces it on its own: no timer, and no stale "Light screen" left in the
-    region to be read out again on the way past.
+    A control that changes something invisible says so — the mute has no
+    on-screen state a screen reader can reach. The notice is stamped with the
+    selection it was raised against, so the next thing the screen says replaces
+    it on its own.
   */
   const [notice, setNotice] = useState<{text: string; at: string} | null>(null)
   const announcement = notice?.at === selection ? notice.text : selection
 
-  usePanelScroll(mobile, content.projects.length)
-
   return (
-    <div
-      // SPEC §11.6: inside this, the arrow keys and letters are the console's,
-      // not the screen reader's. The landmark in the page is the readable copy.
-      role="application"
-      aria-label="Yash Punia's portfolio, as a handheld console"
-      className="fixed inset-0"
-    >
-      {webglOk ? (
-        <WebglBoundary onError={failWebgl}>
-          <Scene content={content} />
-        </WebglBoundary>
-      ) : (
-        <FallbackFirmware content={content} />
-      )}
-      <p aria-live="polite" className="sr-only">
-        {announcement}
-      </p>
-      <ConsoleControls
-        content={content}
-        onNotice={(text) => setNotice({text, at: selection})}
-        visible={!webglOk}
-      />
-      {tuning ? <TuningPanel /> : null}
-    </div>
+    <>
+      {device === 'desk' ? <DeskChrome content={content} /> : null}
+      <div
+        // Inside this, the arrow keys and letters are the console's, not the
+        // screen reader's. The landmark in the page is the readable copy.
+        aria-label="Yash Punia's portfolio, as a handheld console"
+        className="fixed inset-0"
+        role="application"
+      >
+        {webglOk ? (
+          <WebglBoundary onError={failWebgl}>
+            <Scene content={content} device={device} />
+          </WebglBoundary>
+        ) : (
+          <FlatScreen content={content} device={device} />
+        )}
+        <p aria-live="polite" className="sr-only">
+          {announcement}
+        </p>
+        <ConsoleControls
+          content={content}
+          device={device}
+          onNotice={(text) => setNotice({text, at: selection})}
+          visible={!webglOk}
+        />
+      </div>
+    </>
   )
 }
 
+/** What each cap's twin says it does. */
+const CAP_LABELS: Record<ButtonSlot | 'menu', string> = {
+  A: 'Select',
+  B: 'Back',
+  X: 'Next tab',
+  Y: 'Open the selected game’s details',
+  menu: 'Menu: next tab',
+}
+
 /**
- * The accessible twins of the controls on the object (SPEC §11.4).
+ * The accessible twins of the caps on the object. Everything on the shell is a
+ * mesh and everything on the glass is inside an `aria-hidden` tree, so none of
+ * it can take focus. Each twin carries `data-console-focus`, which lights its
+ * cap's ring through `useLandmarkFocus`, so tabbing here is visible on the
+ * object. Visually hidden until focused, in the manner of a skip link.
  *
- * Everything on the chassis is a mesh, and everything on the screen is inside
- * the firmware's `aria-hidden` tree — so none of it can take focus, and without
- * these the theme cap in particular had no keyboard path at all. Each button
- * carries `data-console-focus`, which lights its physical twin's focus ring
- * through `useLandmarkFocus`, so tabbing here is visible on the object.
- *
- * They are visually hidden until focused, in the manner of a skip link. With no
- * WebGL there is no object to point at, so they are simply on screen — and
- * `Close` is dropped there, because closing would leave an empty page.
- *
- * The four face buttons are here too. They used to borrow the landmark's social
- * anchors, which carried `data-console-focus` because each cap was one of those
- * links; the caps are the console's own verbs now, so they need buttons that
- * say what they do. Without WebGL the firmware is on screen with its own BACK
- * control and section arrows, so these four stay hidden there.
+ * Without WebGL there is no object, and the glass is on the page with its own
+ * tabs and back control, so only the mute is shown there.
  */
 function ConsoleControls({
   content,
+  device,
   onNotice,
   visible,
 }: {
   content: ConsoleContent
+  device: Device
   onNotice: (notice: string) => void
   visible: boolean
 }) {
-  const isOpen = useConsole((state) => state.isOpen)
-  const open = useConsole((state) => state.open)
-  const close = useConsole((state) => state.close)
   const muted = useConsole((state) => state.muted)
   const toggleMuted = useConsole((state) => state.toggleMuted)
-  const setTheme = useConsole((state) => state.setTheme)
-  const theme = useTheme()
-
-  const next = theme === 'dark' ? 'light' : 'dark'
-  const className = visible ? undefined : 'sr-only'
+  const caps: Array<ButtonSlot | 'menu'> =
+    device === 'desk' ? ['A', 'B', 'X', 'Y', 'menu'] : ['A', 'B', 'menu']
 
   return (
     <div className={visible ? 'console-controls' : undefined}>
-      {visible ? null : (
-        <button
-          className={className}
-          // Named unconditionally: focus is read when it happens, and a button
-          // that only claims the cap once the console is open would light
-          // nothing for the visitor who opened it from this very control. The
-          // cap it rings is behind a shut flap until then.
-          data-console-focus="close"
-          onClick={() => (isOpen ? close() : open())}
-          type="button"
-        >
-          {isOpen ? 'Close the console' : 'Open the console'}
-        </button>
-      )}
       <button
-        className={className}
-        data-console-focus="theme"
-        onClick={() => {
-          setTheme(next)
-          onNotice(next === 'dark' ? 'Dark screen' : 'Light screen')
-        }}
-        type="button"
-      >
-        {next === 'dark' ? 'Switch to the dark screen' : 'Switch to the light screen'}
-      </button>
-      <button
-        className={className}
+        className={visible ? undefined : 'sr-only'}
         onClick={() => {
           toggleMuted()
           onNotice(muted ? 'Sound on' : 'Sound off')
@@ -644,20 +479,27 @@ function ConsoleControls({
       >
         {muted ? 'Unmute the console' : 'Mute the console'}
       </button>
-      {FACE_SLOTS.map((slot) => (
+      {caps.map((cap) => (
         <button
           className="sr-only"
-          data-console-focus={slot}
-          key={slot}
-          onClick={() => pressSlotAction(slot, content)}
+          data-console-focus={cap}
+          key={cap}
+          onClick={() => pressAction(cap, content, device)}
           type="button"
         >
-          {SLOT_LABELS[slot]}
+          {CAP_LABELS[cap]}
         </button>
       ))}
+      {device === 'handheld' ? (
+        <button
+          className="sr-only"
+          data-console-focus="about"
+          onClick={() => pressAction('about', content, device)}
+          type="button"
+        >
+          About
+        </button>
+      ) : null}
     </div>
   )
 }
-
-/** In the order they read on the diamond: top, right, bottom, left. */
-const FACE_SLOTS: ButtonSlot[] = ['X', 'A', 'B', 'Y']

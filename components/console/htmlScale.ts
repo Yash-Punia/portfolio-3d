@@ -4,10 +4,9 @@
  * is 40px there, and any panel authored at a fixed pixel width has to undo that
  * to land on the surface it belongs to.
  *
- * Both DOM-in-3D surfaces use this: the info monitor on the left flap and the
- * firmware on the screen. Authoring at a fixed pixel size and scaling to fit
- * keeps each panel's type scale a fixed ratio of its own panel, so retuning the
- * console's proportions never means re-guessing a font size.
+ * Both consoles use this to lay their screen on the glass (`Desk`, `Handheld`).
+ * Authoring at a fixed pixel size and scaling to fit keeps each panel's type
+ * scale a fixed ratio of its own panel.
  */
 const PX_PER_UNIT = 40
 

@@ -1,50 +1,9 @@
 @import 'tailwindcss';
 
 /*
-  The stage the console sits on.
-
-  SPEC §9's two themes are the *screen's*, and the chassis still never changes
-  with the toggle — but the stage does: the theme button flips the page behind
-  the object between a soft dark lift and a warm off-white one, so a light
-  screen is not a lamp in a dark room. The shell is #141416 either way, and the
-  contact shadow bites into both.
-
-  Registering the two as colours is what lets them cross-fade: a plain custom
-  property is a string to the animation engine, and the gradient built from it
-  would jump.
+  The stage the console sits on: the design's page (4a), a soft lift in the
+  middle of a near-black. One stage now — the screen theme toggle is gone.
 */
-@property --stage {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #0d0d10;
-}
-
-@property --stage-glow {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #212429;
-}
-
-:root {
-  --stage: #0d0d10;
-  --stage-glow: #212429;
-  transition:
-    --stage 320ms ease,
-    --stage-glow 320ms ease;
-}
-
-/* Set by the theme button, through ConsoleStage. */
-:root[data-stage='light'] {
-  --stage: #e4e0d7;
-  --stage-glow: #f5f2eb;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    transition: none;
-  }
-}
-
 html,
 body {
   height: 100%;
@@ -53,34 +12,29 @@ body {
 body {
   margin: 0;
   overflow: hidden;
-  background:
-    radial-gradient(58% 46% at 50% 50%, var(--stage-glow) 0%, var(--stage) 74%), var(--stage);
+  background: radial-gradient(120% 90% at 50% 40%, #1d1d1c 0%, #0d0d0c 70%), #0d0d0c;
 }
 
-/* The page does not scroll, so the canvas owns every touch gesture (SPEC §5). */
+/* The page does not scroll, so the canvas owns every touch gesture on the shell. */
 canvas {
   display: block;
   touch-action: none;
 }
 
 /*
-  A hidden control, while it has focus, is on screen (SPEC §11.4).
+  A hidden control, while it has focus, is on screen.
 
-  The console's own controls are meshes and its screen is an `aria-hidden`
-  subtree, so the focusable copy of each one is a `.sr-only` button in the page.
-  Clipped to a pixel, they give a keyboard visitor a focus ring they cannot see
-  and a label they cannot read — the same problem a skip link has, with the same
-  answer: while focused, the control steps out of the clip and says what it is.
-
-  The 3D control it stands for lights its own red ring at the same moment; this
-  is the label beside it.
+  The console's caps are meshes and its screen is an `aria-hidden` subtree, so
+  the focusable copy of each one is a `.sr-only` button in the page. Clipped to
+  a pixel, they give a keyboard visitor a focus ring they cannot see and a label
+  they cannot read — the same problem a skip link has, with the same answer:
+  while focused, the control steps out of the clip and says what it is. The cap
+  it stands for lights its own green ring at the same moment.
 
   The second selector is the landmark's own contents — the project buttons, the
-  resume link, the project and social links. `position: fixed` carries the
-  focused one out of the 1px box, and the rule below lifts the one thing that
-  would still hold it: `.sr-only`'s `clip-path`, which unlike `overflow` clips a
-  fixed descendant too. The box stays a pixel wide and `overflow: hidden`, so
-  everything that is not the focused control stays hidden.
+  résumé, the links. `position: fixed` carries the focused one out of the 1px
+  box, and the rule below lifts the one thing that would still hold it:
+  `.sr-only`'s `clip-path`, which unlike `overflow` clips a fixed descendant too.
 */
 .sr-only:has(:focus-visible) {
   clip-path: none;
@@ -100,18 +54,18 @@ canvas {
   white-space: nowrap;
   z-index: 20;
   border-radius: 8px;
-  background: #141416;
-  color: #f4f2ee;
-  font-family: var(--font-archivo), system-ui, sans-serif;
+  background: #1c1c1b;
+  color: #edece8;
+  font-family: var(--font-schibsted), system-ui, sans-serif;
   font-size: 14px;
-  outline: 2px solid #ff4d3d;
+  outline: 2px solid #5fd35a;
   outline-offset: 2px;
 }
 
 /*
-  The draft-mode banner (SPEC §3). Deliberately unlike everything else on the
-  page: this is not part of the object, it is a note stuck to the front of it,
-  and it is only ever seen by whoever holds the preview cookie.
+  The draft-mode banner. Deliberately unlike everything else on the page: this
+  is not part of the object, it is a note stuck to the front of it, and it is
+  only ever seen by whoever holds the preview cookie.
 */
 .draft-banner {
   position: fixed;
@@ -123,15 +77,14 @@ canvas {
   border-radius: 999px;
   background: #ffcf3d;
   color: #141416;
-  font-family: var(--font-archivo), system-ui, sans-serif;
+  font-family: var(--font-schibsted), system-ui, sans-serif;
   font-size: 13px;
   text-decoration: none;
 }
 
 /*
-  The same controls when there is no console to press: with WebGL unavailable
-  the firmware is mounted as plain DOM (SPEC §11.3), so these are the only theme
-  and mute controls on the page and they are simply on it.
+  The mute, on the page, when there is no console to press: with WebGL
+  unavailable the screen is mounted as plain DOM (`FlatScreen`).
 */
 .console-controls {
   position: fixed;
@@ -143,110 +96,50 @@ canvas {
   z-index: 10;
 }
 
-/*
-  The chassis is #141416 under either theme, so the buttons that stand in for
-  its caps are too: one appearance to keep legible on both stages, rather than a
-  pair to check contrast on twice.
-*/
 .console-controls button {
   padding: 8px 14px;
-  border: 1px solid #33343a;
+  border: 1px solid #33332f;
   border-radius: 8px;
-  background: #141416;
-  color: #f4f2ee;
-  font-family: var(--font-archivo), system-ui, sans-serif;
+  background: #1c1c1b;
+  color: #edece8;
+  font-family: var(--font-schibsted), system-ui, sans-serif;
   font-size: 13px;
   cursor: pointer;
 }
 
-/*
-  The scrollbar inside the console.
-
-  A panel that overflows is a panel on the screen of an object, and the host
-  OS's scrollbar arriving in the middle of it — a light grey slab on a dark
-  screen, or a Windows one with arrow buttons — breaks the only illusion the
-  page has. So the bar is drawn from the screen's own theme variables, which
-  `useScreenTheme` puts on the firmware root and which cascade to every
-  `[data-console-scroll]` box inside it: the accent for the thumb, nothing for
-  the track, so the copy runs to the edge and only the thumb sits over it.
-
-  Here rather than inline because a pseudo-element cannot be expressed in a
-  style attribute — the same reason the keyframes below live here.
-
-  `scrollbar-color` is the standard property and does the whole job in Firefox
-  and in Chrome 121+. The WebKit block is for the browsers that have only ever
-  had the pseudo-elements, and it is behind `@supports` because Chrome ignores
-  those once `scrollbar-width` is set — with both unguarded, whichever won
-  would depend on the version.
-*/
-[data-console-scroll] {
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--screen-accent) 55%, transparent) transparent;
+/* The page header's links (design 4a): quiet until pointed at. */
+.chrome-link:hover,
+.chrome-link:focus-visible {
+  color: #5fd35a !important;
 }
 
-@supports not (scrollbar-color: auto) {
-  [data-console-scroll]::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  [data-console-scroll]::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  [data-console-scroll]::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--screen-accent) 55%, transparent);
-  }
-
-  [data-console-scroll]::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in srgb, var(--screen-accent) 80%, transparent);
-  }
+/* Scrolling on the glass is native, but a scrollbar would break the screen. */
+[data-glass] ::-webkit-scrollbar {
+  display: none;
 }
 
 /*
-  The firmware's animations (SPEC §7). They live here rather than inline because
-  keyframes cannot be expressed in a style attribute; the components that use
-  them are otherwise self-contained. Reduced motion is handled in the components
-  themselves — these never run when it is set.
+  The screen's power-on (`Boot` in components/screen/parts.tsx): a line across
+  the glass, then the black lifts off the home screen. Keyframes cannot be
+  written in a style attribute, which is why these are here. Reduced motion
+  never mounts it.
 */
-@keyframes firmware-scanline {
+@keyframes screen-line {
   from {
-    transform: scaleY(1);
-    opacity: 1;
+    transform: scaleX(0);
   }
   to {
-    transform: scaleY(180);
-    opacity: 0.12;
-  }
-}
-
-@keyframes firmware-header {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  60% {
-    opacity: 1;
-    transform: none;
-  }
-  to {
-    opacity: 0;
-    transform: none;
-  }
-}
-
-@keyframes firmware-boot-out {
-  to {
+    transform: scaleX(1);
     opacity: 0;
   }
 }
 
-@keyframes firmware-fade {
-  from {
-    opacity: 0;
+@keyframes screen-boot {
+  0%,
+  45% {
+    opacity: 1;
   }
   to {
-    opacity: 1;
+    opacity: 0;
   }
 }

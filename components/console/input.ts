@@ -19,11 +19,11 @@ import {useConsole} from '@/components/console/store'
 export type Direction = 'up' | 'down' | 'left' | 'right'
 
 /**
- * Every control on the object that has a hidden twin in the page, and so can
- * take DOM focus. The four face buttons open social links; `close` and `theme`
- * are the two caps that had no keyboard path at all before Phase 8.
+ * Every pressable cap on either console: the four face buttons, the MENU pill,
+ * and the Game Boy's second pill, About. Each has a hidden twin in the page, so
+ * each can take DOM focus and light its ring.
  */
-export type FocusTarget = ButtonSlot | 'close' | 'theme'
+export type FocusTarget = ButtonSlot | 'menu' | 'about'
 
 const REPEAT_MS = 180
 
@@ -48,7 +48,7 @@ interface InputState {
   nudge: (direction: Direction) => void
   /**
    * The control whose (visually hidden) twin currently has DOM focus — an ABXY
-   * slot, the close button or the theme cap. Each renders its focus ring from
+   * slot or a pill. Each renders its focus ring from
    * this, so tabbing through the page lights the physical control (SPEC §11.4).
    */
   focusedSlot: FocusTarget | null
@@ -58,8 +58,8 @@ interface InputState {
    * click on the cap or the matching letter key. The cap's depression and its
    * rim flash both render from this, so a keystroke moves the physical button.
    */
-  pressedSlot: ButtonSlot | null
-  pressSlot: (slot: ButtonSlot) => void
+  pressedSlot: FocusTarget | null
+  pressSlot: (slot: FocusTarget) => void
 }
 
 /** How long a press reads as pressed before it springs back (SPEC §5). */

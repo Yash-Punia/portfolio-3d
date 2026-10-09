@@ -29,7 +29,7 @@ export const contentType = 'image/png'
 export const alt = "The console's screen, showing the name and job title on it"
 
 /*
-  The dark screen's palette, copied from `firmware/theme.ts` rather than
+  The dark screen's palette, copied from the old firmware theme rather than
   imported: that module is a client one — it reads the store and the live tuning
   values — and pulling it in here would drag React hooks into an image route.
   The accent is the corrected dark-theme one Phase 7 measured at 11.11:1.

@@ -1,5 +1,5 @@
 import type {Metadata, Viewport} from 'next'
-import {Archivo, Martian_Mono} from 'next/font/google'
+import {Archivo, JetBrains_Mono, Schibsted_Grotesk} from 'next/font/google'
 
 import {siteUrl} from '@/app/site'
 import {client} from '@/sanity/lib/client'
@@ -8,10 +8,11 @@ import {siteSettingsQuery} from '@/sanity/lib/queries'
 import './globals.css'
 
 /**
- * SPEC §10's two families, and only these two. Archivo carries display and UI —
- * its width axis is why it is here — and Martian Mono carries data. They arrive
- * in Phase 3 rather than Phase 4 because the info monitor on the left flap is
- * the first surface with text on it.
+ * The handheld v2 design's three families (HANDHELD_V2.md): Archivo, narrowed
+ * through its width axis, for titles; Schibsted Grotesk for everything a
+ * visitor reads; JetBrains Mono for the small counters and the legends printed
+ * on the shells — which the 3D side draws into canvases through these same
+ * variables.
  */
 const archivo = Archivo({
   subsets: ['latin'],
@@ -20,9 +21,15 @@ const archivo = Archivo({
   display: 'swap',
 })
 
-const martianMono = Martian_Mono({
+const schibsted = Schibsted_Grotesk({
   subsets: ['latin'],
-  variable: '--font-martian-mono',
+  variable: '--font-schibsted',
+  display: 'swap',
+})
+
+const jetbrains = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-jetbrains',
   display: 'swap',
 })
 
@@ -96,20 +103,6 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * The stored theme, applied before the first paint.
- *
- * The stage is painted from `--stage` in CSS and `ConsoleStage` sets
- * `data-stage` from the store — but that is a hydration away, so a returning
- * visitor who chose light used to see one dark frame first. This reads the same
- * key the store persists to and stamps the attribute while the parser is still
- * in the head.
- *
- * Only the stage. The screen's palette lives inside the canvas, which does not
- * exist before hydration, and `useTheme()` remains the source of truth for it.
- */
-const THEME_SCRIPT = `try{var t=JSON.parse(localStorage.getItem('console')).state.theme;if(t==='dark'||t==='light')document.documentElement.dataset.stage=t}catch(e){}`
-
-/**
  * The site without JavaScript (SPEC §11.2).
  *
  * The whole portfolio is already in the page — the `.sr-only` landmark carries
@@ -120,19 +113,19 @@ const THEME_SCRIPT = `try{var t=JSON.parse(localStorage.getItem('console')).stat
  * which without React is an empty gradient.
  */
 const NOSCRIPT_CSS = `
-  body { overflow: auto; background: #0d0d10; }
+  body { overflow: auto; background: #0d0d0c; }
   [role='application'] { display: none; }
   main.sr-only {
     position: static; width: auto; height: auto; margin: 0 auto; padding: 48px 24px 96px;
     max-width: 68ch; clip: auto; clip-path: none; overflow: visible; white-space: normal;
-    color: #f4f2ee; font-family: var(--font-archivo), system-ui, sans-serif; line-height: 1.6;
+    color: #edece8; font-family: var(--font-schibsted), system-ui, sans-serif; line-height: 1.6;
   }
-  main.sr-only a { color: #ff7d70; }
+  main.sr-only a { color: #5fd35a; }
   main.sr-only button { all: unset; font-weight: 600; }
   main.sr-only h1 { font-size: 2rem; margin: 0 0 4px; }
   main.sr-only h2 { font-size: 1.25rem; margin: 40px 0 8px; }
   main.sr-only h3 { font-size: 1rem; margin: 24px 0 4px; }
-  main.sr-only dt { color: #9aa0a6; font-size: 0.8rem; }
+  main.sr-only dt { color: #8f8d87; font-size: 0.8rem; }
   main.sr-only dd { margin: 0 0 4px; }
 `
 
@@ -140,22 +133,9 @@ export default function RootLayout({children}: LayoutProps<'/'>) {
   return (
     <html
       lang="en"
-      className={`${archivo.variable} ${martianMono.variable} h-full antialiased`}
-      /*
-        The script below writes `data-stage` before React hydrates, so the
-        server's markup and the client's necessarily differ here — the server
-        cannot know what is in someone's `localStorage`. That difference is the
-        whole point of the script, not a bug to be patched up.
-      */
-      suppressHydrationWarning
+      className={`${archivo.variable} ${schibsted.variable} ${jetbrains.variable} h-full antialiased`}
     >
       <head>
-        {/*
-          Inside an explicit `<head>` so React treats it as part of the document
-          and keeps it synchronous. It has to be: after the first paint it would
-          be too late, which is the flash it exists to remove.
-        */}
-        <script dangerouslySetInnerHTML={{__html: THEME_SCRIPT}} />
         <noscript>
           <style dangerouslySetInnerHTML={{__html: NOSCRIPT_CSS}} />
         </noscript>

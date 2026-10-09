@@ -4,14 +4,15 @@ import type {
   SocialLinksQueryResult,
   TimelineQueryResult,
 } from '@/sanity.types'
-import type {Section} from '@/components/console/store'
 
 /**
  * Everything the console renders that came from Sanity, passed down the tree as
  * props rather than through a context: React context does not cross R3F's
- * separate reconciler without drei's `useContextBridge`, and the canvas is four
- * hops deep. Every field is nullable, so each control handles its own empty
- * case (SPEC §3.2) — the dataset starts empty and fills up over time.
+ * separate reconciler without drei's `useContextBridge`. Every field is
+ * nullable, so each control handles its own empty case — the dataset starts
+ * empty and fills up over time.
+ *
+ * Server-safe: `app/page.tsx` imports this, so nothing here touches the store.
  */
 export interface ConsoleContent {
   settings: SiteSettingsQueryResult
@@ -20,77 +21,28 @@ export interface ConsoleContent {
   timeline: TimelineQueryResult
 }
 
-/**
- * What each screen is called in readable words — on the menu's two buttons and
- * in the page's landmark headings. The status bar has its own short caps names.
- *
- * Chrome rather than content, like the status bar's own strings.
- */
-export const SECTION_LABELS: Record<Section, string> = {
-  menu: 'Menu',
-  library: 'Games / Projects',
-  timeline: 'Experience',
-}
-
-/**
- * The destinations the menu offers, top half then bottom half. A section with
- * nothing published is not offered: an option that led to an empty screen
- * would be a dead end (SPEC §3.2).
- */
-export function menuOptions(content: ConsoleContent): Section[] {
-  const options: Section[] = []
-  if (content.projects.length > 0) options.push('library')
-  if (content.timeline.length > 0) options.push('timeline')
-  return options
-}
-
-/**
- * The menu's highlighted option. The store keeps a bare index — it cannot see
- * the content — so it is clamped here against what is actually on offer.
- */
-export function menuChoice(content: ConsoleContent, menuIndex: number): Section | null {
-  const options = menuOptions(content)
-  return options[Math.min(menuIndex, options.length - 1)] ?? null
-}
-
-/**
- * Where up and down go from a screen — the one definition of the stack. The
- * menu is not on it: it sits one step *out* of the rails, reached by back. A
- * section with nothing in it is not a neighbour.
- */
-export function neighbours(
-  section: Section,
-  content: ConsoleContent,
-): {up: Section | null; down: Section | null} {
-  if (section === 'menu') return {up: null, down: null}
-  if (section === 'library') {
-    return {up: null, down: content.timeline.length > 0 ? 'timeline' : null}
-  }
-  return {up: content.projects.length > 0 ? 'library' : null, down: null}
-}
-
 export type ButtonSlot = 'A' | 'B' | 'X' | 'Y'
 export type SocialLink = SocialLinksQueryResult[number]
 export type Project = ProjectsQueryResult[number]
 export type TimelineEntry = TimelineQueryResult[number]
 
 /**
- * A project's specification, in the order the detail view lists it.
+ * A project's specification, in the order the hidden landmark lists it.
  *
- * One definition, two readers: the detail view on the screen and the page's
- * hidden landmark (SPEC §11.1). A field added here appears in both, which is
- * the point — the crawlable copy fell behind the visible one once already.
+ * One definition, two readers: the screen's facts and the page's hidden
+ * landmark. A field added here appears in both, which is the point — the
+ * crawlable copy fell behind the visible one once already.
  */
 const PROJECT_META: Array<[string, (project: Project) => string | null]> = [
-  ['ROLE', (project) => project.role],
-  ['YEAR', (project) => project.year],
-  ['ENGINE', (project) => project.engine],
-  ['TEAM', (project) => (project.teamSize ? `${project.teamSize}` : null)],
-  ['PLATFORMS', (project) => project.platforms?.join(', ') ?? null],
-  ['TECH', (project) => project.tech?.join(', ') ?? null],
+  ['Role', (project) => project.role],
+  ['Year', (project) => project.year],
+  ['Engine', (project) => project.engine],
+  ['Platforms', (project) => project.platforms?.join(', ') ?? null],
+  ['Team', (project) => (project.teamSize ? `${project.teamSize}` : null)],
+  ['Tech', (project) => project.tech?.join(', ') ?? null],
 ]
 
-/** The pairs a project actually has. An empty field is not a row (SPEC §3.2). */
+/** The pairs a project actually has. An empty field is not a row. */
 export function projectMeta(project: Project): Array<[string, string]> {
   const rows: Array<[string, string]> = []
   for (const [label, read] of PROJECT_META) {
@@ -100,17 +52,89 @@ export function projectMeta(project: Project): Array<[string, string]> {
   return rows
 }
 
+/** The design's four facts, in its order. Tech has its own "Stack" line. */
+const FACTS = new Set(['Role', 'Year', 'Engine', 'Platforms'])
+
+export function projectFacts(project: Project): Array<[string, string]> {
+  return projectMeta(project).filter(([label]) => FACTS.has(label))
+}
+
 /**
- * Portable Text, flattened to paragraphs.
+ * The small line over a title — "Mobile · PvP shooter" in the design. There is
+ * no genre field and the data does not change, so it is the platforms and the
+ * engine. Empty when both are.
+ */
+export function projectKicker(project: Project): string | null {
+  const parts = [project.platforms?.join(', '), project.engine].filter(Boolean)
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
+/** The first link with somewhere to go — the store page, usually. */
+export function primaryLink(project: Project): {label: string; url: string} | null {
+  const link = project.links?.find((candidate) => candidate.url)
+  if (!link?.url) return null
+  return {label: link.label ?? hostOf(link.url), url: link.url}
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url
+  }
+}
+
+/**
+ * How a project's `videoUrl` plays inline: YouTube and Vimeo as their embed
+ * players, a bare video file in a `<video>`, and anything else opens in a tab.
+ */
+export type Trailer = {kind: 'iframe' | 'video'; src: string} | {kind: 'link'; src: string}
+
+export function trailerOf(project: Project): Trailer | null {
+  const url = project.videoUrl
+  if (!url) return null
+
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return null
+  }
+
+  const host = parsed.hostname.replace(/^(www|m)\./, '')
+  const youtube =
+    host === 'youtu.be'
+      ? parsed.pathname.slice(1)
+      : host === 'youtube.com' || host === 'youtube-nocookie.com'
+        ? (parsed.searchParams.get('v') ??
+          parsed.pathname.match(/^\/(?:embed|shorts|live)\/([^/]+)/)?.[1])
+        : null
+  if (youtube) {
+    return {
+      kind: 'iframe',
+      src: `https://www.youtube-nocookie.com/embed/${youtube}?autoplay=1&rel=0&playsinline=1`,
+    }
+  }
+
+  const vimeo = host === 'vimeo.com' ? parsed.pathname.match(/^\/(\d+)/)?.[1] : null
+  if (vimeo) return {kind: 'iframe', src: `https://player.vimeo.com/video/${vimeo}?autoplay=1`}
+
+  if (/\.(mp4|webm|mov|m4v)$/i.test(parsed.pathname)) return {kind: 'video', src: url}
+
+  return {kind: 'link', src: url}
+}
+
+/**
+ * Portable Text, flattened to paragraphs. List items are flagged: the project
+ * page sets them as the numbered "What I built" rows.
  *
- * `@portabletext/react` exists for this, but it is a dependency added for a
- * field no published project fills in yet, and blocks with spans are the whole
- * of what the schema's editor can produce here. If the field grows lists, links
- * or marks that matter, swap this for the library rather than growing it.
+ * `@portabletext/react` exists for this, but blocks with spans are the whole of
+ * what the schema's editor can produce here. If the field grows links or marks
+ * that matter, swap this for the library rather than growing it.
  */
 export function descriptionParagraphs(
   blocks: Project['description'],
-): Array<{key: string; text: string; heading: boolean}> {
+): Array<{key: string; text: string; heading: boolean; listItem: boolean}> {
   if (!blocks) return []
 
   return blocks
@@ -118,31 +142,29 @@ export function descriptionParagraphs(
       key: block._key,
       text: block.children?.map((span) => span.text ?? '').join('') ?? '',
       heading: Boolean(block.style && block.style !== 'normal' && block.style !== 'blockquote'),
+      listItem: Boolean(block.listItem),
     }))
     .filter((paragraph) => paragraph.text !== '')
 }
 
-/** SPEC §14: the CV downloads under a name a recruiter can file. */
+/** The CV downloads under a name a recruiter can file. */
 export const RESUME_FILENAME = 'Yash-Punia-Gameplay-Programmer.pdf'
 
 /**
- * SPEC §3's own default for `resumeLabel`, used when the field is empty.
- *
- * The words on the link are content, not chrome — the field exists in Sanity
- * and Yash owns what it says — so the info monitor and the hidden landmark both
- * read `settings.resumeLabel` and fall back to this one definition.
+ * The default for `resumeLabel`, used when the field is empty. The words on the
+ * link are content, not chrome — the field exists in Sanity and Yash owns what
+ * it says.
  */
-export const RESUME_LABEL = 'Download CV'
+export const RESUME_LABEL = 'Download résumé'
 
 /**
- * The committed fallback resume (SPEC §3.2). Set this to `null` and the CV
- * button disappears rather than linking to a 404 — which is also how the
- * "neither exists" branch is verified.
+ * The committed fallback resume. Set this to `null` and the résumé row
+ * disappears rather than linking to a 404.
  */
 const FALLBACK_RESUME: string | null = '/resume.pdf'
 
 /**
- * Where the CV button points, or `null` if there is nothing to point at.
+ * Where the résumé points, or `null` if there is nothing to point at.
  *
  * A Sanity asset is cross-origin, where the `download` attribute is ignored by
  * every browser — Sanity's own `?dl=` parameter is what makes it a download
@@ -160,11 +182,64 @@ export function isLocalHref(href: string): boolean {
   return href.startsWith('/')
 }
 
+/** What each platform is called when its link has no label of its own. */
+const PLATFORM_LABELS: Record<NonNullable<SocialLink['platform']>, string> = {
+  itch: 'itch.io',
+  github: 'GitHub',
+  linkedin: 'LinkedIn',
+  twitter: 'X',
+}
+
+export function socialLabel(link: SocialLink): string {
+  return link.label ?? (link.platform ? PLATFORM_LABELS[link.platform] : (link.url ?? ''))
+}
+
 /**
- * Opening an outbound link. Lives here rather than in a 3D part because both
- * the face buttons and the firmware's own link lists fire it, and the firmware
- * knows nothing about three.js (SPEC §7).
+ * One row on the contact list: the résumé first, then each social link. The
+ * screen draws these and the D-pad walks them, so both read this one list.
  */
+export interface ContactRow {
+  key: string
+  label: string
+  href: string
+  /** The filename, for a same-origin résumé. */
+  download?: string
+  kind: 'resume' | 'link'
+}
+
+export function contactRows(content: ConsoleContent): ContactRow[] {
+  const rows: ContactRow[] = []
+  const resume = resumeHref(content.settings)
+  if (resume) {
+    rows.push({
+      key: 'resume',
+      label: content.settings?.resumeLabel ?? RESUME_LABEL,
+      href: resume,
+      download: isLocalHref(resume) ? RESUME_FILENAME : undefined,
+      kind: 'resume',
+    })
+  }
+  for (const link of content.socialLinks) {
+    if (link.url) rows.push({key: link._id, label: socialLabel(link), href: link.url, kind: 'link'})
+  }
+  return rows
+}
+
+/** Following a contact row, from a tap or from A. */
+export function openRow(row: ContactRow) {
+  if (row.kind === 'link') {
+    window.open(row.href, '_blank', 'noopener,noreferrer')
+    return
+  }
+  const anchor = document.createElement('a')
+  anchor.href = row.href
+  if (row.download) anchor.download = row.download
+  else anchor.target = '_blank'
+  anchor.rel = 'noopener noreferrer'
+  anchor.click()
+}
+
+/** Opening an outbound link. */
 export function openLink(url: string) {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
@@ -175,7 +250,7 @@ export function openLink(url: string) {
  * UTC midnight and would read as January to anyone west of Greenwich.
  *
  * Fixed month names rather than `Intl`, because the same string is rendered on
- * the server (the hidden landmark) and on the client (the axis), and a locale
+ * the server (the hidden landmark) and on the client (the screen), and a locale
  * that disagreed between the two is a hydration mismatch.
  */
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -192,4 +267,10 @@ export function entryDates(entry: TimelineEntry): string {
   const start = monthLabel(entry.startDate) ?? ''
   const end = entry.isCurrent || !entry.endDate ? 'now' : monthLabel(entry.endDate)
   return end ? `${start} – ${end}` : start
+}
+
+/** `3` of `6` → `03 / 06`, the screen's counter. */
+export function counter(index: number, count: number): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(index + 1)} / ${pad(count)}`
 }
