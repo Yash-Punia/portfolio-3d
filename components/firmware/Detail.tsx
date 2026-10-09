@@ -74,8 +74,9 @@ function glyphFor(url: string): GlyphName {
   return 'external'
 }
 
-export function Detail({project}: {project: Project}) {
-  const closeDetail = useConsole((state) => state.closeDetail)
+export function Detail({project, count}: {project: Project; count: number}) {
+  const index = useConsole((state) => state.libraryIndex)
+  const moveLibrary = useConsole((state) => state.moveLibrary)
   const reducedMotion = useReducedMotion()
   const layout = useFirmwareLayout()
   const mobile = useIsMobile()
@@ -90,6 +91,7 @@ export function Detail({project}: {project: Project}) {
   ]
   const meta = projectMeta(project)
   const gap = Math.round(layout.railX * 0.6)
+  const arrow = Math.round(layout.metaFont * 2.4)
 
   return (
     <div
@@ -107,7 +109,10 @@ export function Detail({project}: {project: Project}) {
         data-console-scroll
         // What the stick scrolls while this is open (`useRailInput`).
         data-detail-scroll
-        style={{...scrollBox(mobile), padding: `${layout.railTop / 2}px ${layout.railX}px 48px`}}
+        style={{
+          ...scrollBox(mobile),
+          padding: `${layout.railTop / 2}px ${layout.railX}px ${arrow + 32}px`,
+        }}
       >
         <h2
           style={{
@@ -216,21 +221,6 @@ export function Detail({project}: {project: Project}) {
             </p>
           )}
         </div>
-
-        <p
-          onClick={closeDetail}
-          style={{
-            margin: `${Math.round(layout.blockGap * 0.8)}px 0 0`,
-            color: 'var(--screen-accent)',
-            cursor: 'pointer',
-            fontFamily: 'var(--font-martian-mono), ui-monospace, monospace',
-            fontSize: `${layout.metaFont - 1}px`,
-            letterSpacing: '0.16em',
-          }}
-        >
-          {/* A phone has no Escape key; the tap is the whole affordance there. */}
-          {mobile ? 'BACK' : 'ESC — BACK'}
-        </p>
       </div>
 
       {/*
@@ -239,7 +229,82 @@ export function Detail({project}: {project: Project}) {
         scrolling box, not a child — inside it, it would scroll away.
       */}
       <div style={scrollFade(Math.round(layout.blockGap * 0.8))} />
+
+      {/*
+        The neighbours in the rail, one press away, so reading the next game does
+        not mean backing out to the rail and coming in again. No wrap, as on the
+        rail itself (SPEC §3.2): the end of the list has no arrow past it.
+      */}
+      {index > 0 ? (
+        <StepArrow side="left" size={arrow} onStep={() => moveLibrary(-1, count)} />
+      ) : null}
+      {index < count - 1 ? (
+        <StepArrow side="right" size={arrow} onStep={() => moveLibrary(1, count)} />
+      ) : null}
     </div>
+  )
+}
+
+/**
+ * A corner arrow in the detail view: a round cap in the link buttons'
+ * vocabulary, lit on hover and darker under a finger. Fires on the release,
+ * like every other control on the screen.
+ */
+function StepArrow({
+  side,
+  size,
+  onStep,
+}: {
+  side: 'left' | 'right'
+  size: number
+  onStep: () => void
+}) {
+  const layout = useFirmwareLayout()
+  const [hovered, setHovered] = useState(false)
+  const [held, setHeld] = useState(false)
+  const tint = held ? 34 : hovered ? 24 : 14
+  const inset = Math.round(layout.railX * 0.5)
+
+  return (
+    <span
+      onClick={() => {
+        setHeld(false)
+        onStep()
+      }}
+      onPointerDown={() => setHeld(true)}
+      onPointerUp={() => setHeld(false)}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => {
+        setHovered(false)
+        setHeld(false)
+      }}
+      style={{
+        position: 'absolute',
+        bottom: `${inset}px`,
+        [side]: `${inset}px`,
+        zIndex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: `${size}px`,
+        height: `${size}px`,
+        borderRadius: '50%',
+        border: '1px solid var(--screen-accent)',
+        background: `color-mix(in srgb, var(--screen-accent) ${tint}%, var(--screen-bg))`,
+        cursor: 'pointer',
+      }}
+    >
+      <svg
+        aria-hidden
+        fill="var(--screen-accent)"
+        height={Math.round(size * 0.6)}
+        viewBox={`0 0 ${VIEWBOX.chevronLeft} ${VIEWBOX.chevronLeft}`}
+        width={Math.round(size * 0.6)}
+        style={side === 'right' ? {transform: 'scaleX(-1)'} : undefined}
+      >
+        <path d={GLYPHS.chevronLeft} />
+      </svg>
+    </span>
   )
 }
 

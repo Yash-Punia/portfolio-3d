@@ -97,6 +97,24 @@ export interface Tuning {
   screenEmissiveIntensityLight: number
 
   /*
+    The closed console asking to be opened (`lure.ts`). Every `peekPeriodS` the
+    doors crack `peekAngleDeg` and settle, and light from inside glows out of the
+    seam in proportion to how far they stand open. A pointer on a door parts
+    them `peekLeanDeg`. The ripple is a ring tapping the seam after a few idle
+    seconds.
+  */
+  peekOn: boolean
+  peekAngleDeg: number
+  peekPeriodS: number
+  peekLeanDeg: number
+  /** Brightness of the seam glow at the widest crack; 0 turns it off. */
+  peekGlow: number
+  /** Width of the glow, in world units, at the widest crack. */
+  peekGlowWidth: number
+  peekGlowColor: string
+  rippleOn: boolean
+
+  /*
     The firmware UI on the screen (SPEC §7, §8). These are CSS pixels in the
     panel's own authored space, not world units: the panel is laid out at
     `fwPanelWidth` pixels wide and then scaled onto the glass, so every size
@@ -258,6 +276,14 @@ export const DEFAULT_TUNING: Tuning = {
   screenLightColor: '#edeae2',
   screenEmissiveIntensity: 2.6,
   screenEmissiveIntensityLight: 1,
+  peekOn: true,
+  peekAngleDeg: 14,
+  peekPeriodS: 2.6,
+  peekLeanDeg: 8.5,
+  peekGlow: 6,
+  peekGlowWidth: 0.45,
+  peekGlowColor: '#1e5313',
+  rippleOn: false,
   fwPanelWidth: 900,
   fwStatusHeight: 60,
   fwStatusFont: 13,
@@ -361,7 +387,7 @@ export const useTuning = create<TuningState>()(
       // a change to `DEFAULT_TUNING` reaches nobody who has been here before
       // unless the version moves and the old record is thrown away. Bump it
       // whenever a default changes, or the new form ships to new visitors only.
-      version: 7,
+      version: 8,
       migrate: () => ({values: DEFAULT_TUNING}),
       partialize: (state) => ({values: state.values}),
       merge: (persisted, current) => {

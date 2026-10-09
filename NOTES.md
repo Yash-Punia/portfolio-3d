@@ -1982,3 +1982,20 @@ connected to `github.com/Yash-Punia/portfolio-3d`, so pushes to `main` deploy th
 - **The production URL is a generated one.** Every canonical link, OG tag and sitemap entry currently
   points at `portfolio-3d-five-inky.vercel.app`, and a search engine that indexes it before the
   custom domain exists will have to be told to move.
+
+## The closed console says "open me"
+
+- **SPEC §5's idle (±1.5° drift, seam glow pulse) did not read as tappable**, and on touch there is
+  no hover cursor either. Motion cues now ride on top of it, still with no text, all off under
+  reduced motion. Timing lives in `components/console/lure.ts`; every knob is in the tuning panel
+  ("Peek, closed", "Idle ripple", the "Peek glow" colour):
+  - **Peek + seam glow.** Every `peekPeriodS` (4.5s) the doors crack `peekAngleDeg` (11°) and
+    settle, the right one trailing 60ms as it does on open. `SeamGlow` is light from inside spilling
+    out of the seam: an additive strip in `peekGlowColor` whose brightness and width follow how far
+    the doors stand open. There is no bloom pass, so it is drawn over the doors, ignoring depth.
+    A first try lit the screen glass instead; through a gap that thin it barely showed.
+  - **Hover / press.** A pointer on a door parts both `peekLeanDeg` (3°), and the glow follows; a
+    press sinks them 0.02 before the tap opens them. The crack is its own group inside the hinge
+    pivot, so the open spring never fights it.
+  - **Ghost tap, off by default** (`rippleOn`). After 3s with no input, an accent ring spreads from
+    the seam just before each peek, and stops for good once the console has been opened.

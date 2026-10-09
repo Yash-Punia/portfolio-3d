@@ -10,6 +10,8 @@ import {isPortraitPhone} from '@/components/console/mobile'
 import {Body} from '@/components/console/parts/Body'
 import {Flap} from '@/components/console/parts/Flap'
 import {Hinge} from '@/components/console/parts/Hinge'
+import {Ripple} from '@/components/console/parts/Ripple'
+import {SeamGlow} from '@/components/console/parts/SeamGlow'
 import {useConsole} from '@/components/console/store'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
 
@@ -162,6 +164,8 @@ export function Console({content}: {content: ConsoleContent}) {
         <Hinge side="right" />
         <Flap side="left" content={content} />
         <Flap side="right" content={content} />
+        <SeamGlow />
+        <Ripple />
       </group>
     </animated.group>
   )

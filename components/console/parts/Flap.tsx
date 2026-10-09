@@ -3,16 +3,18 @@
 import {animated, useSpring} from '@react-spring/three'
 import {useFrame} from '@react-three/fiber'
 import {useEffect, useMemo, useRef} from 'react'
-import {MathUtils, type MeshStandardMaterial} from 'three'
+import {MathUtils, type Group, type MeshStandardMaterial} from 'three'
 
 import {resumeHref, type ConsoleContent} from '@/components/console/content'
 import {usePanelGeometry, type PanelSpec} from '@/components/console/geometry'
+import {ajarDeg, lure, SINK} from '@/components/console/lure'
 import {FaceButton, FaceButtons} from '@/components/console/parts/FaceButtons'
 import {InfoMonitor} from '@/components/console/parts/InfoMonitor'
 import {Joystick} from '@/components/console/parts/Joystick'
 import {ThemeToggle} from '@/components/console/parts/ThemeToggle'
 import {useSpec} from '@/components/console/spec'
 import {useConsole} from '@/components/console/store'
+import {useTuning} from '@/components/console/tuning'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
 
 export type FlapSide = 'left' | 'right'
@@ -85,6 +87,7 @@ export function Flap({side, content}: {side: FlapSide; content: ConsoleContent})
   const close = useConsole((state) => state.close)
   const reducedMotion = useReducedMotion()
   const band = useRef<MeshStandardMaterial>(null)
+  const crack = useRef<Group>(null)
   const pressedAt = useRef<{x: number; y: number} | null>(null)
 
   const {rotation} = useSpring({
@@ -112,6 +115,27 @@ export function Flap({side, content}: {side: FlapSide; content: ConsoleContent})
   })
 
   /**
+   * The peek, the hover lean and the press (`lure.ts`), on a group of their own
+   * inside the hinge pivot: the spring owns open and shut, this only adds the
+   * crack on top, so the two never fight. The right door trails, as it does
+   * when the console opens.
+   */
+  useFrame((state, delta) => {
+    const group = crack.current
+    if (!group || reducedMotion) return
+
+    const t = state.clock.elapsedTime - (side === 'right' ? 0.06 : 0)
+    const angle = isOpen ? 0 : (ajarDeg(t, useTuning.getState().values) * Math.PI) / 180
+    group.rotation.y = MathUtils.damp(group.rotation.y, -sign * angle, 10, delta)
+    group.position.z = MathUtils.damp(
+      group.position.z,
+      !isOpen && lure.pressed ? -SINK : 0,
+      18,
+      delta,
+    )
+  })
+
+  /**
    * Closed flaps are the `interactive` group of SPEC §5; open ones are inert,
    * so an open flap neither swallows clicks nor fights the close button for the
    * cursor as its events bubble past. Opening under a stationary pointer fires
@@ -121,6 +145,7 @@ export function Flap({side, content}: {side: FlapSide; content: ConsoleContent})
   const hover = (on: boolean) => {
     // Once open the flap keeps its hands off the cursor entirely: its events
     // bubble past the close button's, and clearing here would undo them.
+    lure.hover = on && !isOpen
     if (isOpen) return
     document.body.style.cursor = on ? 'pointer' : ''
   }
@@ -141,75 +166,88 @@ export function Flap({side, content}: {side: FlapSide; content: ConsoleContent})
 
   return (
     <animated.group position={[sign * -d.hingeX, 0, d.z.flapClosed]} rotation-y={rotation}>
-      {/*
+      <group ref={crack}>
+        {/*
         The handlers sit on the group, not on one mesh: the moulding covers most
         of the face, and R3F bubbles a child's pointer events up to its parent,
         so this makes the whole door the target rather than the sliver of shell
         around the moulding.
       */}
-      <group
-        position={[sign * halfWidth, 0, 0]}
-        /*
+        <group
+          position={[sign * halfWidth, 0, 0]}
+          /*
           The pointerdown is recorded but not stopped: it bubbles on to the
           root group so a drag that starts on a door still rotates the console.
           What the threshold below decides is only whether the release was a
           tap — a shaky one still opens the console (SPEC §5).
         */
-        onPointerDown={(event) => {
-          pressedAt.current = {x: event.clientX, y: event.clientY}
-        }}
-        onClick={(event) => {
-          if (isOpen) return
-          const start = pressedAt.current
-          if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > TAP_PX) return
-          event.stopPropagation()
-          open()
-        }}
-        onPointerOver={() => hover(true)}
-        onPointerOut={() => hover(false)}
-      >
-        <mesh geometry={outer}>
-          <meshStandardMaterial {...m.shell} />
-        </mesh>
+          onPointerDown={(event) => {
+            pressedAt.current = {x: event.clientX, y: event.clientY}
+            if (isOpen) return
+            // The doors sink under the press, so the tap answers before it opens.
+            lure.pressed = true
+            const release = () => {
+              lure.pressed = false
+              window.removeEventListener('pointerup', release)
+              window.removeEventListener('pointercancel', release)
+            }
+            window.addEventListener('pointerup', release)
+            window.addEventListener('pointercancel', release)
+          }}
+          onClick={(event) => {
+            if (isOpen) return
+            const start = pressedAt.current
+            if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > TAP_PX)
+              return
+            event.stopPropagation()
+            open()
+          }}
+          onPointerOver={() => hover(true)}
+          onPointerOut={() => hover(false)}
+        >
+          <mesh geometry={outer}>
+            <meshStandardMaterial {...m.shell} />
+          </mesh>
 
-        <mesh geometry={moulding} position={[0, 0, (d.flap.depth + d.panel.depth) / 2]}>
-          <meshStandardMaterial {...m.shell} />
-        </mesh>
+          <mesh geometry={moulding} position={[0, 0, (d.flap.depth + d.panel.depth) / 2]}>
+            <meshStandardMaterial {...m.shell} />
+          </mesh>
 
-        {/* Painted red edge along the seam (SPEC §4). */}
-        <mesh position={[sign * bandX, 0, bandZ]}>
-          <boxGeometry args={[d.seam.bandWidth, bandHeight, d.seam.bandDepth]} />
-          <meshStandardMaterial
-            ref={band}
-            {...m.accent}
-            emissive={m.accent.color}
-            emissiveIntensity={isOpen ? 0 : GLOW_BASE}
-          />
-        </mesh>
-
-        {side === 'left' ? (
-          <>
-            <InfoMonitor
-              href={href}
-              settings={content.settings}
-              socialLinks={content.socialLinks}
+          {/* Painted red edge along the seam (SPEC §4). */}
+          <mesh position={[sign * bandX, 0, bandZ]}>
+            <boxGeometry args={[d.seam.bandWidth, bandHeight, d.seam.bandDepth]} />
+            <meshStandardMaterial
+              ref={band}
+              {...m.accent}
+              emissive={m.accent.color}
+              emissiveIntensity={isOpen ? 0 : GLOW_BASE}
             />
-            <Joystick />
-          </>
-        ) : (
-          <>
-            <ThemeToggle />
-            {/*
+          </mesh>
+
+          {side === 'left' ? (
+            <>
+              <InfoMonitor
+                href={href}
+                settings={content.settings}
+                socialLinks={content.socialLinks}
+              />
+              <Joystick />
+            </>
+          ) : (
+            <>
+              <ThemeToggle />
+              {/*
               Top right: the way out in one press, wherever the screen is. The
               x is negated for the reason `ThemeToggle`'s is: the flap's own
               frame faces away on its inner side.
             */}
-            <group position={[-d.toggle.closeX, d.toggle.y, d.faceZ]} rotation={[0, Math.PI, 0]}>
-              <FaceButton dark focus="close" glyph="close" onPress={close} />
-            </group>
-            <FaceButtons content={content} />
-          </>
-        )}
+              <group position={[-d.toggle.closeX, d.toggle.y, d.faceZ]} rotation={[0, Math.PI, 0]}>
+                <FaceButton dark focus="close" glyph="close" onPress={close} />
+              </group>
+              <FaceButtons content={content} />
+            </>
+          )}
+        </group>
       </group>
     </animated.group>
   )

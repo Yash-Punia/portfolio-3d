@@ -42,7 +42,7 @@ components/console/       the 3D object and the state behind it
   frame.ts, mobile.ts     portrait-phone maths (isPortraitPhone, inConsoleFrame, panelScale)
   audio.ts                synthesized Web Audio cues, all knobs in tuning (sfx*)
 components/firmware/      the DOM UI on the screen (drei <Html transform>), knows nothing about 3D
-  Firmware.tsx            root: StatusBar + LibraryRail | Timeline, Detail overlay, Boot
+  Firmware.tsx            root: StatusBar + Menu | LibraryRail | Timeline, Detail overlay, Boot
   layout.ts               useFirmwareLayout — tuning → px sizes; MOBILE table overrides on phones
   useRailDrag.ts          finger-follow + snap for both rails
 sanity/schemaTypes        project, timelineEntry, socialLink, siteSettings
@@ -51,11 +51,14 @@ sanity/lib/queries.ts     defineQuery GROQ (TypeGen only sees named defineQuery 
 
 ## Navigation model
 
-- **Sections:** `library` and `timeline` only. There is no menu: `open()` boots straight into the
-  Library at index 0. Joystick or arrow up/down walks between sections (`neighbours()` in
-  `content.ts`), and left/right moves within the rail.
+- **Sections:** `menu`, `library`, `timeline`. `open()` boots straight into the Library at index
+  0, not the menu. The menu (Games / Projects | Experience) is one step *out* of the rails, reached
+  only by back; it opens highlighting the rail you came from. On the rails, joystick or arrow
+  up/down walks between Library and Timeline (`neighbours()` in `content.ts`) and left/right moves
+  within the rail. On the menu every direction moves the highlight. `menuChoice()` clamps the
+  store's bare `menuIndex` against `menuOptions(content)`.
 - **Verbs** live in the store, so every input path agrees:
-  - `back()`: detail → rail, Timeline → Library, Library → closed.
+  - `back()`: detail → rail, rail → menu, menu → closed.
   - `jump(section)`: open if needed, section at index 0.
   - `setSection` resets both indices. A caller that targets a specific tile sets its index *after*
     calling it.
@@ -71,6 +74,12 @@ sanity/lib/queries.ts     defineQuery GROQ (TypeGen only sees named defineQuery 
   - Title, then a `3fr 2fr` grid (cover + link buttons | facts), then the description.
   - Link buttons get their glyph from the URL host (`glyphFor`).
   - Up/down from the stick or arrows call `scrollDetail()` on `[data-detail-scroll]`.
+  - Left/right (stick, arrow keys, the corner `StepArrow`s, or a sideways swipe on phones via
+    `usePanelScroll`, `DETAIL_SWIPE` panel px) call `moveLibrary(±1)` and step to
+    the neighbouring project without leaving the view. `Detail` is keyed on `project._id`, so each
+    step starts at the top. No wrap: the first project has no prev arrow, the last no next.
+- **Rail dots:** `RailDots` under the Library rail, one per project, Instagram-style. Past
+  `MAX_DOTS` (7) a window follows the selection and an edge dot with more beyond it shrinks.
 - **Dwell preview:** when the selection rests on a project for `fwPreviewDelayMs`, its Sanity
   `preview` file (GIF via `<img>`, MP4/WebM via `<video muted loop playsInline>`) fades in over the
   cover. It is skipped under reduced motion.

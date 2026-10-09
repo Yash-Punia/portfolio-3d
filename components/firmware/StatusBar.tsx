@@ -49,9 +49,9 @@ function useClock(): string | null {
  * the way a phone's back affordance normally does, where the title of the place
  * you came from is the thing you press.
  *
- * It is the B cap's twin: both call `back()`, so a detail view closes, then the
- * Timeline returns to the Library, then the console shuts. The screen used to
- * say this with a pair of large `▴ / ▾` section arrows above and below the
+ * It is the B cap's twin: both call `back()`, so a detail view closes, then a
+ * rail returns to the menu, then the console shuts. The screen used to say
+ * this with a pair of large `▴ / ▾` section arrows above and below the
  * content; the flap carries that job now (Library and Timeline have caps of
  * their own), and what the screen was missing was the step *out*.
  *

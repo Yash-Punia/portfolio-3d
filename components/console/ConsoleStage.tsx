@@ -4,7 +4,14 @@ import dynamic from 'next/dynamic'
 import {useEffect, useState, useSyncExternalStore} from 'react'
 
 import {accept} from '@/components/console/actions'
-import {neighbours, type ButtonSlot, type ConsoleContent} from '@/components/console/content'
+import {
+  menuChoice,
+  menuOptions,
+  neighbours,
+  SECTION_LABELS,
+  type ButtonSlot,
+  type ConsoleContent,
+} from '@/components/console/content'
 import {inConsoleFrame, panelScale} from '@/components/console/frame'
 import {useInput, type Direction, type FocusTarget} from '@/components/console/input'
 import {useIsMobile} from '@/components/console/mobile'
@@ -106,8 +113,8 @@ function useConsoleKeys(content: ConsoleContent) {
 
       const {isOpen, open, back} = useConsole.getState()
 
-      // Escape is the B button: a detail view, then the Timeline, then the
-      // console itself. One definition of back, in the store (SPEC §8).
+      // Escape is the B button: a detail view, then the rail, then the menu,
+      // then the console itself. One definition of back, in the store (SPEC §8).
       if (event.key === 'Escape') {
         if (!isOpen) return
         back()
@@ -122,7 +129,8 @@ function useConsoleKeys(content: ConsoleContent) {
           return
         }
 
-        // Enter is the A button: it opens the selected project.
+        // Enter is the A button: it takes the highlighted menu half, or opens
+        // the selected project.
         if (event.key === 'Enter' || event.key === ' ') {
           if (document.activeElement !== document.body) return
           event.preventDefault()
@@ -259,9 +267,12 @@ function useRailInput(content: ConsoleContent) {
 
         const {isOpen, isDetailOpen} = useConsole.getState()
         if (!isOpen) return
-        // A detail view is not a rail: there the stick scrolls the page.
-        if (isDetailOpen) scrollDetail(direction)
-        else move(direction, content)
+        // In a detail view up and down scroll the page, and left and right step
+        // to the neighbouring project, as the corner arrows on the glass do.
+        if (!isDetailOpen) move(direction, content)
+        else if (direction === 'left' || direction === 'right')
+          useConsole.getState().moveLibrary(direction === 'left' ? -1 : 1, content.projects.length)
+        else scrollDetail(direction)
       }),
     [content],
   )
@@ -269,10 +280,9 @@ function useRailInput(content: ConsoleContent) {
 
 /**
  * The stick, and the arrow keys, inside a project's detail view: up and down
- * scroll it a good part of a screen at a time; sideways means nothing there.
+ * scroll it a good part of a screen at a time.
  */
-function scrollDetail(direction: Direction) {
-  if (direction !== 'up' && direction !== 'down') return
+function scrollDetail(direction: 'up' | 'down') {
   const box = document.querySelector('[data-detail-scroll]')
   if (!(box instanceof HTMLElement)) return
   const step = box.clientHeight * 0.4
@@ -283,12 +293,19 @@ function scrollDetail(direction: Direction) {
  * One directional move, from whichever input made it.
  *
  * Up and down walk the stack of screens — Library, Timeline — through the one
- * `neighbours()` definition. Left and right move within the rail showing
+ * `neighbours()` definition. Left and right move within the rail showing,
+ * except on the menu, where the two halves are stacked and every direction
+ * moves the highlight: a menu that ignored a sideways nudge would feel broken
  * (SPEC §8).
  */
 function move(direction: Direction, content: ConsoleContent) {
-  const {section, setSection, moveLibrary, moveTimeline} = useConsole.getState()
+  const {section, setSection, moveMenu, moveLibrary, moveTimeline} = useConsole.getState()
   const delta = direction === 'up' || direction === 'left' ? -1 : 1
+
+  if (section === 'menu') {
+    moveMenu(delta, menuOptions(content).length)
+    return
+  }
 
   if (direction === 'up' || direction === 'down') {
     const target = neighbours(section, content)[direction]
@@ -350,11 +367,12 @@ function useWheelRail(content: ConsoleContent) {
  * moving it — this, through `inConsoleFrame`, the same quarter turn the rails
  * drag through.
  *
- * This used to carry swipe navigation too. It does not any more: sideways is
- * the rails' own drag, which follows the finger instead of jumping a tile at a
+ * It no longer carries window-wide swipe navigation: sideways on a rail is the
+ * rail's own drag, which follows the finger instead of jumping a tile at a
  * time, and up/down are the Library and Timeline buttons on the flap. A
  * window-wide swipe was also the thing quietly competing with drag-to-rotate,
- * which is why the console would not turn under a finger.
+ * which is why the console would not turn under a finger. The one swipe left is
+ * sideways on a project's detail view, which has no rail under it to drag.
  *
  * Hence the `[data-firmware]` gate: nothing outside the screen is ever
  * captured here, so a drag on bare chassis belongs entirely to `Console`.
@@ -362,12 +380,15 @@ function useWheelRail(content: ConsoleContent) {
  * Nothing calls `preventDefault`, so every tap the firmware handles still
  * works.
  */
-function usePanelScroll(enabled: boolean) {
+/** How far, in panel px, a sideways swipe in a detail view must travel to step. */
+const DETAIL_SWIPE = 48
+
+function usePanelScroll(enabled: boolean, projectCount: number) {
   useEffect(() => {
     if (!enabled) return
 
     let start: {x: number; y: number} | null = null
-    let scroller: {box: HTMLElement; top: number; scale: number} | null = null
+    let scroller: {box: HTMLElement; top: number; scale: number; scrolls: boolean} | null = null
 
     function onPointerDown(event: PointerEvent) {
       start = null
@@ -377,15 +398,18 @@ function usePanelScroll(enabled: boolean) {
       if (!event.target.closest('[data-firmware]')) return
 
       const box = event.target.closest('[data-console-scroll]')
-      // A box with nothing hidden below the fold is not a scroller.
-      if (!(box instanceof HTMLElement) || box.scrollHeight <= box.clientHeight) return
+      if (!(box instanceof HTMLElement)) return
+      // A box with nothing hidden below the fold is not a scroller — but a
+      // detail view still takes the sideways swipe to its neighbours.
+      const scrolls = box.scrollHeight > box.clientHeight
+      if (!scrolls && !box.hasAttribute('data-detail-scroll')) return
 
       start = {x: event.clientX, y: event.clientY}
-      scroller = {box, top: box.scrollTop, scale: panelScale(box)}
+      scroller = {box, top: box.scrollTop, scale: panelScale(box), scrolls}
     }
 
     function onPointerMove(event: PointerEvent) {
-      if (!start || !scroller) return
+      if (!start || !scroller?.scrolls) return
 
       const {x, y} = inConsoleFrame(event.clientX - start.x, event.clientY - start.y)
       // The dominant axis wins outright, the same rule the rails follow.
@@ -394,7 +418,19 @@ function usePanelScroll(enabled: boolean) {
       scroller.box.scrollTop = scroller.top - y / scroller.scale
     }
 
-    function onPointerUp() {
+    function onPointerUp(event: PointerEvent) {
+      /*
+        A sideways swipe on a project's detail view steps to its neighbour, the
+        way the corner arrows and the stick do: finger to the left brings the
+        next one in, as on any carousel. Decided on the release, so a swipe is
+        one step however far it goes.
+      */
+      if (event.type === 'pointerup' && start && scroller?.box.hasAttribute('data-detail-scroll')) {
+        const {x, y} = inConsoleFrame(event.clientX - start.x, event.clientY - start.y)
+        if (Math.abs(x) > Math.abs(y) && Math.abs(x) / scroller.scale > DETAIL_SWIPE) {
+          useConsole.getState().moveLibrary(x < 0 ? 1 : -1, projectCount)
+        }
+      }
       start = null
       scroller = null
     }
@@ -412,7 +448,7 @@ function usePanelScroll(enabled: boolean) {
       window.removeEventListener('pointerup', onPointerUp)
       window.removeEventListener('pointercancel', onPointerUp)
     }
-  }, [enabled])
+  }, [enabled, projectCount])
 }
 
 /**
@@ -454,6 +490,7 @@ function useAnnouncement(content: ConsoleContent): string {
   const isOpen = useConsole((state) => state.isOpen)
   const isBooting = useConsole((state) => state.isBooting)
   const section = useConsole((state) => state.section)
+  const menuIndex = useConsole((state) => state.menuIndex)
   const index = useConsole((state) => state.libraryIndex)
   const timelineIndex = useConsole((state) => state.timelineIndex)
   const isDetailOpen = useConsole((state) => state.isDetailOpen)
@@ -463,6 +500,11 @@ function useAnnouncement(content: ConsoleContent): string {
   // live region does not announce — it only speaks once this changes.
   if (!isOpen) return 'Console closed'
   if (isBooting) return 'Console on, booting'
+
+  if (section === 'menu') {
+    const option = menuChoice(content, menuIndex)
+    return option ? `Menu, ${SECTION_LABELS[option]}` : 'Menu'
+  }
 
   if (section === 'timeline') {
     const entry = content.timeline[timelineIndex]
@@ -496,7 +538,7 @@ export function ConsoleStage({content}: {content: ConsoleContent}) {
   const [notice, setNotice] = useState<{text: string; at: string} | null>(null)
   const announcement = notice?.at === selection ? notice.text : selection
 
-  usePanelScroll(mobile)
+  usePanelScroll(mobile, content.projects.length)
 
   return (
     <div

@@ -69,6 +69,22 @@ const CONSOLE_GROUPS: Group[] = [
     ],
   },
   {
+    title: 'Peek, closed',
+    on: 'peekOn',
+    controls: [
+      {key: 'peekAngleDeg', label: 'Peek angle (deg)', min: 0, max: 30, step: 0.5},
+      {key: 'peekPeriodS', label: 'Peek every (s)', min: 1.5, max: 15, step: 0.1},
+      {key: 'peekLeanDeg', label: 'Hover lean (deg)', min: 0, max: 15, step: 0.5},
+      {key: 'peekGlow', label: 'Seam glow', min: 0, max: 8, step: 0.1},
+      {key: 'peekGlowWidth', label: 'Seam glow width', min: 0.05, max: 2, step: 0.01},
+    ],
+  },
+  {
+    title: 'Idle ripple',
+    on: 'rippleOn',
+    controls: [],
+  },
+  {
     title: 'Info monitor',
     controls: [
       {key: 'monitorY', label: 'Monitor height', min: -2, max: 2, step: 0.01},
@@ -231,6 +247,7 @@ const COLOURS: {key: ColorKey; label: string}[] = [
   {key: 'accentColor', label: 'Red accent'},
   {key: 'buttonColor', label: 'Button caps'},
   {key: 'heldTintColor', label: 'Button mark, held'},
+  {key: 'peekGlowColor', label: 'Peek glow'},
   {key: 'screenColor', label: 'Screen, dark theme'},
   {key: 'screenLightColor', label: 'Screen, light theme'},
 ]

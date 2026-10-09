@@ -252,10 +252,68 @@ function CoverFace({
   )
 }
 
+/** The most dots shown at once; past that the row slides with the selection. */
+const MAX_DOTS = 7
+
+/**
+ * Where the selection is in the rail, the way a photo carousel says it: a dot
+ * per project, the selected one lit. Only two or three tiles are ever on the
+ * glass, and without these nothing says there are more off the edge.
+ *
+ * A long rail shows a window of `MAX_DOTS` that follows the selection, and a
+ * dot on the window's edge with more projects beyond it is drawn small —
+ * Instagram's trick for "this keeps going" without a dot per project.
+ */
+function RailDots({
+  count,
+  index,
+  onPick,
+}: {
+  count: number
+  index: number
+  onPick: (index: number) => void
+}) {
+  const layout = useFirmwareLayout()
+  const reducedMotion = useReducedMotion()
+  if (count <= 1) return null
+
+  const size = Math.max(5, Math.round(layout.metaFont * 0.6))
+  const shown = Math.min(count, MAX_DOTS)
+  const first = Math.min(Math.max(index - Math.floor(shown / 2), 0), count - shown)
+  const last = first + shown - 1
+
+  return (
+    <div style={{display: 'flex', justifyContent: 'center', gap: `${size}px`}}>
+      {Array.from({length: shown}, (_, offset) => {
+        const position = first + offset
+        const active = position === index
+        const edge = (position === first && first > 0) || (position === last && last < count - 1)
+        return (
+          <span
+            key={position}
+            onClick={() => onPick(position)}
+            style={{
+              width: `${size}px`,
+              height: `${size}px`,
+              borderRadius: '50%',
+              cursor: 'pointer',
+              background: active ? 'var(--screen-accent)' : 'var(--screen-muted)',
+              opacity: active ? 1 : 0.45,
+              transform: `scale(${active ? 1.4 : edge ? 0.5 : 1})`,
+              ...transition(reducedMotion, 'transform, background-color, opacity'),
+            }}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
 export function LibraryRail({content}: {content: ConsoleContent}) {
   const index = useConsole((state) => state.libraryIndex)
   const setLibraryIndex = useConsole((state) => state.setLibraryIndex)
   const openDetail = useConsole((state) => state.openDetail)
+  const moveLibrary = useConsole((state) => state.moveLibrary)
   const reducedMotion = useReducedMotion()
   const layout = useFirmwareLayout()
   const mobile = useIsMobile()
@@ -368,6 +426,13 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
         </div>
       </div>
 
+      {/* A move, not a tap on a tile: picking the lit dot does not drill in. */}
+      <RailDots
+        count={projects.length}
+        index={index}
+        onPick={(target) => moveLibrary(target - index, projects.length)}
+      />
+
       {/*
         The description below the rail. Keyed on the selection so the block
         crossfades as a whole rather than the words changing under a static
@@ -408,8 +473,8 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
             {/*
               A 320px panel is a caption, not a page. On a phone the tile keeps
               its cover, its title and the one fact that dates it; the role, the
-              engine, the blurb and the affordance line below are all a tap
-              away in the detail view, and stacked on the glass they were what
+              engine and the blurb are all a tap away in the detail
+              view, and stacked on the glass they were what
               made the rail read as a wall of text.
             */}
             {mobile
@@ -418,31 +483,16 @@ export function LibraryRail({content}: {content: ConsoleContent}) {
           </p>
 
           {mobile ? null : (
-            <>
-              <p
-                style={{
-                  margin: `${layout.textGap}px 0 0`,
-                  color: 'var(--screen-fg)',
-                  fontSize: `${layout.bodyFont}px`,
-                  lineHeight: 1.5,
-                }}
-              >
-                {selected.blurb}
-              </p>
-
-              {/* Says what happens, not marketing copy (SPEC §10). */}
-              <p
-                style={{
-                  margin: `${Math.round(layout.textGap * 1.5)}px 0 0`,
-                  color: 'var(--screen-accent)',
-                  fontFamily: 'var(--font-martian-mono), ui-monospace, monospace',
-                  fontSize: `${layout.metaFont - 1}px`,
-                  letterSpacing: '0.16em',
-                }}
-              >
-                ENTER — DETAILS
-              </p>
-            </>
+            <p
+              style={{
+                margin: `${layout.textGap}px 0 0`,
+                color: 'var(--screen-fg)',
+                fontSize: `${layout.bodyFont}px`,
+                lineHeight: 1.5,
+              }}
+            >
+              {selected.blurb}
+            </p>
           )}
         </div>
       ) : null}

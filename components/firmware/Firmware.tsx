@@ -6,6 +6,7 @@ import {Boot} from '@/components/firmware/Boot'
 import {Detail} from '@/components/firmware/Detail'
 import {useFirmwareLayout} from '@/components/firmware/layout'
 import {LibraryRail} from '@/components/firmware/LibraryRail'
+import {Menu} from '@/components/firmware/Menu'
 import {StatusBar} from '@/components/firmware/StatusBar'
 import {Timeline} from '@/components/firmware/Timeline'
 import {useScreenTheme} from '@/components/firmware/theme'
@@ -13,6 +14,7 @@ import type {Section} from '@/components/console/store'
 
 /** The status bar's own names: short caps chrome, not the readable labels. */
 const STATUS_NAMES: Record<Section, string> = {
+  menu: 'MENU',
   library: 'LIBRARY',
   timeline: 'TIMELINE',
 }
@@ -77,11 +79,15 @@ export function Firmware({content}: {content: ConsoleContent}) {
 
       {/* Keyed so the screens crossfade into one another. */}
       <div key={section} style={{display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0}}>
+        {section === 'menu' ? <Menu content={content} /> : null}
         {section === 'library' ? <LibraryRail content={content} /> : null}
         {section === 'timeline' ? <Timeline content={content} /> : null}
       </div>
 
-      {isDetailOpen && project ? <Detail project={project} /> : null}
+      {/* Keyed so stepping to the next project starts its page from the top. */}
+      {isDetailOpen && project ? (
+        <Detail key={project._id} project={project} count={content.projects.length} />
+      ) : null}
 
       <Boot name={content.settings?.fullName ?? null} />
 

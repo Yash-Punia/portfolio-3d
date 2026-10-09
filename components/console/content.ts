@@ -21,24 +21,48 @@ export interface ConsoleContent {
 }
 
 /**
- * What each screen is called in readable words — the page's landmark headings.
- * The status bar has its own short caps names.
+ * What each screen is called in readable words — on the menu's two buttons and
+ * in the page's landmark headings. The status bar has its own short caps names.
  *
  * Chrome rather than content, like the status bar's own strings.
  */
 export const SECTION_LABELS: Record<Section, string> = {
+  menu: 'Menu',
   library: 'Games / Projects',
   timeline: 'Experience',
 }
 
 /**
- * Where up and down go from a screen — the one definition of the stack. A
+ * The destinations the menu offers, top half then bottom half. A section with
+ * nothing published is not offered: an option that led to an empty screen
+ * would be a dead end (SPEC §3.2).
+ */
+export function menuOptions(content: ConsoleContent): Section[] {
+  const options: Section[] = []
+  if (content.projects.length > 0) options.push('library')
+  if (content.timeline.length > 0) options.push('timeline')
+  return options
+}
+
+/**
+ * The menu's highlighted option. The store keeps a bare index — it cannot see
+ * the content — so it is clamped here against what is actually on offer.
+ */
+export function menuChoice(content: ConsoleContent, menuIndex: number): Section | null {
+  const options = menuOptions(content)
+  return options[Math.min(menuIndex, options.length - 1)] ?? null
+}
+
+/**
+ * Where up and down go from a screen — the one definition of the stack. The
+ * menu is not on it: it sits one step *out* of the rails, reached by back. A
  * section with nothing in it is not a neighbour.
  */
 export function neighbours(
   section: Section,
   content: ConsoleContent,
 ): {up: Section | null; down: Section | null} {
+  if (section === 'menu') return {up: null, down: null}
   if (section === 'library') {
     return {up: null, down: content.timeline.length > 0 ? 'timeline' : null}
   }
