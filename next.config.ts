@@ -9,18 +9,18 @@ const isDev = process.env.NODE_ENV === 'development'
  * loose for reasons rather than by default:
  *
  * - `script-src 'unsafe-inline'`. Next streams the RSC payload as inline
- *   `<script>self.__next_f.push(...)` tags, and the theme script in the head has
- *   to run before the first paint. The strict alternative is a per-request nonce
+ *   `<script>self.__next_f.push(...)` tags. The strict alternative is a per-request nonce
  *   from a proxy, which would make `/` dynamic — trading the prerendered page,
  *   and the LCP that depends on it, for a defence against injected script on a
  *   site with no user input, no comments, no search and no forms.
- * - `style-src 'unsafe-inline'`. The firmware is authored in inline styles so
- *   that one panel can be scaled onto a screen in 3D, and the Studio styles
+ * - `style-src 'unsafe-inline'`. The screen is authored in inline styles so
+ *   that one panel can be scaled onto the glass in 3D, and the Studio styles
  *   itself the same way.
  *
  * Everything else is closed: no plugins, no other origins for scripts, images
- * only from here and Sanity's CDN, and the page may only be framed by itself —
- * which is what the Studio's own preview needs and nothing else does.
+ * only from here and Sanity's CDN, frames only from here and the two trailer
+ * players, and the page may only be framed by itself — which is what the
+ * Studio's own preview needs and nothing else does.
  */
 const csp = [
   "default-src 'self'",
@@ -31,7 +31,8 @@ const csp = [
   "connect-src 'self' https://*.sanity.io wss://*.api.sanity.io",
   "media-src 'self' https://cdn.sanity.io",
   "worker-src 'self' blob:",
-  "frame-src 'self'",
+  // The trailers: a project's `videoUrl` plays inline in its own embed player.
+  "frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com",
   "frame-ancestors 'self'",
   "base-uri 'self'",
   "form-action 'self'",

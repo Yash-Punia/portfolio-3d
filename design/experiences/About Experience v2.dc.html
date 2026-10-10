@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Schibsted+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+body{margin:0;background:#1a1a19;color:#edece8;font-family:'Schibsted Grotesk',sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#edece8;text-decoration:none}a:hover{color:#5fd35a}
+</style>
+</helmet>
+
+<section style="background:#1a1a19;padding:80px;display:flex;flex-direction:column;gap:56px;width:max-content">
+
+<div style="display:grid;grid-template-columns:620px 1fr;gap:72px;align-items:end">
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.12em;color:#8f8d87">YASHPUNIA.XYZ — ABOUT · TURN 6</div>
+<h1 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:75%;font-weight:800;font-size:64px;line-height:.95;text-transform:uppercase">Pick a save slot.</h1>
+<p style="margin:0;font-size:17px;line-height:1.55;color:#a3a19b;text-wrap:pretty">Experience as an index: years, role, place. One row opens at a time, like a menu cursor. Links are icons only. Earlier version: <a href="About Experience.dc.html" style="color:#5fd35a">turn 5</a>.</p>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,240px);gap:22px 32px;font-size:14.5px;line-height:1.5;color:#a3a19b;padding-bottom:6px">
+<div style="display:flex;flex-direction:column;gap:5px"><div style="color:#edece8;font-weight:600">Scannable index</div><div>Years, role, company and place sit in fixed columns, so you can read the whole career in seconds.</div></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="color:#edece8;font-weight:600">One open row</div><div>Only the selected role shows its description. Rows expand inline when clicked.</div></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="color:#edece8;font-weight:600">Try it</div><div>Click a row or use ▲ ▼ on your keyboard. Both mockups stay in sync.</div></div>
+</div>
+</div>
+
+<div id="6a" style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;align-items:center;gap:14px"><div style="font:500 12px 'JetBrains Mono',monospace;background:#edece8;color:#0f0f0e;padding:5px 9px;border-radius:4px">6a</div><div style="font-size:22px;font-weight:600">Desktop about</div><div style="font-size:15px;color:#8f8d87">Profile left, experience index right</div></div>
+
+<div style="position:relative;width:1440px;height:900px;border-radius:10px;overflow:hidden;background:radial-gradient(120% 90% at 50% 40%,#1d1d1c 0%,#0d0d0c 70%);box-shadow:0 30px 80px rgba(0,0,0,.45)">
+
+<div style="position:absolute;left:56px;right:56px;top:0;height:84px;display:flex;align-items:center;justify-content:space-between">
+<div style="display:flex;gap:14px;align-items:baseline"><div style="font-size:15px;font-weight:600">Yash Punia</div><div style="font-size:14px;color:#8f8d87">Game Programmer</div></div>
+<div style="font-size:14px;color:#edece8">Résumé ↓</div>
+</div>
+
+<div style="position:absolute;left:100px;top:138px;width:1240px;height:640px;border-radius:72px;background:linear-gradient(180deg,#262625 0%,#1c1c1b 55%,#181817 100%);box-shadow:0 50px 90px rgba(0,0,0,.6),0 0 0 1px #2e2e2c,inset 0 1px 0 #3b3b39,inset 0 -2px 0 #111110;display:flex;align-items:center;padding:0 22px;box-sizing:border-box;gap:22px">
+
+<div style="width:150px;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:56px">
+<div style="display:grid;grid-template-columns:48px 48px 48px;grid-template-rows:48px 48px 48px;filter:drop-shadow(0 3px 0 #0e0e0d)">
+<div></div><div onClick="{{ prev }}" style="cursor:pointer;background:#2d2d2b;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">▲</div><div></div>
+<div style="background:#2d2d2b;border-radius:8px 0 0 8px;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">◀</div><div style="background:#2d2d2b;display:flex;align-items:center;justify-content:center"><div style="width:16px;height:16px;border-radius:50%;background:#252523;box-shadow:inset 0 1px 2px #111"></div></div><div style="background:#2d2d2b;border-radius:0 8px 8px 0;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">▶</div>
+<div></div><div onClick="{{ next }}" style="cursor:pointer;background:#2d2d2b;border-radius:0 0 8px 8px;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">▼</div><div></div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px"><div style="width:64px;height:22px;border-radius:11px;background:#2d2d2b;box-shadow:0 2px 0 #0e0e0d"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:#6a6863">MENU</div></div>
+</div>
+
+<div style="position:relative;flex:1;height:570px;border-radius:18px;background:#050505;padding:10px;box-sizing:border-box;box-shadow:inset 0 0 0 1px #2a2a28,inset 0 2px 6px rgba(0,0,0,.8)">
+<div style="position:absolute;left:-14px;top:22px;width:6px;height:6px;border-radius:50%;background:#5fd35a;box-shadow:0 0 8px rgba(95,211,90,.6)"></div>
+<div style="position:relative;width:100%;height:100%;border-radius:10px;overflow:hidden;background:#0b0b0a">
+
+<div style="position:absolute;left:0;right:0;top:0;height:46px;display:flex;align-items:center;padding:0 22px;border-bottom:1px solid #1c1c1b">
+<div style="display:flex;align-items:center;gap:4px;font-size:13.5px">
+<div style="height:30px;padding:0 13px;display:flex;align-items:center;color:#c9c7c1">Games</div>
+<div style="height:30px;padding:0 13px;border-radius:15px;background:rgba(237,236,232,.92);color:#0b0b0a;display:flex;align-items:center;font-weight:600">About</div>
+<div style="height:30px;padding:0 13px;display:flex;align-items:center;color:#c9c7c1">Contact</div>
+</div>
+</div>
+
+<div style="position:absolute;left:0;right:0;top:46px;bottom:32px;display:grid;grid-template-columns:260px minmax(0,1fr)">
+
+<div style="padding:32px 26px;display:flex;flex-direction:column;gap:20px;border-right:1px solid #1c1c1b">
+<div style="width:72px;height:72px"><image-slot id="ab2-portrait" shape="circle" placeholder="Photo" style="width:72px;height:72px"></image-slot></div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="font-family:'Archivo',sans-serif;font-stretch:72%;font-weight:800;font-size:40px;line-height:.88;text-transform:uppercase">Yash Punia</div>
+<div style="font-size:14px;color:#8f8d87">Game programmer · Unity</div>
+</div>
+<div style="font-size:14.5px;line-height:1.55;color:#d4d2cc;text-wrap:pretty">I build gameplay systems for mobile and PC games, from shooters to strategy.</div>
+<div style="display:flex;gap:6px;margin-top:auto">
+<sc-for list="{{ links }}" as="l" hint-placeholder-count="4">
+<a href="{{ l.href }}" title="{{ l.name }}" aria-label="{{ l.name }}" style="width:44px;height:44px;border-radius:22px;background:rgba(237,236,232,.08);display:flex;align-items:center;justify-content:center" style-hover="background:rgba(237,236,232,.16)">
+<img src="{{ l.src }}" alt="" style="width:18px;height:18px;filter:invert(.88)">
+</a>
+</sc-for>
+</div>
+</div>
+
+<div style="padding:30px 30px 0 22px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;justify-content:space-between;align-items:baseline;padding:0 0 14px 22px">
+<div style="font-size:13px;color:#8f8d87">Experience</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#5f5d58">{{ slotLabel }}</div>
+</div>
+<sc-for list="{{ items }}" as="item" hint-placeholder-count="3">
+<div onClick="{{ item.select }}" style="cursor:pointer;display:grid;grid-template-columns:22px 104px minmax(0,1fr);align-items:baseline;padding:18px 0;border-top:1px solid #1f1f1d">
+<div style="color:#5fd35a;font-size:11px">
+<sc-if value="{{ item.open }}" hint-placeholder-val="{{ false }}">▶</sc-if>
+</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#8f8d87">{{ item.years }}</div>
+<div style="display:flex;flex-direction:column;gap:4px">
+<div style="font-size:18px;font-weight:600">{{ item.role }}</div>
+<div style="font-size:14px;color:#8f8d87">{{ item.company }} · {{ item.location }}</div>
+<sc-if value="{{ item.open }}" hint-placeholder-val="{{ false }}">
+<div style="font-size:14.5px;line-height:1.55;color:#c9c7c1;max-width:470px;text-wrap:pretty;padding-top:4px">{{ item.desc }}</div>
+</sc-if>
+</div>
+</div>
+</sc-for>
+<div style="border-top:1px solid #1f1f1d"></div>
+</div>
+</div>
+
+<div style="position:absolute;left:0;right:0;bottom:0;height:32px;display:flex;align-items:center;justify-content:center;gap:22px;font-size:11.5px;color:#7a7873;border-top:1px solid #1c1c1b;background:#080807">
+<div><span style="color:#c9c7c1">▲ ▼</span> Select</div><div><span style="color:#c9c7c1">B</span> Back</div>
+</div>
+</div>
+</div>
+
+<div style="width:150px;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center">
+<div style="position:relative;width:140px;height:140px">
+<div style="position:absolute;left:46px;top:0;width:48px;height:48px;border-radius:50%;background:#2d2d2b;box-shadow:0 3px 0 #0e0e0d;display:flex;align-items:center;justify-content:center;font:500 14px 'JetBrains Mono',monospace;color:#8f8d87">Y</div>
+<div style="position:absolute;left:0;top:46px;width:48px;height:48px;border-radius:50%;background:#2d2d2b;box-shadow:0 3px 0 #0e0e0d;display:flex;align-items:center;justify-content:center;font:500 14px 'JetBrains Mono',monospace;color:#8f8d87">X</div>
+<div style="position:absolute;right:0;top:46px;width:48px;height:48px;border-radius:50%;background:#e7e5df;box-shadow:0 3px 0 #8e8c86;display:flex;align-items:center;justify-content:center;font:600 15px 'JetBrains Mono',monospace;color:#141413">A</div>
+<div style="position:absolute;left:46px;bottom:0;width:48px;height:48px;border-radius:50%;background:#2d2d2b;box-shadow:0 3px 0 #0e0e0d;display:flex;align-items:center;justify-content:center;font:500 14px 'JetBrains Mono',monospace;color:#c9c7c1">B</div>
+</div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:30px;display:flex;justify-content:center;font-size:12.5px;color:#5f5d58">Arrow keys · Enter · Esc</div>
+</div>
+</div>
+
+<div id="6b" style="display:flex;flex-direction:column;gap:24px;padding-top:24px">
+<div style="display:flex;align-items:center;gap:14px"><div style="font:500 12px 'JetBrains Mono',monospace;background:#edece8;color:#0f0f0e;padding:5px 9px;border-radius:4px">6b</div><div style="font-size:22px;font-weight:600">Mobile about</div><div style="font-size:15px;color:#8f8d87">Same index, stacked. Tap a row to open it.</div></div>
+
+<div style="display:flex;gap:40px;align-items:flex-start">
+<div style="width:390px;height:844px;border-radius:54px;background:linear-gradient(180deg,#262625 0%,#1c1c1b 60%,#181817 100%);box-shadow:0 40px 80px rgba(0,0,0,.55),0 0 0 1px #2e2e2c,inset 0 1px 0 #3b3b39;padding:50px 16px 14px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px">
+<div style="height:504px;flex-shrink:0;border-radius:22px;background:#050505;padding:7px;box-sizing:border-box;box-shadow:inset 0 0 0 1px #2a2a28">
+<div style="position:relative;width:100%;height:100%;border-radius:16px;overflow:hidden;background:#0b0b0a">
+<div style="position:absolute;left:0;right:0;top:0;height:46px;display:flex;align-items:center;padding:0 8px">
+<div style="display:flex;gap:2px;font-size:13px">
+<div style="height:32px;padding:0 10px;display:flex;align-items:center;color:#d4d2cc">Games</div>
+<div style="height:32px;padding:0 12px;border-radius:16px;background:rgba(237,236,232,.92);color:#0b0b0a;display:flex;align-items:center;font-weight:600">About</div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;top:46px;bottom:30px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none">
+<div style="padding:10px 18px 24px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:12px">
+<div style="width:48px;height:48px;flex-shrink:0"><image-slot id="ab2-m-portrait" shape="circle" placeholder="Photo" style="width:48px;height:48px"></image-slot></div>
+<div style="display:flex;flex-direction:column;gap:4px"><div style="font-family:'Archivo',sans-serif;font-stretch:72%;font-weight:800;font-size:28px;line-height:.88;text-transform:uppercase">Yash Punia</div><div style="font-size:12.5px;color:#8f8d87">Game programmer · Unity</div></div>
+</div>
+<div style="display:flex;gap:6px">
+<sc-for list="{{ links }}" as="l" hint-placeholder-count="4">
+<a href="{{ l.href }}" aria-label="{{ l.name }}" style="width:44px;height:44px;border-radius:22px;background:rgba(237,236,232,.08);display:flex;align-items:center;justify-content:center">
+<img src="{{ l.src }}" alt="" style="width:18px;height:18px;filter:invert(.88)">
+</a>
+</sc-for>
+</div>
+<div style="display:flex;flex-direction:column">
+<div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 0 10px">
+<div style="font-size:12.5px;color:#8f8d87">Experience</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#5f5d58">{{ slotLabel }}</div>
+</div>
+<sc-for list="{{ items }}" as="item" hint-placeholder-count="3">
+<div onClick="{{ item.select }}" style="cursor:pointer;display:grid;grid-template-columns:18px minmax(0,1fr);padding:14px 0;border-top:1px solid #1f1f1d;min-height:44px;box-sizing:border-box">
+<div style="color:#5fd35a;font-size:10px;padding-top:4px">
+<sc-if value="{{ item.open }}" hint-placeholder-val="{{ false }}">▶</sc-if>
+</div>
+<div style="display:flex;flex-direction:column;gap:4px">
+<div style="font-size:15.5px;font-weight:600">{{ item.role }}</div>
+<div style="font-size:13px;color:#8f8d87">{{ item.company }} · {{ item.location }}</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7a7873">{{ item.years }}</div>
+<sc-if value="{{ item.open }}" hint-placeholder-val="{{ false }}">
+<div style="font-size:13.5px;line-height:1.5;color:#c9c7c1;padding-top:4px;text-wrap:pretty">{{ item.desc }}</div>
+</sc-if>
+</div>
+</div>
+</sc-for>
+<div style="border-top:1px solid #1f1f1d"></div>
+</div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:30px;display:flex;align-items:center;justify-content:center;gap:16px;font-size:11px;color:#7a7873;border-top:1px solid #1c1c1b;background:#080807"><div><span style="color:#c9c7c1">▲ ▼</span> Select</div><div><span style="color:#c9c7c1">B</span> Back</div></div>
+</div>
+</div>
+<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr auto auto;padding:0 8px;row-gap:12px;align-items:center">
+<div style="display:grid;grid-template-columns:46px 46px 46px;grid-template-rows:46px 46px 46px;filter:drop-shadow(0 3px 0 #0e0e0d)">
+<div></div><div onClick="{{ prev }}" style="cursor:pointer;background:#2d2d2b;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">▲</div><div></div>
+<div style="background:#2d2d2b;border-radius:8px 0 0 8px;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">◀</div><div style="background:#2d2d2b;display:flex;align-items:center;justify-content:center"><div style="width:14px;height:14px;border-radius:50%;background:#252523;box-shadow:inset 0 1px 2px #111"></div></div><div style="background:#2d2d2b;border-radius:0 8px 8px 0;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">▶</div>
+<div></div><div onClick="{{ next }}" style="cursor:pointer;background:#2d2d2b;border-radius:0 0 8px 8px;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">▼</div><div></div>
+</div>
+<div style="display:flex;justify-content:flex-end;align-items:center;gap:14px">
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:40px"><div style="width:58px;height:58px;border-radius:50%;background:#2d2d2b;box-shadow:0 3px 0 #0e0e0d;display:flex;align-items:center;justify-content:center;font:500 16px 'JetBrains Mono',monospace;color:#c9c7c1">B</div><div style="font-size:11px;color:#7a7873">Back</div></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:24px"><div style="width:64px;height:64px;border-radius:50%;background:#e7e5df;box-shadow:0 3px 0 #8e8c86;display:flex;align-items:center;justify-content:center;font:600 17px 'JetBrains Mono',monospace;color:#141413">A</div><div style="font-size:11px;color:#7a7873">Open</div></div>
+</div>
+<div style="grid-column:1 / 3;display:flex;justify-content:center;gap:14px">
+<div style="height:44px;padding:0 20px;border-radius:22px;background:#2a2a28;box-shadow:0 2px 0 #0e0e0d;display:flex;align-items:center;font-size:12.5px;color:#a3a19b">Menu</div>
+<div style="height:44px;padding:0 20px;border-radius:22px;background:#2a2a28;box-shadow:0 2px 0 #0e0e0d;display:flex;align-items:center;font-size:12.5px;color:#a3a19b">Résumé</div>
+</div>
+<div style="grid-column:1 / 3;justify-self:center;width:120px;height:4px;border-radius:2px;background:#3a3a37"></div>
+</div>
+</div>
+<div style="font-size:14px;color:#8f8d87;max-width:380px;line-height:1.5;padding-top:40px">Rows are at least 44px tall. Résumé moves to the shoulder button so the screen stays clean.</div>
+</div>
+</div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { sel: 0 };
+  data = [
+    { role: 'Unity Developer', company: 'Hypemasters', location: 'Remote', years: '2026 — Now', desc: 'Working on strategy games for mobile and PC.' },
+    { role: 'Unity Developer', company: 'LILA Games', location: 'Bangalore, India', years: '2023 — 2026', desc: 'Worked on LILA Black, an extraction shooter for mobile, building core gameplay systems across combat, progression and economy.' },
+    { role: 'Summer Analyst', company: 'Goldman Sachs', location: 'Bangalore, India', years: '2022', desc: 'Wrote tested code and ran pipelines for the intern project. Built a multithreaded Java tool for zipping and downloading files in bulk.' }
+  ];
+  componentDidMount() {
+    this.onKey = e => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); this.move(1); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); this.move(-1); }
+    };
+    window.addEventListener('keydown', this.onKey);
+  }
+  componentWillUnmount() { window.removeEventListener('keydown', this.onKey); }
+  move(d) { this.setState(s => ({ sel: (s.sel + d + this.data.length) % this.data.length })); }
+  renderVals() {
+    const m = u => u;
+    const lu = n => `https://cdn.jsdelivr.net/npm/lucide-static@0.400.0/icons/${n}.svg`;
+    return {
+      items: this.data.map((d, i) => ({ ...d, open: i === this.state.sel, select: () => this.setState({ sel: i }) })),
+      slotLabel: `${this.state.sel + 1} / ${this.data.length}`,
+      prev: () => this.move(-1),
+      next: () => this.move(1),
+      links: [
+        { name: 'itch.io', href: '#', src: m('https://cdn.jsdelivr.net/npm/simple-icons@13.0.0/icons/itchdotio.svg') },
+        { name: 'GitHub', href: '#', src: m(lu('github')) },
+        { name: 'LinkedIn', href: '#', src: m(lu('linkedin')) },
+        { name: 'Email', href: '#', src: m(lu('mail')) }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

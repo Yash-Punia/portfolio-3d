@@ -1065,6 +1065,13 @@
         },
         "optional": true
       },
+      "email": {
+        "type": "objectAttribute",
+        "value": {
+          "type": "string"
+        },
+        "optional": true
+      },
       "aboutHeadline": {
         "type": "objectAttribute",
         "value": {

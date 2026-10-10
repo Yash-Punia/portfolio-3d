@@ -1,35 +1,43 @@
-'use client'
-
-import {menuChoice, type ConsoleContent} from '@/components/console/content'
+import {openLink, trailerOf, type ConsoleContent, type Project} from '@/components/console/content'
 import {useConsole} from '@/components/console/store'
 
 /**
- * The accept verb — the A button, and `Enter`/`Space`.
+ * The console's verbs that have to read the content, in one place so the caps,
+ * the keyboard, the page's hidden buttons and the screen's own taps agree.
  *
- * It lives here rather than in the store because it is the one navigation
- * action that has to read the content: which section the menu's highlight
- * stands for, and whether the rail's selection is a real project. And it lives
- * here rather than in `content.ts` because that file is
- * imported by the page, which is a Server Component — importing the store there
- * would pull zustand into the server bundle for nothing.
+ * Here rather than in the store because they need the content, and rather than
+ * in `content.ts` because that file is imported by the page, which is a Server
+ * Component.
+ */
+
+/**
+ * Open a game: its page, with the trailer already playing when it can play
+ * inline. A trailer that is only a link (no embed) leaves the page on its
+ * cover, where "Play trailer" opens the link — a new tab is never a surprise.
+ */
+export function openGame(project: Project) {
+  const state = useConsole.getState()
+  const trailer = trailerOf(project)
+  if (trailer && trailer.kind !== 'link') return state.playTrailer()
+  state.openProject()
+}
+
+/**
+ * A, Enter and Space.
  *
- * `back()` and `jump()` need no content, so they are store actions.
+ * - Games: open the selected game (`openGame`).
+ * - A project page: the trailer.
+ * - About: nothing — ▲ ▼ already open a row, and the links are taps.
  */
 export function accept(content: ConsoleContent) {
-  const {isOpen, open, isDetailOpen, section, menuIndex, libraryIndex, setSection, openDetail} =
-    useConsole.getState()
+  const state = useConsole.getState()
+  if (state.screen !== 'games') return
 
-  if (!isOpen) return open()
-  // A detail view is the bottom of the stack: there is nothing further in.
-  if (isDetailOpen) return
+  const project = content.projects[state.gameIndex]
+  if (!project) return
+  if (!state.isProjectOpen) return openGame(project)
 
-  if (section === 'menu') {
-    const target = menuChoice(content, menuIndex)
-    if (target) setSection(target)
-    return
-  }
-
-  // A timeline entry has nothing to drill into — its detail is already on
-  // screen — so accept stays a no-op there.
-  if (section === 'library' && content.projects[libraryIndex]) openDetail()
+  const trailer = trailerOf(project)
+  if (trailer?.kind === 'link') return openLink(trailer.src)
+  if (trailer) state.playTrailer()
 }

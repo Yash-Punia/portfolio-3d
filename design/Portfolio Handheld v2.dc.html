@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Schibsted+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+body{margin:0;background:#1a1a19;color:#edece8;font-family:'Schibsted Grotesk',sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#edece8;text-decoration:none}a:hover{color:#5fd35a}
+</style>
+</helmet>
+
+<section style="background:#1a1a19;padding:80px;display:flex;flex-direction:column;gap:56px;width:max-content">
+
+<div style="display:grid;grid-template-columns:620px 1fr;gap:72px;align-items:end">
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.12em;color:#8f8d87">YASHPUNIA.XYZ — HANDHELD v2 · TURN 4</div>
+<h1 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:75%;font-weight:800;font-size:64px;line-height:.95;text-transform:uppercase">The console stays.<br>The screen grows up.</h1>
+<p style="margin:0;font-size:17px;line-height:1.55;color:#a3a19b;text-wrap:pretty">This builds on <a href="Portfolio Mobile Redesign.dc.html#2a" style="color:#5fd35a">2a</a> and <a href="Portfolio Mobile Redesign.dc.html#1a" style="color:#5fd35a">1a</a>. The hardware is quieter and more physical, and the screen now runs a proper console home: key art first, one title, four facts, then a shelf of games.</p>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,250px);gap:22px 32px;font-size:14.5px;line-height:1.5;color:#a3a19b;padding-bottom:6px">
+<div style="display:flex;flex-direction:column;gap:5px"><div style="color:#edece8;font-weight:600">Art does the talking</div><div>Full-bleed key art replaces boxed thumbnails. The UI just labels it.</div></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="color:#edece8;font-weight:600">Fewer, calmer labels</div><div>Monospace caps only for tiny counters. Everything else is plain sentence case.</div></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="color:#edece8;font-weight:600">Green means "selected"</div><div>No glowing buttons. The accent marks focus, plus a single power LED.</div></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="color:#edece8;font-weight:600">Hardware you'd buy</div><div>A matte shell, a recessed screen, legends printed under the buttons, and no fake decoration.</div></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="color:#edece8;font-weight:600">Buttons are shortcuts</div><div>Everything on screen is clickable or tappable. The controls just speed it up.</div></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="color:#edece8;font-weight:600">Fat-finger safe</div><div>Mobile targets are at least 44px, with primary actions at 48px+ in the thumb zone.</div></div>
+</div>
+</div>
+
+<!-- ================= 4a DESKTOP ================= -->
+<div id="4a" style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;align-items:center;gap:14px"><div style="font:500 12px 'JetBrains Mono',monospace;background:#edece8;color:#0f0f0e;padding:5px 9px;border-radius:4px">4a</div><div style="font-size:22px;font-weight:600">Desktop handheld</div><div style="font-size:15px;color:#8f8d87">Library screen, plus the project screen it opens</div></div>
+
+<div style="display:flex;gap:48px;align-items:flex-start">
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;color:#5f5d58">PAGE · 1440 × 900 · LIBRARY</div>
+<div style="position:relative;width:1440px;height:900px;border-radius:10px;overflow:hidden;background:radial-gradient(120% 90% at 50% 40%,#1d1d1c 0%,#0d0d0c 70%);box-shadow:0 30px 80px rgba(0,0,0,.45)">
+
+<div style="position:absolute;left:56px;right:56px;top:0;height:84px;display:flex;align-items:center;justify-content:space-between">
+<div style="display:flex;gap:14px;align-items:baseline"><div style="font-size:15px;font-weight:600">Yash Punia</div><div style="font-size:14px;color:#8f8d87">Game Programmer</div></div>
+<div style="display:flex;gap:28px;font-size:14px;color:#a3a19b"><div>itch.io</div><div>GitHub</div><div>LinkedIn</div><div style="color:#edece8">Résumé ↓</div></div>
+</div>
+
+<div style="position:absolute;left:100px;top:138px;width:1240px;height:640px;border-radius:72px;background:linear-gradient(180deg,#262625 0%,#1c1c1b 55%,#181817 100%);box-shadow:0 50px 90px rgba(0,0,0,.6),0 0 0 1px #2e2e2c,inset 0 1px 0 #3b3b39,inset 0 -2px 0 #111110;display:flex;align-items:center;padding:0 22px;box-sizing:border-box;gap:22px">
+
+<div style="width:150px;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:56px">
+<div style="display:grid;grid-template-columns:48px 48px 48px;grid-template-rows:48px 48px 48px;filter:drop-shadow(0 3px 0 #0e0e0d)">
+<div></div><div style="background:#2d2d2b;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">▲</div><div></div>
+<div style="background:#5fd35a;border-radius:8px 0 0 8px;display:flex;align-items:center;justify-content:center;color:#0d1a0c;font-size:11px">◀</div><div style="background:#2d2d2b;display:flex;align-items:center;justify-content:center"><div style="width:16px;height:16px;border-radius:50%;background:#252523;box-shadow:inset 0 1px 2px #111"></div></div><div style="background:#2d2d2b;border-radius:0 8px 8px 0;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">▶</div>
+<div></div><div style="background:#2d2d2b;border-radius:0 0 8px 8px;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">▼</div><div></div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px"><div style="width:64px;height:22px;border-radius:11px;background:#2d2d2b;box-shadow:0 2px 0 #0e0e0d"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:#6a6863">MENU</div></div>
+</div>
+
+<div style="position:relative;flex:1;height:570px;border-radius:18px;background:#050505;padding:10px;box-sizing:border-box;box-shadow:inset 0 0 0 1px #2a2a28,inset 0 2px 6px rgba(0,0,0,.8)">
+<div style="position:absolute;left:-14px;top:22px;width:6px;height:6px;border-radius:50%;background:#5fd35a;box-shadow:0 0 8px rgba(95,211,90,.6)"></div>
+<div style="position:relative;width:100%;height:100%;border-radius:10px;overflow:hidden;background:#0b0b0a">
+<div style="position:absolute;inset:0"><image-slot id="hh-ber-art" shape="rect" placeholder="Black: Extraction Raiders — key art" style="width:100%;height:100%"></image-slot></div>
+<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,8,7,.94) 0%,rgba(8,8,7,.6) 42%,rgba(8,8,7,0) 72%),linear-gradient(0deg,#080807 0%,rgba(8,8,7,.85) 22%,rgba(8,8,7,0) 48%),linear-gradient(180deg,rgba(8,8,7,.7) 0%,rgba(8,8,7,0) 14%);pointer-events:none"></div>
+
+<div style="position:absolute;left:0;right:0;top:0;height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 14px 0 22px;pointer-events:none">
+<div style="display:flex;align-items:center;gap:4px;font-size:13.5px;pointer-events:auto">
+<div style="height:30px;padding:0 13px;border-radius:15px;background:rgba(237,236,232,.92);color:#0b0b0a;display:flex;align-items:center;font-weight:600">Games</div>
+<div style="height:30px;padding:0 13px;display:flex;align-items:center;color:#c9c7c1">About</div>
+<div style="height:30px;padding:0 13px;display:flex;align-items:center;color:#c9c7c1">Contact</div>
+</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#a3a19b;letter-spacing:.06em">01 / 06</div>
+</div>
+
+<div style="position:absolute;left:28px;bottom:170px;width:470px;display:flex;flex-direction:column;gap:14px;pointer-events:none">
+<div style="font-size:13px;color:#c9c7c1">Mobile · PvP shooter</div>
+<div style="font-family:'Archivo',sans-serif;font-stretch:72%;font-weight:800;font-size:60px;line-height:.86;text-transform:uppercase">Black: Extraction Raiders</div>
+<div style="font-size:14.5px;line-height:1.45;color:#d4d2cc">Third-person mobile shooter with real-time PvP.</div>
+<div style="display:flex;gap:24px;font-size:13px">
+<div style="display:flex;flex-direction:column;gap:3px"><div style="color:#8f8d87;font-size:11.5px">Role</div><div>Gameplay Programmer</div></div>
+<div style="display:flex;flex-direction:column;gap:3px"><div style="color:#8f8d87;font-size:11.5px">Year</div><div>2023–26</div></div>
+<div style="display:flex;flex-direction:column;gap:3px"><div style="color:#8f8d87;font-size:11.5px">Engine</div><div>Unity</div></div>
+<div style="display:flex;flex-direction:column;gap:3px"><div style="color:#8f8d87;font-size:11.5px">Platforms</div><div>Android, iOS</div></div>
+</div>
+<div style="display:flex;gap:8px;padding-top:4px;pointer-events:auto">
+<div style="height:40px;padding:0 16px 0 6px;border-radius:20px;background:#edece8;color:#0b0b0a;display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600"><div style="width:28px;height:28px;border-radius:50%;background:#0b0b0a;color:#edece8;display:flex;align-items:center;justify-content:center;font:500 11px 'JetBrains Mono',monospace">A</div>Watch trailer</div>
+<div style="height:40px;padding:0 16px;border-radius:20px;background:rgba(237,236,232,.12);display:flex;align-items:center;font-size:14px">Details</div>
+<div style="height:40px;padding:0 16px;border-radius:20px;background:rgba(237,236,232,.12);display:flex;align-items:center;font-size:14px">Google Play ↗</div>
+</div>
+</div>
+
+<div style="position:absolute;left:28px;right:28px;bottom:44px;display:flex;gap:12px;align-items:flex-end">
+<div style="display:flex;flex-direction:column;gap:7px"><div style="width:140px;height:79px;border-radius:5px;overflow:hidden;outline:2px solid #5fd35a;outline-offset:3px"><image-slot id="hh-tile-1" shape="rect" placeholder="01" style="width:140px;height:79px"></image-slot></div><div style="font-size:12px;padding-top:2px">Black: Extraction Raiders</div></div>
+<div style="display:flex;flex-direction:column;gap:7px;opacity:.7"><div style="width:126px;height:71px;border-radius:5px;overflow:hidden"><image-slot id="hh-tile-2" shape="rect" placeholder="02" style="width:126px;height:71px"></image-slot></div><div style="font-size:12px;color:#c9c7c1;padding-top:2px">Project title</div></div>
+<div style="display:flex;flex-direction:column;gap:7px;opacity:.7"><div style="width:126px;height:71px;border-radius:5px;overflow:hidden"><image-slot id="hh-tile-3" shape="rect" placeholder="03" style="width:126px;height:71px"></image-slot></div><div style="font-size:12px;color:#c9c7c1;padding-top:2px">Project title</div></div>
+<div style="display:flex;flex-direction:column;gap:7px;opacity:.7"><div style="width:126px;height:71px;border-radius:5px;overflow:hidden"><image-slot id="hh-tile-4" shape="rect" placeholder="04" style="width:126px;height:71px"></image-slot></div><div style="font-size:12px;color:#c9c7c1;padding-top:2px">Project title</div></div>
+<div style="display:flex;flex-direction:column;gap:7px;opacity:.7"><div style="width:126px;height:71px;border-radius:5px;overflow:hidden"><image-slot id="hh-tile-5" shape="rect" placeholder="05" style="width:126px;height:71px"></image-slot></div><div style="font-size:12px;color:#c9c7c1;padding-top:2px">Project title</div></div>
+<div style="display:flex;flex-direction:column;gap:7px;opacity:.7"><div style="width:126px;height:71px;border-radius:5px;overflow:hidden"><image-slot id="hh-tile-6" shape="rect" placeholder="06" style="width:126px;height:71px"></image-slot></div><div style="font-size:12px;color:#c9c7c1;padding-top:2px">Project title</div></div>
+</div>
+
+<div style="position:absolute;left:0;right:0;bottom:0;height:32px;display:flex;align-items:center;justify-content:center;gap:22px;font-size:11.5px;color:#7a7873;border-top:1px solid #1c1c1b;background:#080807">
+<div><span style="color:#c9c7c1">◀ ▶</span> Browse</div><div><span style="color:#c9c7c1">A</span> Trailer</div><div><span style="color:#c9c7c1">Y</span> Details</div><div><span style="color:#c9c7c1">B</span> Back</div><div style="color:#5f5d58">or click anything</div>
+</div>
+</div>
+<div style="position:absolute;left:50%;bottom:-24px;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.3em;color:#3e3e3b">YP·01</div>
+</div>
+
+<div style="width:150px;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:50px">
+<div style="position:relative;width:140px;height:140px">
+<div style="position:absolute;left:46px;top:0;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:48px;height:48px;border-radius:50%;background:#2d2d2b;box-shadow:0 3px 0 #0e0e0d;display:flex;align-items:center;justify-content:center;font:500 14px 'JetBrains Mono',monospace;color:#8f8d87">Y</div></div>
+<div style="position:absolute;left:0;top:46px;width:48px;height:48px;border-radius:50%;background:#2d2d2b;box-shadow:0 3px 0 #0e0e0d;display:flex;align-items:center;justify-content:center;font:500 14px 'JetBrains Mono',monospace;color:#8f8d87">X</div>
+<div style="position:absolute;right:0;top:46px;width:48px;height:48px;border-radius:50%;background:#e7e5df;box-shadow:0 3px 0 #8e8c86;display:flex;align-items:center;justify-content:center;font:600 15px 'JetBrains Mono',monospace;color:#141413">A</div>
+<div style="position:absolute;left:46px;bottom:0;width:48px;height:48px;border-radius:50%;background:#2d2d2b;box-shadow:0 3px 0 #0e0e0d;display:flex;align-items:center;justify-content:center;font:500 14px 'JetBrains Mono',monospace;color:#c9c7c1">B</div>
+</div>
+<div style="display:grid;grid-template-columns:auto auto;gap:6px 14px;font-size:11px;color:#6a6863"><div><span style="color:#a3a19b">A</span> Open</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px">ENTER</div><div><span style="color:#a3a19b">B</span> Back</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px">ESC</div><div><span style="color:#a3a19b">Y</span> Details</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px">D</div></div>
+</div>
+</div>
+
+<div style="position:absolute;left:0;right:0;bottom:30px;display:flex;justify-content:center;gap:28px;font-size:12.5px;color:#5f5d58"><div>Arrow keys · Enter · Esc</div><div>·</div><div>Gamepad supported</div></div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;color:#5f5d58">SCREEN · PROJECT (AFTER "DETAILS") · SAME DEVICE</div>
+<div style="width:932px;height:570px;border-radius:18px;background:#050505;padding:10px;box-sizing:border-box;box-shadow:0 30px 80px rgba(0,0,0,.45),inset 0 0 0 1px #2a2a28">
+<div style="position:relative;width:100%;height:100%;border-radius:10px;overflow:hidden;background:#0b0b0a">
+
+<div style="position:absolute;left:0;right:0;top:0;height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 6px;border-bottom:1px solid #1c1c1b">
+<div style="height:40px;padding:0 14px;display:flex;align-items:center;gap:8px;font-size:13.5px;color:#c9c7c1"><span style="color:#edece8">‹</span> Games</div>
+<div style="display:flex;align-items:center;gap:2px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#a3a19b"><div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;color:#4a4946;font-size:14px">‹</div>01 / 06<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;color:#edece8;font-size:14px">›</div></div>
+</div>
+
+<div style="position:absolute;left:0;right:0;top:46px;bottom:32px;display:grid;grid-template-columns:400px minmax(0,1fr)">
+<div style="padding:20px 0 20px 22px;display:flex;flex-direction:column;gap:10px">
+<div style="position:relative;width:378px;height:213px;border-radius:6px;overflow:hidden">
+<image-slot id="hh-ber-trailer" shape="rect" placeholder="Trailer — plays inline" style="width:378px;height:213px"></image-slot>
+<div style="position:absolute;left:12px;bottom:12px;height:36px;padding:0 14px 0 4px;border-radius:18px;background:rgba(8,8,7,.82);display:flex;align-items:center;gap:8px;font-size:13px;pointer-events:none"><div style="width:28px;height:28px;border-radius:50%;background:#edece8;color:#0b0b0a;display:flex;align-items:center;justify-content:center;font:500 11px 'JetBrains Mono',monospace">A</div>Play trailer</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+<div style="width:184px;height:104px;border-radius:6px;overflow:hidden"><image-slot id="hh-ber-s1" shape="rect" placeholder="Screenshot" style="width:184px;height:104px"></image-slot></div>
+<div style="width:184px;height:104px;border-radius:6px;overflow:hidden"><image-slot id="hh-ber-s2" shape="rect" placeholder="Screenshot" style="width:184px;height:104px"></image-slot></div>
+</div>
+<div style="display:flex;gap:8px;padding-top:6px">
+<div style="height:40px;flex:1;border-radius:20px;background:#edece8;color:#0b0b0a;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600">▶&#xFE0E; Watch trailer</div>
+<div style="height:40px;flex:1;border-radius:20px;border:1px solid #33332f;display:flex;align-items:center;justify-content:center;font-size:14px">Google Play ↗</div>
+</div>
+</div>
+
+<div style="position:relative;overflow:hidden">
+<div style="padding:18px 28px 40px 28px;display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font-size:12.5px;color:#8f8d87">Mobile · PvP shooter</div>
+<div style="font-family:'Archivo',sans-serif;font-stretch:72%;font-weight:800;font-size:40px;line-height:.9;text-transform:uppercase">Black: Extraction Raiders</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;column-gap:20px;font-size:13.5px">
+<div style="display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid #222220"><div style="color:#8f8d87">Role</div><div>Gameplay Programmer</div></div>
+<div style="display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid #222220"><div style="color:#8f8d87">Year</div><div>2023 – 2026</div></div>
+<div style="display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid #222220;border-bottom:1px solid #222220"><div style="color:#8f8d87">Engine</div><div>Unity</div></div>
+<div style="display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid #222220;border-bottom:1px solid #222220"><div style="color:#8f8d87">Platforms</div><div>Android, iOS</div></div>
+</div>
+<div style="font-size:15px;line-height:1.5;color:#d4d2cc;text-wrap:pretty">A third-person mobile shooter with real-time PvP. I worked on the core gameplay loop, from looting and weapons to the netcode that keeps fights fair on mobile networks.</div>
+<div style="display:flex;flex-direction:column">
+<div style="font-size:12.5px;color:#8f8d87;padding-bottom:6px">What I built</div>
+<div style="display:grid;grid-template-columns:32px 1fr;padding:8px 0;border-top:1px solid #222220;font-size:14px"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#5f5d58;padding-top:2px">01</div><div>Looting and weapon systems</div></div>
+<div style="display:grid;grid-template-columns:32px 1fr;padding:8px 0;border-top:1px solid #222220;font-size:14px"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#5f5d58;padding-top:2px">02</div><div>Stamina, health and combat items</div></div>
+<div style="display:grid;grid-template-columns:32px 1fr;padding:8px 0;border-top:1px solid #222220;font-size:14px"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#5f5d58;padding-top:2px">03</div><div>Netcode for seamless PvP combat</div></div>
+<div style="display:grid;grid-template-columns:32px 1fr;padding:8px 0;border-top:1px solid #222220;font-size:14px"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#5f5d58;padding-top:2px">04</div><div>Meta features: Battlepass and skills</div></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:12.5px;color:#8f8d87">Stack</div><div style="font-size:14px">C# · Unity · Photon Fusion · Nakama · Behaviour Trees</div></div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:56px;background:linear-gradient(rgba(11,11,10,0),#0b0b0a);pointer-events:none"></div>
+</div>
+</div>
+
+<div style="position:absolute;left:0;right:0;bottom:0;height:32px;display:flex;align-items:center;justify-content:center;gap:22px;font-size:11.5px;color:#7a7873;border-top:1px solid #1c1c1b;background:#080807">
+<div><span style="color:#c9c7c1">▲ ▼</span> Scroll</div><div><span style="color:#c9c7c1">◀ ▶</span> Prev / next game</div><div><span style="color:#c9c7c1">A</span> Play trailer</div><div><span style="color:#c9c7c1">B</span> Back</div>
+</div>
+</div>
+</div>
+<div style="font-size:14px;color:#8f8d87;max-width:900px;line-height:1.5;padding-top:6px">The project screen keeps media on the left and facts on the right, and the right side scrolls. The About screen holds your links and the résumé, and the page header mirrors them, so recruiters never have to "play" to reach you.</div>
+</div>
+
+</div>
+</div>
+
+<!-- ================= 4b MOBILE ================= -->
+<div id="4b" style="display:flex;flex-direction:column;gap:24px;padding-top:24px">
+<div style="display:flex;align-items:center;gap:14px"><div style="font:500 12px 'JetBrains Mono',monospace;background:#edece8;color:#0f0f0e;padding:5px 9px;border-radius:4px">4b</div><div style="font-size:22px;font-weight:600">Mobile handheld</div><div style="font-size:15px;color:#8f8d87">Library, project, about: portrait, everything within thumb reach</div></div>
+
+<div style="display:flex;gap:40px;align-items:flex-start">
+
+<!-- M1 LIBRARY -->
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;color:#5f5d58">LIBRARY</div>
+<div style="width:390px;height:844px;border-radius:54px;background:linear-gradient(180deg,#262625 0%,#1c1c1b 60%,#181817 100%);box-shadow:0 40px 80px rgba(0,0,0,.55),0 0 0 1px #2e2e2c,inset 0 1px 0 #3b3b39;padding:50px 16px 14px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px">
+<div style="height:504px;flex-shrink:0;border-radius:22px;background:#050505;padding:7px;box-sizing:border-box;box-shadow:inset 0 0 0 1px #2a2a28">
+<div style="position:relative;width:100%;height:100%;border-radius:16px;overflow:hidden;background:#0b0b0a">
+<div style="position:absolute;left:0;top:0;width:344px;height:250px"><image-slot id="hh-m-art" shape="rect" placeholder="Key art" style="width:344px;height:250px"></image-slot></div>
+<div style="position:absolute;left:0;top:0;width:344px;height:250px;background:linear-gradient(0deg,#0b0b0a 0%,rgba(11,11,10,.55) 35%,rgba(11,11,10,0) 65%),linear-gradient(180deg,rgba(11,11,10,.75) 0%,rgba(11,11,10,0) 26%);pointer-events:none"></div>
+<div style="position:absolute;left:0;right:0;top:0;height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 6px 0 8px;pointer-events:none">
+<div style="display:flex;gap:2px;font-size:13px;pointer-events:auto">
+<div style="height:32px;padding:0 12px;border-radius:16px;background:rgba(237,236,232,.92);color:#0b0b0a;display:flex;align-items:center;font-weight:600">Games</div>
+<div style="height:32px;padding:0 10px;display:flex;align-items:center;color:#d4d2cc">About</div>
+</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#a3a19b;padding-right:10px">01 / 06</div>
+</div>
+<div style="position:absolute;left:16px;right:16px;top:168px;display:flex;flex-direction:column;gap:8px;pointer-events:none">
+<div style="font-family:'Archivo',sans-serif;font-stretch:72%;font-weight:800;font-size:38px;line-height:.86;text-transform:uppercase">Black: Extraction Raiders</div>
+<div style="font-size:12.5px;color:#a3a19b">Gameplay Programmer · Unity · 2023–26</div>
+</div>
+<div style="position:absolute;left:16px;right:16px;top:290px;display:grid;grid-template-columns:1.2fr 1fr;gap:8px">
+<div style="height:46px;border-radius:23px;background:#edece8;color:#0b0b0a;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14.5px;font-weight:600">▶&#xFE0E; Trailer</div>
+<div style="height:46px;border-radius:23px;background:rgba(237,236,232,.1);display:flex;align-items:center;justify-content:center;font-size:14.5px">Details</div>
+</div>
+<div style="position:absolute;left:16px;right:0;top:356px;display:flex;flex-direction:column;gap:10px">
+<div style="font-size:12px;color:#7a7873">All games</div>
+<div style="display:flex;gap:10px">
+<div style="display:flex;flex-direction:column;gap:6px"><div style="width:112px;height:63px;border-radius:5px;overflow:hidden;outline:2px solid #5fd35a;outline-offset:2px"><image-slot id="hh-m-tile-1" shape="rect" placeholder="01" style="width:112px;height:63px"></image-slot></div><div style="font-size:11.5px;padding-top:1px">Black: ER</div></div>
+<div style="display:flex;flex-direction:column;gap:6px;opacity:.7"><div style="width:112px;height:63px;border-radius:5px;overflow:hidden"><image-slot id="hh-m-tile-2" shape="rect" placeholder="02" style="width:112px;height:63px"></image-slot></div><div style="font-size:11.5px;color:#c9c7c1;padding-top:1px">Project title</div></div>
+<div style="display:flex;flex-direction:column;gap:6px;opacity:.7"><div style="width:112px;height:63px;border-radius:5px;overflow:hidden"><image-slot id="hh-m-tile-3" shape="rect" placeholder="03" style="width:112px;height:63px"></image-slot></div><div style="font-size:11.5px;color:#c9c7c1;padding-top:1px">Project title</div></div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:30px;display:flex;align-items:center;justify-content:center;gap:16px;font-size:11px;color:#7a7873;border-top:1px solid #1c1c1b;background:#080807"><div><span style="color:#c9c7c1">◀ ▶</span> Browse</div><div><span style="color:#c9c7c1">A</span> Trailer</div><div>or tap</div></div>
+</div>
+</div>
+<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr auto auto;padding:0 8px;row-gap:12px;align-items:center">
+<div style="display:grid;grid-template-columns:46px 46px 46px;grid-template-rows:46px 46px 46px;filter:drop-shadow(0 3px 0 #0e0e0d)">
+<div></div><div style="background:#2d2d2b;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">▲</div><div></div>
+<div style="background:#2d2d2b;border-radius:8px 0 0 8px;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">◀</div><div style="background:#2d2d2b;display:flex;align-items:center;justify-content:center"><div style="width:14px;height:14px;border-radius:50%;background:#252523;box-shadow:inset 0 1px 2px #111"></div></div><div style="background:#5fd35a;border-radius:0 8px 8px 0;display:flex;align-items:center;justify-content:center;color:#0d1a0c;font-size:11px">▶</div>
+<div></div><div style="background:#2d2d2b;border-radius:0 0 8px 8px;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">▼</div><div></div>
+</div>
+<div style="display:flex;justify-content:flex-end;align-items:center;gap:14px">
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:40px"><div style="width:58px;height:58px;border-radius:50%;background:#2d2d2b;box-shadow:0 3px 0 #0e0e0d;display:flex;align-items:center;justify-content:center;font:500 16px 'JetBrains Mono',monospace;color:#c9c7c1">B</div><div style="font-size:11px;color:#7a7873">Back</div></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:24px"><div style="width:64px;height:64px;border-radius:50%;background:#e7e5df;box-shadow:0 3px 0 #8e8c86;display:flex;align-items:center;justify-content:center;font:600 17px 'JetBrains Mono',monospace;color:#141413">A</div><div style="font-size:11px;color:#7a7873">Trailer</div></div>
+</div>
+<div style="grid-column:1 / 3;display:flex;justify-content:center;gap:14px">
+<div style="height:44px;padding:0 20px;border-radius:22px;background:#2a2a28;box-shadow:0 2px 0 #0e0e0d;display:flex;align-items:center;font-size:12.5px;color:#a3a19b">Menu</div>
+<div style="height:44px;padding:0 20px;border-radius:22px;background:#2a2a28;box-shadow:0 2px 0 #0e0e0d;display:flex;align-items:center;font-size:12.5px;color:#a3a19b">About</div>
+</div>
+<div style="grid-column:1 / 3;justify-self:center;width:120px;height:4px;border-radius:2px;background:#3a3a37"></div>
+</div>
+</div>
+<div style="font-size:14px;color:#8f8d87;max-width:380px;line-height:1.5">The key art fills the top of the screen, followed by the title, two actions, and a swipeable shelf. One look shows everything.</div>
+</div>
+
+<!-- M2 PROJECT -->
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;color:#5f5d58">PROJECT</div>
+<div style="width:390px;height:844px;border-radius:54px;background:linear-gradient(180deg,#262625 0%,#1c1c1b 60%,#181817 100%);box-shadow:0 40px 80px rgba(0,0,0,.55),0 0 0 1px #2e2e2c,inset 0 1px 0 #3b3b39;padding:50px 16px 14px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px">
+<div style="height:504px;flex-shrink:0;border-radius:22px;background:#050505;padding:7px;box-sizing:border-box;box-shadow:inset 0 0 0 1px #2a2a28">
+<div style="position:relative;width:100%;height:100%;border-radius:16px;overflow:hidden;background:#0b0b0a">
+<div style="position:absolute;left:0;right:0;top:0;height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 2px;border-bottom:1px solid #1c1c1b">
+<div style="height:44px;padding:0 12px;display:flex;align-items:center;gap:6px;font-size:13.5px;color:#c9c7c1"><span style="color:#edece8">‹</span> Games</div>
+<div style="display:flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#a3a19b"><div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:#4a4946;font-size:14px">‹</div>01/06<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:#edece8;font-size:14px">›</div></div>
+</div>
+<div style="position:absolute;left:0;top:46px;width:344px;height:150px">
+<image-slot id="hh-m-trailer" shape="rect" placeholder="Trailer 16:9" style="width:344px;height:150px"></image-slot>
+<div style="position:absolute;left:12px;bottom:12px;height:34px;padding:0 12px 0 4px;border-radius:17px;background:rgba(8,8,7,.82);display:flex;align-items:center;gap:8px;font-size:12.5px;pointer-events:none"><div style="width:26px;height:26px;border-radius:50%;background:#edece8;color:#0b0b0a;display:flex;align-items:center;justify-content:center;font:500 10px 'JetBrains Mono',monospace">A</div>Play trailer</div>
+</div>
+<div style="position:absolute;left:0;right:0;top:196px;bottom:96px;overflow:hidden">
+<div style="padding:12px 16px 24px;display:flex;flex-direction:column;gap:10px">
+<div style="font-family:'Archivo',sans-serif;font-stretch:72%;font-weight:800;font-size:28px;line-height:.9;text-transform:uppercase">Black: Extraction Raiders</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;column-gap:14px;font-size:12.5px">
+<div style="display:flex;flex-direction:column;gap:2px;padding:7px 0;border-top:1px solid #222220"><div style="color:#8f8d87;font-size:11px">Role</div><div>Gameplay Programmer</div></div>
+<div style="display:flex;flex-direction:column;gap:2px;padding:7px 0;border-top:1px solid #222220"><div style="color:#8f8d87;font-size:11px">Year</div><div>2023 – 2026</div></div>
+<div style="display:flex;flex-direction:column;gap:2px;padding:7px 0;border-top:1px solid #222220;border-bottom:1px solid #222220"><div style="color:#8f8d87;font-size:11px">Engine</div><div>Unity</div></div>
+<div style="display:flex;flex-direction:column;gap:2px;padding:7px 0;border-top:1px solid #222220;border-bottom:1px solid #222220"><div style="color:#8f8d87;font-size:11px">Platforms</div><div>Android, iOS</div></div>
+</div>
+<div style="font-size:13.5px;line-height:1.45;color:#d4d2cc">Third-person mobile shooter with real-time PvP. Looting, weapons, netcode and meta systems.</div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:30px;padding:10px 12px;border-top:1px solid #1c1c1b;background:#0b0b0a;display:grid;grid-template-columns:1.2fr 1fr;gap:8px">
+<div style="height:46px;border-radius:23px;background:#edece8;color:#0b0b0a;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600">▶&#xFE0E; Trailer</div>
+<div style="height:46px;border-radius:23px;border:1px solid #33332f;background:#0b0b0a;display:flex;align-items:center;justify-content:center;font-size:14px">Google Play ↗</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:30px;display:flex;align-items:center;justify-content:center;gap:16px;font-size:11px;color:#7a7873;border-top:1px solid #1c1c1b;background:#080807"><div><span style="color:#c9c7c1">▲ ▼</span> Scroll</div><div><span style="color:#c9c7c1">A</span> Trailer</div><div><span style="color:#c9c7c1">B</span> Back</div></div>
+</div>
+</div>
+<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr auto auto;padding:0 8px;row-gap:12px;align-items:center">
+<div style="display:grid;grid-template-columns:46px 46px 46px;grid-template-rows:46px 46px 46px;filter:drop-shadow(0 3px 0 #0e0e0d)">
+<div></div><div style="background:#2d2d2b;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">▲</div><div></div>
+<div style="background:#2d2d2b;border-radius:8px 0 0 8px;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">◀</div><div style="background:#2d2d2b;display:flex;align-items:center;justify-content:center"><div style="width:14px;height:14px;border-radius:50%;background:#252523;box-shadow:inset 0 1px 2px #111"></div></div><div style="background:#2d2d2b;border-radius:0 8px 8px 0;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">▶</div>
+<div></div><div style="background:#5fd35a;border-radius:0 0 8px 8px;display:flex;align-items:center;justify-content:center;color:#0d1a0c;font-size:11px">▼</div><div></div>
+</div>
+<div style="display:flex;justify-content:flex-end;align-items:center;gap:14px">
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:40px"><div style="width:58px;height:58px;border-radius:50%;background:#2d2d2b;box-shadow:0 3px 0 #0e0e0d;display:flex;align-items:center;justify-content:center;font:500 16px 'JetBrains Mono',monospace;color:#c9c7c1">B</div><div style="font-size:11px;color:#7a7873">Back</div></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:24px"><div style="width:64px;height:64px;border-radius:50%;background:#e7e5df;box-shadow:0 3px 0 #8e8c86;display:flex;align-items:center;justify-content:center;font:600 17px 'JetBrains Mono',monospace;color:#141413">A</div><div style="font-size:11px;color:#7a7873">Trailer</div></div>
+</div>
+<div style="grid-column:1 / 3;display:flex;justify-content:center;gap:14px">
+<div style="height:44px;padding:0 20px;border-radius:22px;background:#2a2a28;box-shadow:0 2px 0 #0e0e0d;display:flex;align-items:center;font-size:12.5px;color:#a3a19b">Menu</div>
+<div style="height:44px;padding:0 20px;border-radius:22px;background:#2a2a28;box-shadow:0 2px 0 #0e0e0d;display:flex;align-items:center;font-size:12.5px;color:#a3a19b">About</div>
+</div>
+<div style="grid-column:1 / 3;justify-self:center;width:120px;height:4px;border-radius:2px;background:#3a3a37"></div>
+</div>
+</div>
+<div style="font-size:14px;color:#8f8d87;max-width:380px;line-height:1.5">The trailer sits up top, then the title and four facts. The full write-up scrolls beneath, and Trailer and Google Play stay pinned within thumb reach.</div>
+</div>
+
+<!-- M3 ABOUT -->
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;color:#5f5d58">ABOUT</div>
+<div style="width:390px;height:844px;border-radius:54px;background:linear-gradient(180deg,#262625 0%,#1c1c1b 60%,#181817 100%);box-shadow:0 40px 80px rgba(0,0,0,.55),0 0 0 1px #2e2e2c,inset 0 1px 0 #3b3b39;padding:50px 16px 14px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px">
+<div style="height:504px;flex-shrink:0;border-radius:22px;background:#050505;padding:7px;box-sizing:border-box;box-shadow:inset 0 0 0 1px #2a2a28">
+<div style="position:relative;width:100%;height:100%;border-radius:16px;overflow:hidden;background:#0b0b0a">
+<div style="position:absolute;left:0;right:0;top:0;height:46px;display:flex;align-items:center;padding:0 8px;pointer-events:none">
+<div style="display:flex;gap:2px;font-size:13px;pointer-events:auto">
+<div style="height:32px;padding:0 10px;display:flex;align-items:center;color:#d4d2cc">Games</div>
+<div style="height:32px;padding:0 12px;border-radius:16px;background:rgba(237,236,232,.92);color:#0b0b0a;display:flex;align-items:center;font-weight:600">About</div>
+</div>
+</div>
+<div style="position:absolute;left:16px;right:16px;top:54px;display:flex;flex-direction:column;gap:12px">
+<div style="width:48px;height:48px"><image-slot id="hh-m-portrait" shape="circle" placeholder="Photo" style="width:48px;height:48px"></image-slot></div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="font-family:'Archivo',sans-serif;font-stretch:72%;font-weight:800;font-size:36px;line-height:.86;text-transform:uppercase">Yash Punia</div>
+<div style="font-size:14px;line-height:1.45;color:#c9c7c1">Game programmer. Gameplay systems and multiplayer netcode in Unity.</div>
+</div>
+<div style="height:44px;border-radius:22px;background:#edece8;color:#0b0b0a;display:flex;align-items:center;justify-content:center;font-size:14.5px;font-weight:600">Download résumé ↓</div>
+<div style="display:flex;flex-direction:column">
+<div style="height:44px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #222220;font-size:15px">itch.io<span style="color:#5f5d58">↗</span></div>
+<div style="height:44px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #222220;font-size:15px">GitHub<span style="color:#5f5d58">↗</span></div>
+<div style="height:44px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #222220;font-size:15px">LinkedIn<span style="color:#5f5d58">↗</span></div>
+<div style="height:44px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #222220;border-bottom:1px solid #222220;font-size:15px">X<span style="color:#5f5d58">↗</span></div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:30px;display:flex;align-items:center;justify-content:center;gap:16px;font-size:11px;color:#7a7873;border-top:1px solid #1c1c1b;background:#080807"><div><span style="color:#c9c7c1">▲ ▼</span> Move</div><div><span style="color:#c9c7c1">A</span> Open</div><div><span style="color:#c9c7c1">B</span> Back</div></div>
+</div>
+</div>
+<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr auto auto;padding:0 8px;row-gap:12px;align-items:center">
+<div style="display:grid;grid-template-columns:46px 46px 46px;grid-template-rows:46px 46px 46px;filter:drop-shadow(0 3px 0 #0e0e0d)">
+<div></div><div style="background:#2d2d2b;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">▲</div><div></div>
+<div style="background:#2d2d2b;border-radius:8px 0 0 8px;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">◀</div><div style="background:#2d2d2b;display:flex;align-items:center;justify-content:center"><div style="width:14px;height:14px;border-radius:50%;background:#252523;box-shadow:inset 0 1px 2px #111"></div></div><div style="background:#2d2d2b;border-radius:0 8px 8px 0;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">▶</div>
+<div></div><div style="background:#2d2d2b;border-radius:0 0 8px 8px;display:flex;align-items:center;justify-content:center;color:#7a7873;font-size:11px">▼</div><div></div>
+</div>
+<div style="display:flex;justify-content:flex-end;align-items:center;gap:14px">
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:40px"><div style="width:58px;height:58px;border-radius:50%;background:#2d2d2b;box-shadow:0 3px 0 #0e0e0d;display:flex;align-items:center;justify-content:center;font:500 16px 'JetBrains Mono',monospace;color:#c9c7c1">B</div><div style="font-size:11px;color:#7a7873">Back</div></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:24px"><div style="width:64px;height:64px;border-radius:50%;background:#e7e5df;box-shadow:0 3px 0 #8e8c86;display:flex;align-items:center;justify-content:center;font:600 17px 'JetBrains Mono',monospace;color:#141413">A</div><div style="font-size:11px;color:#7a7873">Open</div></div>
+</div>
+<div style="grid-column:1 / 3;display:flex;justify-content:center;gap:14px">
+<div style="height:44px;padding:0 20px;border-radius:22px;background:#2a2a28;box-shadow:0 2px 0 #0e0e0d;display:flex;align-items:center;font-size:12.5px;color:#a3a19b">Menu</div>
+<div style="height:44px;padding:0 20px;border-radius:22px;background:#2a2a28;box-shadow:0 2px 0 #0e0e0d;display:flex;align-items:center;font-size:12.5px;color:#a3a19b">About</div>
+</div>
+<div style="grid-column:1 / 3;justify-self:center;width:120px;height:4px;border-radius:2px;background:#3a3a37"></div>
+</div>
+</div>
+<div style="font-size:14px;color:#8f8d87;max-width:380px;line-height:1.5">Identity, résumé and labelled links on a single screen, two taps from anywhere.</div>
+</div>
+
+</div>
+</div>
+</section>
+</x-dc>
+</body>
+</html>

@@ -7,7 +7,6 @@ import {
   RESUME_FILENAME,
   RESUME_LABEL,
   resumeHref,
-  SECTION_LABELS,
 } from '@/components/console/content'
 import type {FilteredResponseQueryOptions} from 'next-sanity'
 import {draftMode} from 'next/headers'
@@ -179,7 +178,7 @@ export default async function Home() {
           `data-console-focus` — focusing one selects that tile on the rail,
           activating one opens its detail view.
         */}
-        {projects.length > 0 ? <h2>{SECTION_LABELS.library}</h2> : null}
+        {projects.length > 0 ? <h2>Games</h2> : null}
         {projects.map((project, index) => (
           <article key={project._id}>
             <h3>
@@ -256,7 +255,7 @@ export default async function Home() {
             </section>
           )
         })}
-        {socialLinks.length > 0 ? (
+        {socialLinks.length > 0 || settings?.email ? (
           <>
             <h2>Links</h2>
             <ul>
@@ -267,6 +266,11 @@ export default async function Home() {
                   </a>
                 </li>
               ))}
+              {settings?.email ? (
+                <li>
+                  <a href={`mailto:${settings.email}`}>Email</a>
+                </li>
+              ) : null}
             </ul>
           </>
         ) : null}

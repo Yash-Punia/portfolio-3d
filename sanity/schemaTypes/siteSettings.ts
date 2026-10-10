@@ -37,6 +37,15 @@ export const siteSettings = defineType({
         'Optional short line on the monitor, e.g. "Open to work". Leave empty to hide it.',
     }),
     defineField({
+      name: 'email',
+      title: 'Email',
+      type: 'string',
+      group: 'identity',
+      description:
+        'Optional. Shown as a mail icon next to your links on the About screen. Leave empty to hide it.',
+      validation: (rule) => rule.email(),
+    }),
+    defineField({
       name: 'aboutHeadline',
       title: 'About headline',
       type: 'string',
