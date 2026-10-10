@@ -107,22 +107,16 @@ canvas {
   cursor: pointer;
 }
 
-/* The page header's links (design 4a): quiet until pointed at. */
-.chrome-link:hover,
-.chrome-link:focus-visible {
-  color: #5fd35a !important;
-}
-
 /* Scrolling on the glass is native, but a scrollbar would break the screen. */
 [data-glass] ::-webkit-scrollbar {
   display: none;
 }
 
 /*
-  The screen's power-on (`Boot` in components/screen/parts.tsx): a line across
-  the glass, then the black lifts off the home screen. Keyframes cannot be
-  written in a style attribute, which is why these are here. Reduced motion
-  never mounts it.
+  The screen's power-on (`Boot` in components/screen/parts.tsx): a hairline
+  across the glass, the name rising into it as its tracking settles, the title,
+  a filling bar, then the black lifts off Games. Durations and delays come from
+  the tune, inline. Reduced motion never mounts it.
 */
 @keyframes screen-line {
   from {
@@ -134,12 +128,177 @@ canvas {
   }
 }
 
-@keyframes screen-boot {
-  0%,
-  45% {
-    opacity: 1;
+@keyframes boot-name {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    letter-spacing: var(--track-from);
   }
   to {
+    letter-spacing: var(--track-to);
+  }
+}
+
+@keyframes boot-rise {
+  from {
     opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes boot-bar {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes boot-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/*
+  Motion on the glass. Quiet by design: the boot is the one staged moment, and
+  everything else answers the visitor — a new selection settles in, a screen
+  fades up, a control brightens under the pointer. Every value is a custom
+  property `Glass` sets from the tune.
+*/
+[data-glass] {
+  --m-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* A new selection's lines, arriving one after another. */
+.scr-in {
+  animation: scr-in var(--m-dur) var(--m-ease) both;
+  animation-delay: calc(var(--i, 0) * var(--m-stagger));
+}
+
+@keyframes scr-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--m-rise));
+  }
+}
+
+/* A change of screen. */
+.scr-fade {
+  animation: scr-fade var(--m-fade) ease-out both;
+}
+
+@keyframes scr-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Pills: brighten and lift under the pointer, give under the press. */
+.scr-tap {
+  transition:
+    filter var(--m-hover) ease,
+    transform var(--m-hover) var(--m-ease);
+}
+.scr-tap:hover {
+  filter: brightness(var(--m-bright));
+  transform: translateY(calc(var(--m-lift) * -1));
+}
+.scr-tap:active {
+  transform: scale(0.98);
+  transition-duration: 60ms;
+}
+
+/* Text controls (idle tabs, "‹ Games", the pager): a soft well appears behind them. */
+.scr-tab {
+  transition:
+    background-color var(--m-hover) ease,
+    color var(--m-hover) ease;
+}
+.scr-tab:hover {
+  background-color: rgba(var(--ink-rgb), 0.08);
+  color: var(--ink) !important;
+}
+.scr-tab:active {
+  background-color: rgba(var(--ink-rgb), 0.14);
+}
+.scr-nudge {
+  display: inline-block;
+  transition: transform var(--m-hover) var(--m-ease);
+}
+.scr-tab:hover .scr-nudge {
+  transform: translateX(-2px);
+}
+
+/* Shelf tiles: dimmed until chosen, the art easing in a touch under the pointer. */
+.scr-tile {
+  opacity: 0.7;
+  transition: opacity var(--m-hover) ease;
+}
+.scr-tile[data-selected],
+.scr-tile:hover {
+  opacity: 1;
+}
+.scr-tile-art > * {
+  transition: transform calc(var(--m-hover) * 2) var(--m-ease);
+}
+.scr-tile:hover .scr-tile-art > * {
+  transform: scale(var(--m-tile));
+}
+
+/* The cover over a trailer: the same ease-in, and the badge brightens. */
+.scr-media > :not(.scr-badge) {
+  transition: transform calc(var(--m-hover) * 2) var(--m-ease);
+}
+.scr-media:hover > :not(.scr-badge) {
+  transform: scale(var(--m-tile));
+}
+.scr-badge {
+  transition: filter var(--m-hover) ease;
+}
+.scr-media:hover .scr-badge {
+  filter: brightness(1.25);
+}
+
+/* About's link discs. */
+.scr-icon {
+  background-color: rgba(var(--ink-rgb), 0.08);
+  transition:
+    background-color var(--m-hover) ease,
+    color var(--m-hover) ease,
+    transform var(--m-hover) var(--m-ease);
+}
+.scr-icon:hover {
+  background-color: rgba(var(--ink-rgb), 0.16);
+  color: var(--ink) !important;
+}
+.scr-icon:active {
+  transform: scale(0.94);
+}
+
+/* Experience rows that are not open: a faint band under the pointer. */
+.scr-row {
+  transition: background-color var(--m-hover) ease;
+}
+.scr-row:hover {
+  background-color: rgba(var(--ink-rgb), 0.03);
+}
+
+/* Off with the tune's switch, or for anyone who asks the OS for less motion. */
+[data-glass][data-motion='off'] :is(.scr-in, .scr-fade) {
+  animation: none;
+}
+[data-glass][data-motion='off'] :is(.scr-tap, .scr-tab, .scr-icon, .scr-tile, .scr-row) {
+  transform: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-glass] :is(.scr-in, .scr-fade) {
+    animation: none;
+  }
+  [data-glass] * {
+    transition-duration: 0ms !important;
+  }
+  [data-glass] :is(.scr-tap, .scr-icon, .scr-tile-art > *, .scr-media > *):hover,
+  [data-glass] .scr-tile:hover .scr-tile-art > * {
+    transform: none;
   }
 }

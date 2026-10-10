@@ -1,23 +1,14 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import {useEffect, useState} from 'react'
+import {useEffect, useState, useSyncExternalStore} from 'react'
 
-import {accept, details, menu} from '@/components/console/actions'
-import {
-  contactRows,
-  socialLabel,
-  isLocalHref,
-  RESUME_FILENAME,
-  resumeHref,
-  type ButtonSlot,
-  type ConsoleContent,
-} from '@/components/console/content'
-import {hasRows, SCREEN_LABELS, useDevice, type Device} from '@/components/console/device'
+import {accept} from '@/components/console/actions'
+import type {ConsoleContent} from '@/components/console/content'
+import {SCREEN_LABELS, useDevice} from '@/components/console/device'
 import {useInput, type Direction, type FocusTarget} from '@/components/console/input'
 import {Skeleton} from '@/components/console/Skeleton'
 import {useConsole} from '@/components/console/store'
-import {C, FONT} from '@/components/console/tokens'
 import {failWebgl, useWebgl, WebglBoundary} from '@/components/console/webgl'
 
 /**
@@ -36,6 +27,20 @@ const Scene = dynamic(() => import('@/components/console/Scene'), {
  */
 const FlatScreen = dynamic(() => import('@/components/console/FlatScreen'), {ssr: false})
 
+/** The `?tune` panel. Its own chunk, fetched only when the URL asks for it. */
+const TunePanel = dynamic(() => import('@/components/console/TunePanel'), {ssr: false})
+
+/** Whether the page was opened with `?tune`. Read after mount: the server never sees it. */
+function useTuneParam() {
+  return useSyncExternalStore(
+    noSubscribe,
+    () => new URLSearchParams(window.location.search).has('tune'),
+    () => false,
+  )
+}
+
+const noSubscribe = () => () => {}
+
 const ARROWS: Record<string, Direction> = {
   ArrowUp: 'up',
   ArrowDown: 'down',
@@ -43,19 +48,14 @@ const ARROWS: Record<string, Direction> = {
   ArrowRight: 'right',
 }
 
-/** The letters a keyboard presses the caps with. `D` is Y's (the design's legend), `M` is MENU. */
-const KEYS: Record<string, FocusTarget> = {a: 'A', b: 'B', x: 'X', y: 'Y', d: 'Y', m: 'menu'}
+/** The letters a keyboard presses the caps with. */
+const KEYS: Record<string, FocusTarget> = {a: 'A', b: 'B'}
 
 /** What each cap does, wherever it is pressed from — the cap, its key, or its twin in the page. */
-function pressAction(cap: FocusTarget, content: ConsoleContent, device: Device) {
+function pressAction(cap: FocusTarget, content: ConsoleContent) {
   useInput.getState().pressSlot(cap)
-  const state = useConsole.getState()
-
-  if (cap === 'A') return accept(content, device)
-  if (cap === 'B') return state.back()
-  if (cap === 'Y') return details(content)
-  if (cap === 'about') return state.setScreen('about')
-  menu(device)
+  if (cap === 'A') return accept(content)
+  useConsole.getState().back()
 }
 
 /** Keystrokes belong to whatever the visitor is typing in, if anything. */
@@ -71,9 +71,10 @@ function isTyping() {
  * Keyboard control, on the DOM side so it works before the three.js chunk
  * lands. The arrow keys are the D-pad — they write the same held direction it
  * does, which is what makes it rock under a keystroke. `Escape` is B, `Enter`
- * and `Space` are A, and the letters press their caps.
+ * and `Space` are A, and the letters press their caps. `X` walks the tabs: it
+ * has no cap any more, but a keyboard still needs a way to About.
  */
-function useConsoleKeys(content: ConsoleContent, device: Device) {
+function useConsoleKeys(content: ConsoleContent) {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
@@ -97,14 +98,20 @@ function useConsoleKeys(content: ConsoleContent, device: Device) {
       if (event.key === 'Enter' || event.key === ' ') {
         if (document.activeElement !== document.body) return
         event.preventDefault()
-        pressAction('A', content, device)
+        pressAction('A', content)
+        return
+      }
+
+      if (event.key.toLowerCase() === 'x') {
+        event.preventDefault()
+        useConsole.getState().nextScreen()
         return
       }
 
       const cap = KEYS[event.key.toLowerCase()]
       if (cap) {
         event.preventDefault()
-        pressAction(cap, content, device)
+        pressAction(cap, content)
       }
     }
 
@@ -123,10 +130,10 @@ function useConsoleKeys(content: ConsoleContent, device: Device) {
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('blur', onBlur)
     }
-  }, [content, device])
+  }, [content])
 }
 
-const FOCUS_TARGETS: FocusTarget[] = ['A', 'B', 'X', 'Y', 'menu', 'about']
+const FOCUS_TARGETS: FocusTarget[] = ['A', 'B']
 
 /**
  * The caps' focus rings, and the shelf's selection, driven by real DOM focus
@@ -197,10 +204,9 @@ function scrollBox(direction: 'up' | 'down') {
  * - Games: left and right walk the shelf.
  * - A project page: left and right step to the neighbouring game, up and down
  *   scroll the write-up.
- * - A list: up and down walk its rows, and scroll on past the ends.
- * - Anything else that scrolls: up and down scroll it.
+ * - About: up and down walk the Experience index, and scroll on past the ends.
  */
-function move(direction: Direction, content: ConsoleContent, device: Device) {
+function move(direction: Direction, content: ConsoleContent) {
   const state = useConsole.getState()
   const vertical = direction === 'up' || direction === 'down'
   const delta = direction === 'up' || direction === 'left' ? -1 : 1
@@ -212,26 +218,23 @@ function move(direction: Direction, content: ConsoleContent, device: Device) {
   }
 
   if (!vertical) return
-  if (hasRows(state.screen, device)) {
-    const before = state.rowIndex
-    state.moveRow(delta, contactRows(content).length)
-    if (useConsole.getState().rowIndex !== before) return
-  }
-  scrollBox(direction)
+  const before = state.rowIndex
+  state.moveRow(delta, content.timeline.length)
+  if (useConsole.getState().rowIndex === before) scrollBox(direction)
 }
 
 /**
  * The D-pad's and the arrow keys' consumer: `input.tick` advances once per
  * move, so subscribing here moves the selection one step per press or repeat.
  */
-function useDirectionalInput(content: ConsoleContent, device: Device) {
+function useDirectionalInput(content: ConsoleContent) {
   useEffect(
     () =>
       useInput.subscribe((state, previous) => {
         if (state.tick === previous.tick || state.held === null) return
-        move(state.held, content, device)
+        move(state.held, content)
       }),
-    [content, device],
+    [content],
   )
 }
 
@@ -277,7 +280,7 @@ function useWheelShelf(content: ConsoleContent) {
  * the page's landmark is the readable copy — so the one thing a screen reader
  * cannot otherwise learn is that a press changed it.
  */
-function useAnnouncement(content: ConsoleContent, device: Device): string {
+function useAnnouncement(content: ConsoleContent): string {
   const isBooting = useConsole((state) => state.isBooting)
   const screen = useConsole((state) => state.screen)
   const index = useConsole((state) => state.gameIndex)
@@ -288,10 +291,9 @@ function useAnnouncement(content: ConsoleContent, device: Device): string {
   if (isBooting) return 'Console on'
 
   if (screen !== 'games') {
-    const label = SCREEN_LABELS[screen]
-    if (!hasRows(screen, device)) return label
-    const row = contactRows(content)[rowIndex]
-    return row ? `${label}, ${row.label}` : label
+    const entry = content.timeline[rowIndex]
+    const what = [entry?.role, entry?.organisation].filter(Boolean).join(' at ')
+    return what ? `${SCREEN_LABELS[screen]}, ${what}` : SCREEN_LABELS[screen]
   }
 
   const project = content.projects[index]
@@ -302,95 +304,15 @@ function useAnnouncement(content: ConsoleContent, device: Device): string {
   return `Games, ${name}, ${index + 1} of ${content.projects.length}`
 }
 
-/**
- * The page around the desk console (design 4a): name and title on the left,
- * the links and the résumé on the right — so a recruiter never has to "play"
- * to reach them — and the keyboard's hint underneath.
- */
-function DeskChrome({content}: {content: ConsoleContent}) {
-  const {settings, socialLinks} = content
-  const resume = resumeHref(settings)
-  const link = {color: C.muted, textDecoration: 'none'}
-
-  return (
-    <>
-      <header
-        style={{
-          position: 'fixed',
-          left: 56,
-          right: 56,
-          top: 0,
-          height: 84,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontFamily: FONT.ui,
-          color: C.ink,
-          zIndex: 5,
-        }}
-      >
-        <div style={{display: 'flex', gap: 14, alignItems: 'baseline'}}>
-          <div style={{fontSize: 15, fontWeight: 600}}>{settings?.fullName}</div>
-          {settings?.title ? (
-            <div style={{fontSize: 14, color: C.label}}>{settings.title}</div>
-          ) : null}
-        </div>
-        <nav aria-label="Contact" style={{display: 'flex', gap: 28, fontSize: 14}}>
-          {socialLinks.map((social) =>
-            social.url ? (
-              <a
-                className="chrome-link"
-                href={social.url}
-                key={social._id}
-                rel="noopener noreferrer"
-                style={link}
-                target="_blank"
-              >
-                {socialLabel(social)}
-              </a>
-            ) : null,
-          )}
-          {resume ? (
-            <a
-              className="chrome-link"
-              download={isLocalHref(resume) ? RESUME_FILENAME : undefined}
-              href={resume}
-              style={{...link, color: C.ink}}
-            >
-              Résumé ↓
-            </a>
-          ) : null}
-        </nav>
-      </header>
-      <div
-        aria-hidden
-        style={{
-          position: 'fixed',
-          left: 0,
-          right: 0,
-          bottom: 30,
-          display: 'flex',
-          justifyContent: 'center',
-          fontFamily: FONT.ui,
-          fontSize: 12.5,
-          color: C.dim,
-          pointerEvents: 'none',
-        }}
-      >
-        Arrow keys · Enter · Esc
-      </div>
-    </>
-  )
-}
-
 export function ConsoleStage({content}: {content: ConsoleContent}) {
   const device = useDevice()
   const webglOk = useWebgl()
-  useConsoleKeys(content, device)
+  useConsoleKeys(content)
   useLandmarkFocus()
-  useDirectionalInput(content, device)
+  useDirectionalInput(content)
   useWheelShelf(content)
-  const selection = useAnnouncement(content, device)
+  const selection = useAnnouncement(content)
+  const tuning = useTuneParam()
 
   /*
     A control that changes something invisible says so — the mute has no
@@ -403,7 +325,6 @@ export function ConsoleStage({content}: {content: ConsoleContent}) {
 
   return (
     <>
-      {device === 'desk' ? <DeskChrome content={content} /> : null}
       <div
         // Inside this, the arrow keys and letters are the console's, not the
         // screen reader's. The landmark in the page is the readable copy.
@@ -423,22 +344,19 @@ export function ConsoleStage({content}: {content: ConsoleContent}) {
         </p>
         <ConsoleControls
           content={content}
-          device={device}
           onNotice={(text) => setNotice({text, at: selection})}
           visible={!webglOk}
         />
       </div>
+      {tuning ? <TunePanel /> : null}
     </>
   )
 }
 
 /** What each cap's twin says it does. */
-const CAP_LABELS: Record<ButtonSlot | 'menu', string> = {
-  A: 'Select',
+const CAP_LABELS: Record<FocusTarget, string> = {
+  A: 'Open',
   B: 'Back',
-  X: 'Next tab',
-  Y: 'Open the selected game’s details',
-  menu: 'Menu: next tab',
 }
 
 /**
@@ -449,23 +367,19 @@ const CAP_LABELS: Record<ButtonSlot | 'menu', string> = {
  * object. Visually hidden until focused, in the manner of a skip link.
  *
  * Without WebGL there is no object, and the glass is on the page with its own
- * tabs and back control, so only the mute is shown there.
+ * tabs, back control and résumé pill, so only the mute is shown there.
  */
 function ConsoleControls({
   content,
-  device,
   onNotice,
   visible,
 }: {
   content: ConsoleContent
-  device: Device
   onNotice: (notice: string) => void
   visible: boolean
 }) {
   const muted = useConsole((state) => state.muted)
   const toggleMuted = useConsole((state) => state.toggleMuted)
-  const caps: Array<ButtonSlot | 'menu'> =
-    device === 'desk' ? ['A', 'B', 'X', 'Y', 'menu'] : ['A', 'B', 'menu']
 
   return (
     <div className={visible ? 'console-controls' : undefined}>
@@ -479,27 +393,17 @@ function ConsoleControls({
       >
         {muted ? 'Unmute the console' : 'Mute the console'}
       </button>
-      {caps.map((cap) => (
+      {FOCUS_TARGETS.map((cap) => (
         <button
           className="sr-only"
           data-console-focus={cap}
           key={cap}
-          onClick={() => pressAction(cap, content, device)}
+          onClick={() => pressAction(cap, content)}
           type="button"
         >
           {CAP_LABELS[cap]}
         </button>
       ))}
-      {device === 'handheld' ? (
-        <button
-          className="sr-only"
-          data-console-focus="about"
-          onClick={() => pressAction('about', content, device)}
-          type="button"
-        >
-          About
-        </button>
-      ) : null}
     </div>
   )
 }

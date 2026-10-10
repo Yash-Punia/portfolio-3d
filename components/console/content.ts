@@ -21,7 +21,7 @@ export interface ConsoleContent {
   timeline: TimelineQueryResult
 }
 
-export type ButtonSlot = 'A' | 'B' | 'X' | 'Y'
+export type ButtonSlot = 'A' | 'B'
 export type SocialLink = SocialLinksQueryResult[number]
 export type Project = ProjectsQueryResult[number]
 export type TimelineEntry = TimelineQueryResult[number]
@@ -112,12 +112,13 @@ export function trailerOf(project: Project): Trailer | null {
   if (youtube) {
     return {
       kind: 'iframe',
-      src: `https://www.youtube-nocookie.com/embed/${youtube}?autoplay=1&rel=0&playsinline=1`,
+      src: `https://www.youtube-nocookie.com/embed/${youtube}?autoplay=1&mute=1&rel=0&playsinline=1`,
     }
   }
 
   const vimeo = host === 'vimeo.com' ? parsed.pathname.match(/^\/(\d+)/)?.[1] : null
-  if (vimeo) return {kind: 'iframe', src: `https://player.vimeo.com/video/${vimeo}?autoplay=1`}
+  if (vimeo)
+    return {kind: 'iframe', src: `https://player.vimeo.com/video/${vimeo}?autoplay=1&muted=1`}
 
   if (/\.(mp4|webm|mov|m4v)$/i.test(parsed.pathname)) return {kind: 'video', src: url}
 
@@ -195,52 +196,47 @@ export function socialLabel(link: SocialLink): string {
 }
 
 /**
- * One row on the contact list: the résumé first, then each social link. The
- * screen draws these and the D-pad walks them, so both read this one list.
+ * About's icon links (design turn 6): each social link with somewhere to go,
+ * then the email as a `mailto:`. The screen draws them as icons, the page's
+ * landmark as words, so both read this one list.
  */
-export interface ContactRow {
+export interface ProfileLink {
   key: string
   label: string
   href: string
-  /** The filename, for a same-origin résumé. */
-  download?: string
-  kind: 'resume' | 'link'
+  icon: NonNullable<SocialLink['platform']> | 'email' | null
 }
 
-export function contactRows(content: ConsoleContent): ContactRow[] {
-  const rows: ContactRow[] = []
-  const resume = resumeHref(content.settings)
-  if (resume) {
-    rows.push({
-      key: 'resume',
-      label: content.settings?.resumeLabel ?? RESUME_LABEL,
-      href: resume,
-      download: isLocalHref(resume) ? RESUME_FILENAME : undefined,
-      kind: 'resume',
-    })
-  }
+export function profileLinks(content: ConsoleContent): ProfileLink[] {
+  const links: ProfileLink[] = []
   for (const link of content.socialLinks) {
-    if (link.url) rows.push({key: link._id, label: socialLabel(link), href: link.url, kind: 'link'})
+    if (link.url) {
+      links.push({key: link._id, label: socialLabel(link), href: link.url, icon: link.platform})
+    }
   }
-  return rows
+  const email = content.settings?.email
+  if (email) links.push({key: 'email', label: 'Email', href: `mailto:${email}`, icon: 'email'})
+  return links
 }
 
-/** Following a contact row, from a tap or from A. */
-export function openRow(row: ContactRow) {
-  if (row.kind === 'link') {
-    window.open(row.href, '_blank', 'noopener,noreferrer')
-    return
-  }
+/** The résumé, from the Game Boy's pill or its hidden twin. */
+export function downloadResume(settings: ConsoleContent['settings']) {
+  const href = resumeHref(settings)
+  if (!href) return
   const anchor = document.createElement('a')
-  anchor.href = row.href
-  if (row.download) anchor.download = row.download
+  anchor.href = href
+  if (isLocalHref(href)) anchor.download = RESUME_FILENAME
   else anchor.target = '_blank'
   anchor.rel = 'noopener noreferrer'
   anchor.click()
 }
 
-/** Opening an outbound link. */
+/** Opening an outbound link. A `mailto:` hands over to the mail app without a blank tab. */
 export function openLink(url: string) {
+  if (url.startsWith('mailto:')) {
+    window.location.href = url
+    return
+  }
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
@@ -267,6 +263,18 @@ export function entryDates(entry: TimelineEntry): string {
   const start = monthLabel(entry.startDate) ?? ''
   const end = entry.isCurrent || !entry.endDate ? 'now' : monthLabel(entry.endDate)
   return end ? `${start} – ${end}` : start
+}
+
+/**
+ * The years column on About's Experience index: `2023 — 2026`, `2026 — Now`,
+ * or one year when a role starts and ends in it.
+ */
+export function entryYears(
+  entry: Pick<TimelineEntry, 'startDate' | 'endDate' | 'isCurrent'>,
+): string {
+  const start = entry.startDate?.slice(0, 4) ?? ''
+  const end = entry.isCurrent || !entry.endDate ? 'Now' : entry.endDate.slice(0, 4)
+  return !start || start === end ? end : `${start} — ${end}`
 }
 
 /** `3` of `6` → `03 / 06`, the screen's counter. */

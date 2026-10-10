@@ -19,11 +19,10 @@ import {useConsole} from '@/components/console/store'
 export type Direction = 'up' | 'down' | 'left' | 'right'
 
 /**
- * Every pressable cap on either console: the four face buttons, the MENU pill,
- * and the Game Boy's second pill, About. Each has a hidden twin in the page, so
- * each can take DOM focus and light its ring.
+ * Every pressable cap on either console: A and B. Each has a hidden twin in the
+ * page, so each can take DOM focus and light its ring.
  */
-export type FocusTarget = ButtonSlot | 'menu' | 'about'
+export type FocusTarget = ButtonSlot
 
 const REPEAT_MS = 180
 

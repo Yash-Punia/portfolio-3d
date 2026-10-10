@@ -20,21 +20,12 @@ export function useDevice(): Device {
 }
 
 /**
- * Each console's tabs, in the order MENU walks them. The handheld has no
- * Contact: its About holds the links and the résumé (design 4b, M3).
+ * The tabs, in the order X walks them — the same on both consoles. About holds
+ * the profile, the links and the Experience index (design turn 6).
  */
-export const SCREENS: Record<Device, Screen[]> = {
-  desk: ['games', 'about', 'contact'],
-  handheld: ['games', 'about'],
-}
+export const SCREENS: Screen[] = ['games', 'about']
 
 export const SCREEN_LABELS: Record<Screen, string> = {
   games: 'Games',
   about: 'About',
-  contact: 'Contact',
-}
-
-/** Whether a tab is a list the D-pad walks row by row, rather than a page it scrolls. */
-export function hasRows(screen: Screen, device: Device): boolean {
-  return device === 'desk' ? screen === 'contact' : screen === 'about'
 }

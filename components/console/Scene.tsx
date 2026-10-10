@@ -9,21 +9,24 @@ import {MathUtils} from 'three'
 import type {ConsoleContent} from '@/components/console/content'
 import type {Device} from '@/components/console/device'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
-import {Desk, DESK} from '@/components/handheld/Desk'
-import {Handheld, HANDHELD} from '@/components/handheld/Handheld'
+import {useT, type Tune} from '@/components/console/tune'
+import {Desk} from '@/components/handheld/Desk'
+import {Handheld} from '@/components/handheld/Handheld'
 
 /**
- * How much of the viewport each console takes. The desk leaves room for the
- * page's header (84px) and the keyboard hint under it (60px), as the design's
- * 1440×900 page does — at that size it lands at exactly 100px per world unit,
- * which is the design's own scale. The handheld is held, not looked at, so it
- * takes nearly all of an upright phone.
+ * How much of the viewport each console takes (the tune's `deskZoom*` and
+ * `hhZoom`). At 1440×900 the desk lands at 100px per world unit, the design's
+ * own scale. The handheld is held, not looked at, so it takes nearly all of an
+ * upright phone.
  */
-function zoomFor(device: Device, width: number, height: number): number {
+function zoomFor(device: Device, width: number, height: number, t: Tune): number {
   if (device === 'desk') {
-    return Math.min((width * 0.86) / DESK.width, ((height - 150) * 0.94) / DESK.height)
+    return Math.min(
+      (width * t.deskZoomWidth) / t.deskWidth,
+      ((height - t.deskZoomMarginY) * t.deskZoomHeight) / t.deskHeight,
+    )
   }
-  return Math.min((width * 0.96) / HANDHELD.width, (height * 0.96) / HANDHELD.height)
+  return Math.min((width * t.hhZoom) / t.hhWidth, (height * t.hhZoom) / t.hhHeight)
 }
 
 /**
@@ -33,6 +36,7 @@ function zoomFor(device: Device, width: number, height: number): number {
 function Camera({device}: {device: Device}) {
   const width = useThree((state) => state.size.width)
   const height = useThree((state) => state.size.height)
+  const t = useT()
 
   return (
     <OrthographicCamera
@@ -40,7 +44,7 @@ function Camera({device}: {device: Device}) {
       makeDefault
       near={0.1}
       position={[0, 0, 10]}
-      zoom={zoomFor(device, width, height)}
+      zoom={zoomFor(device, width, height, t)}
     />
   )
 }

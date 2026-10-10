@@ -3,7 +3,7 @@
 import {useEffect, useState, type CSSProperties} from 'react'
 
 import type {Project} from '@/components/console/content'
-import {PREVIEW_DELAY_MS} from '@/components/console/tokens'
+import {useT} from '@/components/console/tune'
 import {useReducedMotion} from '@/components/console/useReducedMotion'
 import {urlFor} from '@/sanity/lib/image'
 
@@ -105,13 +105,14 @@ export function GalleryImage({
  */
 export function useDwell(key: string | undefined, enabled: boolean): boolean {
   const reducedMotion = useReducedMotion()
+  const delay = useT().scrPreviewDelayMs
   const [rested, setRested] = useState<string | null>(null)
 
   useEffect(() => {
     if (!key || !enabled || reducedMotion) return
-    const timer = setTimeout(() => setRested(key), PREVIEW_DELAY_MS)
+    const timer = setTimeout(() => setRested(key), delay)
     return () => clearTimeout(timer)
-  }, [key, enabled, reducedMotion])
+  }, [key, enabled, reducedMotion, delay])
 
   return enabled && !reducedMotion && rested === key
 }

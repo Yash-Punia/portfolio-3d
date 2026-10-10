@@ -173,6 +173,7 @@ export type SiteSettings = {
   fullName?: string
   title?: string
   statusLine?: string
+  email?: string
   aboutHeadline?: string
   aboutBody?: string
   resumeFile?: {
@@ -320,11 +321,12 @@ export type AllSanitySchemaTypes =
 
 // Source: sanity/lib/queries.ts
 // Variable: siteSettingsQuery
-// Query: *[_type == "siteSettings"][0]{  fullName,  title,  statusLine,  aboutHeadline,  aboutBody,  resumeLabel,  "resumeUrl": resumeFile.asset->url,  seo,  "avatarUrl": avatar.asset->url,  "ogImage": seo.ogImage.asset->{    url,    "width": metadata.dimensions.width,    "height": metadata.dimensions.height  }}
+// Query: *[_type == "siteSettings"][0]{  fullName,  title,  statusLine,  email,  aboutHeadline,  aboutBody,  resumeLabel,  "resumeUrl": resumeFile.asset->url,  seo,  "avatarUrl": avatar.asset->url,  "ogImage": seo.ogImage.asset->{    url,    "width": metadata.dimensions.width,    "height": metadata.dimensions.height  }}
 export type SiteSettingsQueryResult = {
   fullName: string | null
   title: string | null
   statusLine: string | null
+  email: string | null
   aboutHeadline: string | null
   aboutBody: string | null
   resumeLabel: string | null
@@ -448,7 +450,7 @@ export type TimelineQueryResult = Array<{
 import '@sanity/client'
 declare module '@sanity/client' {
   interface SanityQueries {
-    '*[_type == "siteSettings"][0]{\n  fullName,\n  title,\n  statusLine,\n  aboutHeadline,\n  aboutBody,\n  resumeLabel,\n  "resumeUrl": resumeFile.asset->url,\n  seo,\n  "avatarUrl": avatar.asset->url,\n  "ogImage": seo.ogImage.asset->{\n    url,\n    "width": metadata.dimensions.width,\n    "height": metadata.dimensions.height\n  }\n}': SiteSettingsQueryResult
+    '*[_type == "siteSettings"][0]{\n  fullName,\n  title,\n  statusLine,\n  email,\n  aboutHeadline,\n  aboutBody,\n  resumeLabel,\n  "resumeUrl": resumeFile.asset->url,\n  seo,\n  "avatarUrl": avatar.asset->url,\n  "ogImage": seo.ogImage.asset->{\n    url,\n    "width": metadata.dimensions.width,\n    "height": metadata.dimensions.height\n  }\n}': SiteSettingsQueryResult
     '*[_type == "socialLink"] | order(buttonSlot asc){\n  _id,\n  platform,\n  url,\n  buttonSlot,\n  label\n}': SocialLinksQueryResult
     '*[_type == "project"] | order(order asc){\n  _id,\n  title,\n  "slug": slug.current,\n  order,\n  blurb,\n  description,\n  role,\n  year,\n  engine,\n  tech,\n  platforms,\n  // The cover carries its own placeholder and its own aspect: lqip is the tiny\n  // data URI Sanity generates for every asset, painted under the image while it\n  // loads, and the dimensions are the intrinsic size the element declares\n  // (SPEC \xA712).\n  cover{\n    ...,\n    "lqip": asset->metadata.lqip,\n    "width": asset->metadata.dimensions.width,\n    "height": asset->metadata.dimensions.height\n  },\n  // The URL and the type: a GIF is drawn with <img>, a video with <video>.\n  "preview": preview.asset->{url, mimeType},\n  gallery,\n  videoUrl,\n  links[]{label, url},\n  teamSize,\n  featured\n}': ProjectsQueryResult
     '*[_type == "timelineEntry"] | order(select(kind == "work" => 0, 1) asc, startDate desc){\n  _id,\n  kind,\n  organisation,\n  role,\n  startDate,\n  endDate,\n  isCurrent,\n  location,\n  summary,\n  highlights,\n  result,\n  relatedProjects[]->{_id, title, "slug": slug.current}\n}': TimelineQueryResult

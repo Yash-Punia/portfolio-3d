@@ -13,44 +13,34 @@ import {
 } from '@/components/console/content'
 import {SCREENS} from '@/components/console/device'
 import {useConsole} from '@/components/console/store'
-import {C, FONT, PANEL} from '@/components/console/tokens'
+import {FONT} from '@/components/console/tokens'
+import {useT, usePalette} from '@/components/console/tune'
 import {GalleryImage, KeyArt} from '@/components/screen/media'
 import {
-  ABadge,
   BackToGames,
-  ContactList,
+  Avatar,
   Experience,
   Facts,
   Glass,
   Hints,
+  LinkIcons,
   Pager,
   Pill,
+  ResumePill,
   row,
   Scroll,
   Shelf,
+  stagger,
   Tabs,
   titleStyle,
   TrailerSlot,
   WriteUp,
-  type ShelfSize,
 } from '@/components/screen/parts'
-
-const {width: W, height: H} = PANEL.desk
-
-/** Design 4a's shelf: 126×71 tiles, the selected one 140×79 with the green ring. */
-const SHELF: ShelfSize = {
-  width: 126,
-  height: 71,
-  selectedWidth: 140,
-  selectedHeight: 79,
-  gap: 12,
-  labelSize: 12,
-  labelGap: 7,
-  outlineOffset: 3,
-}
 
 /** The top strip: the tabs, and a counter or a pager on the right. */
 function TopBar({right}: {right?: ReactNode}) {
+  const t = useT()
+  const C = usePalette()
   return (
     <div
       style={{
@@ -67,31 +57,43 @@ function TopBar({right}: {right?: ReactNode}) {
     >
       <Tabs
         activePadding="0 13px"
-        fontSize={13.5}
+        fontSize={t.scrDeskTabSize}
         height={30}
         idle={C.soft}
         idlePadding="0 13px"
-        screens={SCREENS.desk}
+        screens={SCREENS}
       />
       {right}
     </div>
   )
 }
 
-/** Design 4a, left: the console home. Key art first, one title, four facts, then the shelf. */
+/**
+ * Design 4a, left: the console home. Key art under a wash, one title, four
+ * facts, then the shelf. No buttons: A, or a second click on the tile, opens
+ * the game — its trailer first, when it has one.
+ */
 function Games({content, project}: {content: ConsoleContent; project: Project}) {
+  const t = useT()
+  const C = usePalette()
   const index = useConsole((state) => state.gameIndex)
-  const openProject = useConsole((state) => state.openProject)
-  const playTrailer = useConsole((state) => state.playTrailer)
   const kicker = projectKicker(project)
-  const trailer = trailerOf(project)
-  const link = primaryLink(project)
 
   return (
     <>
       <div style={{position: 'absolute', inset: 0}}>
-        <KeyArt height={H} project={project} width={W} />
+        <KeyArt height={t.deskGlassHeight} project={project} width={t.deskGlassWidth} />
       </div>
+      {/* A flat wash first, so the text reads over a bright frame; then the design's gradients. */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          background: t.scrOverlayColor,
+          opacity: t.scrOverlayOpacity,
+        }}
+      />
       <div
         style={{
           position: 'absolute',
@@ -111,75 +113,98 @@ function Games({content, project}: {content: ConsoleContent; project: Project}) 
         }
       />
 
+      {/* Keyed on the game, so each new selection arrives line by line. */}
       <div
+        key={project._id}
         style={{
           position: 'absolute',
-          left: 28,
-          bottom: 170,
-          width: 500,
+          left: t.scrDeskInfoLeft,
+          bottom: t.scrDeskInfoBottom,
+          width: t.scrDeskInfoWidth,
           display: 'flex',
           flexDirection: 'column',
-          gap: 14,
+          gap: t.scrDeskInfoGap,
         }}
       >
-        {kicker ? <div style={{fontSize: 13, color: C.soft}}>{kicker}</div> : null}
-        <h2 style={{...titleStyle(60, 0.86), textWrap: 'balance'}}>{project.title}</h2>
+        {kicker ? (
+          <div
+            className="scr-in"
+            style={{fontSize: t.scrDeskKickerSize, color: C.soft, ...stagger(0)}}
+          >
+            {kicker}
+          </div>
+        ) : null}
+        <h2
+          className="scr-in"
+          style={{
+            ...titleStyle(t.scrDeskTitleSize, t.scrDeskTitleLeading, t.scrDeskTitleTracking),
+            textWrap: 'balance',
+            ...stagger(1),
+          }}
+        >
+          {project.title}
+        </h2>
         {project.blurb ? (
           // Two lines at most: the block grows upward, and the tabs are above it.
           <div
+            className="scr-in"
             style={{
-              fontSize: 14.5,
-              lineHeight: 1.45,
+              fontSize: t.scrDeskBlurbSize,
+              lineHeight: t.scrDeskBlurbLeading,
               color: C.inkStrong,
               display: '-webkit-box',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
+              ...stagger(2),
             }}
           >
             {project.blurb}
           </div>
         ) : null}
-        <Facts project={project} variant="inline" />
-        <div style={{display: 'flex', gap: 8, paddingTop: 4}}>
-          {trailer ? (
-            <Pill
-              fontSize={14}
-              height={40}
-              kind="primary"
-              onTap={() => (trailer.kind === 'link' ? openLink(trailer.src) : playTrailer())}
-              padding="0 16px 0 6px"
-            >
-              <ABadge fontSize={11} size={28} />
-              Watch trailer
-            </Pill>
-          ) : null}
-          <Pill fontSize={14} height={40} kind={trailer ? 'ghost' : 'primary'} onTap={openProject}>
-            Details
-          </Pill>
-          {link ? (
-            <Pill fontSize={14} height={40} kind="ghost" onTap={() => openLink(link.url)}>
-              {link.label} ↗
-            </Pill>
-          ) : null}
-        </div>
+        <Facts
+          className="scr-in"
+          inline={{
+            fontSize: t.scrDeskFactSize,
+            labelSize: t.scrDeskFactLabelSize,
+            gap: t.scrDeskFactGap,
+          }}
+          project={project}
+          style={stagger(3)}
+          variant="inline"
+        />
       </div>
 
-      <div style={{position: 'absolute', left: 28, right: 28, bottom: 44}}>
-        <Shelf projects={content.projects} size={SHELF} />
+      <div
+        style={{
+          position: 'absolute',
+          left: t.scrDeskInfoLeft,
+          right: t.scrDeskInfoLeft,
+          bottom: t.scrDeskShelfBottom,
+        }}
+      >
+        <Shelf
+          projects={content.projects}
+          size={{
+            width: t.scrDeskTileWidth,
+            height: t.scrDeskTileHeight,
+            selectedWidth: t.scrDeskTileSelectedWidth,
+            selectedHeight: t.scrDeskTileSelectedHeight,
+            gap: t.scrDeskTileGap,
+            labelSize: t.scrDeskTileLabelSize,
+            labelGap: 7,
+            outlineOffset: 3,
+          }}
+        />
       </div>
 
       <Hints
-        fontSize={11.5}
-        gap={22}
+        fontSize={t.scrDeskHintSize}
+        gap={t.scrDeskHintGap}
         height={32}
         items={[
           ['◀ ▶', 'Browse'],
-          ...(trailer
-            ? ([['A', 'Trailer']] as Array<[string, string]>)
-            : [['A', 'Details'] as [string, string]]),
-          ['Y', 'Details'],
-          ['MENU', 'About'],
+          ['A', 'Open'],
         ]}
         tail="or click anything"
       />
@@ -189,6 +214,8 @@ function Games({content, project}: {content: ConsoleContent; project: Project}) 
 
 /** Design 4a, right: the project page. Media on the left, facts on the right, and the right side scrolls. */
 function ProjectPage({content, project}: {content: ConsoleContent; project: Project}) {
+  const t = useT()
+  const C = usePalette()
   const playTrailer = useConsole((state) => state.playTrailer)
   const kicker = projectKicker(project)
   const trailer = trailerOf(project)
@@ -292,7 +319,7 @@ function ProjectPage({content, project}: {content: ConsoleContent; project: Proj
             >
               <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
                 {kicker ? <div style={{fontSize: 12.5, color: C.label}}>{kicker}</div> : null}
-                <h2 style={titleStyle(40, 0.9)}>{project.title}</h2>
+                <h2 style={titleStyle(40, 0.9, t.scrDeskTitleTracking)}>{project.title}</h2>
               </div>
               <Facts project={project} variant="grid" />
               <WriteUp compact={false} project={project} />
@@ -305,7 +332,7 @@ function ProjectPage({content, project}: {content: ConsoleContent; project: Proj
               right: 0,
               bottom: 0,
               height: 56,
-              background: `linear-gradient(rgba(11,11,10,0),${C.screen})`,
+              background: `linear-gradient(rgba(${C.screenRgb},0),${C.screen})`,
               pointerEvents: 'none',
             }}
           />
@@ -313,8 +340,8 @@ function ProjectPage({content, project}: {content: ConsoleContent; project: Proj
       </div>
 
       <Hints
-        fontSize={11.5}
-        gap={22}
+        fontSize={t.scrDeskHintSize}
+        gap={t.scrDeskHintGap}
         height={32}
         items={[
           ['▲ ▼', 'Scroll'],
@@ -327,9 +354,12 @@ function ProjectPage({content, project}: {content: ConsoleContent; project: Proj
   )
 }
 
-/** About: who, in a sentence or two, and the timeline under it. Not drawn in the design; built from its parts. */
+/** Design 6a: the profile on the left, links and the résumé pinned under it, and the Experience index on the right. */
 function About({content}: {content: ConsoleContent}) {
+  const t = useT()
+  const C = usePalette()
   const settings = content.settings
+  const bio = settings?.aboutBody ?? settings?.aboutHeadline
 
   return (
     <>
@@ -342,99 +372,46 @@ function About({content}: {content: ConsoleContent}) {
           top: 46,
           bottom: 32,
           display: 'grid',
-          gridTemplateColumns: '340px minmax(0,1fr)',
+          gridTemplateColumns: '260px minmax(0,1fr)',
           borderTop: `1px solid ${C.ruleSoft}`,
         }}
       >
-        <div style={{padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 14}}>
-          {settings?.avatarUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element -- see media.tsx */
-            <img
-              alt=""
-              height={64}
-              src={`${settings.avatarUrl}?w=128&h=128&fit=crop&auto=format`}
-              style={{width: 64, height: 64, borderRadius: '50%', objectFit: 'cover'}}
-              width={64}
-            />
-          ) : null}
-          <h2 style={titleStyle(44, 0.86)}>{settings?.fullName}</h2>
-          {settings?.title ? (
-            <div style={{fontSize: 14, color: C.label}}>{settings.title}</div>
-          ) : null}
-          {settings?.aboutHeadline ? (
-            <div style={{fontSize: 16, lineHeight: 1.4, fontWeight: 600}}>
-              {settings.aboutHeadline}
-            </div>
-          ) : null}
-          {settings?.aboutBody ? (
-            <div style={{fontSize: 14.5, lineHeight: 1.5, color: C.inkStrong, textWrap: 'pretty'}}>
-              {settings.aboutBody}
-            </div>
-          ) : null}
-        </div>
         <div
-          style={{position: 'relative', overflow: 'hidden', borderLeft: `1px solid ${C.ruleSoft}`}}
+          style={{
+            padding: '32px 26px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 20,
+            borderRight: `1px solid ${C.ruleSoft}`,
+          }}
         >
-          <Scroll style={{position: 'absolute', inset: 0}}>
-            <div style={{padding: '22px 28px 40px'}}>
-              <Experience compact={false} content={content} />
-            </div>
-          </Scroll>
-        </div>
-      </div>
-      <Hints
-        fontSize={11.5}
-        gap={22}
-        height={32}
-        items={[
-          ['▲ ▼', 'Scroll'],
-          ['MENU', 'Contact'],
-          ['B', 'Back'],
-        ]}
-      />
-    </>
-  )
-}
-
-/** Contact: the résumé and the links, the same list the page header mirrors. */
-function Contact({content}: {content: ConsoleContent}) {
-  const settings = content.settings
-
-  return (
-    <>
-      <TopBar />
-      <div
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          top: 46,
-          bottom: 32,
-          borderTop: `1px solid ${C.ruleSoft}`,
-          display: 'grid',
-          gridTemplateColumns: '340px minmax(0,1fr)',
-        }}
-      >
-        <div style={{padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 10}}>
-          <div style={{fontSize: 12.5, color: C.label}}>Get in touch</div>
-          <h2 style={titleStyle(44, 0.86)}>{settings?.fullName}</h2>
-          {settings?.statusLine ? (
-            <div style={{fontSize: 14.5, lineHeight: 1.45, color: C.soft}}>
-              {settings.statusLine}
+          <Avatar size={72} url={settings?.avatarUrl} />
+          <div style={{display: 'flex', flexDirection: 'column', gap: 6}}>
+            <h2 style={titleStyle(40, 0.88, t.scrDeskTitleTracking)}>{settings?.fullName}</h2>
+            {settings?.title ? (
+              <div style={{fontSize: 14, color: C.label}}>{settings.title}</div>
+            ) : null}
+          </div>
+          {bio ? (
+            <div style={{fontSize: 14.5, lineHeight: 1.55, color: C.inkStrong, textWrap: 'pretty'}}>
+              {bio}
             </div>
           ) : null}
+          <div style={{marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 14}}>
+            <LinkIcons content={content} />
+            <ResumePill fontSize={13.5} height={38} settings={settings} />
+          </div>
         </div>
-        <Scroll style={{padding: '24px 28px 32px', borderLeft: `1px solid ${C.ruleSoft}`}}>
-          <ContactList content={content} linkSize={15} />
+        <Scroll style={{padding: '30px 30px 24px 22px'}}>
+          <Experience compact={false} content={content} />
         </Scroll>
       </div>
       <Hints
-        fontSize={11.5}
-        gap={22}
+        fontSize={t.scrDeskHintSize}
+        gap={t.scrDeskHintGap}
         height={32}
         items={[
-          ['▲ ▼', 'Move'],
-          ['A', 'Open'],
+          ['▲ ▼', 'Select'],
           ['B', 'Back'],
         ]}
       />
@@ -443,34 +420,44 @@ function Contact({content}: {content: ConsoleContent}) {
 }
 
 export function DeskScreen({content}: {content: ConsoleContent}) {
+  const t = useT()
   const screen = useConsole((state) => state.screen)
   const isProjectOpen = useConsole((state) => state.isProjectOpen)
   const index = useConsole((state) => state.gameIndex)
   const project = content.projects[index]
+  // A change of screen fades in, and so does each step between project pages.
+  const view = screen === 'about' ? 'about' : isProjectOpen ? `page-${project?._id}` : 'games'
 
   return (
-    <Glass height={H} radius={PANEL.desk.radius} width={W}>
-      {screen === 'about' ? (
-        <About content={content} />
-      ) : screen === 'contact' ? (
-        <Contact content={content} />
-      ) : !project ? (
-        <>
-          <TopBar />
-          <Empty />
-        </>
-      ) : isProjectOpen ? (
-        // Keyed on the project, so stepping to the next one starts at its top.
-        <ProjectPage content={content} key={project._id} project={project} />
-      ) : (
-        <Games content={content} project={project} />
-      )}
+    <Glass
+      compact={false}
+      height={t.deskGlassHeight}
+      radius={t.deskGlassRadius}
+      settings={content.settings}
+      width={t.deskGlassWidth}
+    >
+      <div className="scr-fade" key={view} style={{position: 'absolute', inset: 0}}>
+        {screen === 'about' ? (
+          <About content={content} />
+        ) : !project ? (
+          <>
+            <TopBar />
+            <Empty />
+          </>
+        ) : isProjectOpen ? (
+          // Keyed on the project, so stepping to the next one starts at its top.
+          <ProjectPage content={content} key={project._id} project={project} />
+        ) : (
+          <Games content={content} project={project} />
+        )}
+      </div>
     </Glass>
   )
 }
 
 /** Games with no games published: the tabs still work, and the glass says so plainly. */
 export function Empty() {
+  const C = usePalette()
   return (
     <div
       style={{

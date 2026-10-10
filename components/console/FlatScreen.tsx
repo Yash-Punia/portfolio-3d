@@ -4,7 +4,7 @@ import {useEffect, useState} from 'react'
 
 import type {ConsoleContent} from '@/components/console/content'
 import type {Device} from '@/components/console/device'
-import {PANEL} from '@/components/console/tokens'
+import {useT} from '@/components/console/tune'
 import {DeskScreen} from '@/components/screen/DeskScreen'
 import {HandheldScreen} from '@/components/screen/HandheldScreen'
 
@@ -16,23 +16,24 @@ import {HandheldScreen} from '@/components/screen/HandheldScreen'
  * the keyboard handlers are on the DOM side.
  */
 
-/** The `.console-controls` strip the panel must not sit under, and the desk header above it. */
+/** The `.console-controls` strip the panel must not sit under. */
 const BOTTOM = 64
-const TOP: Record<Device, number> = {desk: 84, handheld: 0}
 
 /** Past this the type stops reading as a screen and starts reading as a poster. */
 const MAX_SCALE = 1.5
 
 export default function FlatScreen({content, device}: {content: ConsoleContent; device: Device}) {
-  const panel = PANEL[device]
+  const t = useT()
+  const width = device === 'desk' ? t.deskGlassWidth : t.hhGlassWidth
+  const height = device === 'desk' ? t.deskGlassHeight : t.hhGlassHeight
   const [scale, setScale] = useState(0)
 
   useEffect(() => {
     function fit() {
       setScale(
         Math.min(
-          (window.innerWidth * 0.94) / panel.width,
-          ((window.innerHeight - BOTTOM - TOP[device]) * 0.96) / panel.height,
+          (window.innerWidth * 0.94) / width,
+          ((window.innerHeight - BOTTOM) * 0.96) / height,
           MAX_SCALE,
         ),
       )
@@ -41,14 +42,13 @@ export default function FlatScreen({content, device}: {content: ConsoleContent; 
     fit()
     window.addEventListener('resize', fit)
     return () => window.removeEventListener('resize', fit)
-  }, [panel, device])
+  }, [width, height])
 
   return (
     <div
       style={{
         position: 'absolute',
         inset: 0,
-        paddingTop: TOP[device],
         paddingBottom: BOTTOM,
         boxSizing: 'border-box',
         display: 'flex',

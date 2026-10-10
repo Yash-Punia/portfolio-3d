@@ -255,7 +255,7 @@ export default async function Home() {
             </section>
           )
         })}
-        {socialLinks.length > 0 ? (
+        {socialLinks.length > 0 || settings?.email ? (
           <>
             <h2>Links</h2>
             <ul>
@@ -266,6 +266,11 @@ export default async function Home() {
                   </a>
                 </li>
               ))}
+              {settings?.email ? (
+                <li>
+                  <a href={`mailto:${settings.email}`}>Email</a>
+                </li>
+              ) : null}
             </ul>
           </>
         ) : null}
